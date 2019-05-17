@@ -1,4 +1,17 @@
-from ._pyRBMonGPU import *  # noqa
+from ._pyRBMonGPU import (
+    Psi,
+    PsiW3,
+    Operator,
+    Spins,
+    MonteCarloLoop,
+    ExactSummation,
+    SpinHistory,
+    ExpectationValue,
+    DifferentiatePsi,
+    HilbertSpaceDistance
+)
+
+from .PsiDynamical import PsiDynamical
 
 from .fresh_neural_network import (
     new_neural_network,
