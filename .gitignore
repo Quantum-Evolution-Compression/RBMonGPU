@@ -1,0 +1,16 @@
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+build
+tmp
+dist
+rbm_on_gpu.egg-info
+*egg-info*
+*.egg-info*
+__pycache__

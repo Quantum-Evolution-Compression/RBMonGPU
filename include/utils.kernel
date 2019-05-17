@@ -1,0 +1,57 @@
+#pragma once
+
+#include "types.h"
+
+namespace rbm_on_gpu {
+
+
+DINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& summand) {
+    constexpr auto warp_size = 32u;
+    constexpr auto full_mask = 0xffffffff;
+
+    if(threadIdx.x == 0) {
+        result = complex_t(0.0, 0.0);
+    }
+    __syncthreads();
+
+    unsigned mask = __ballot_sync(full_mask, threadIdx.x < size);
+
+    if(threadIdx.x < size) {
+        for(int offset = 16; offset > 0; offset /= 2) {
+            summand.__re_ += __shfl_down_sync(mask, summand.real(), offset);
+            summand.__im_ += __shfl_down_sync(mask, summand.imag(), offset);
+        }
+
+        if(threadIdx.x % warp_size == 0) {
+            atomicAdd(&result, summand);
+        }
+    }
+
+    __syncthreads();
+}
+
+DINLINE void tree_sum(double& result, const unsigned int size, double& summand) {
+    constexpr auto warp_size = 32u;
+    constexpr auto full_mask = 0xffffffff;
+
+    if(threadIdx.x == 0) {
+        result = 0.0;
+    }
+    __syncthreads();
+
+    unsigned mask = __ballot_sync(full_mask, threadIdx.x < size);
+
+    if(threadIdx.x < size) {
+        for(int offset = 16; offset > 0; offset /= 2) {
+            summand += __shfl_down_sync(mask, summand, offset);
+        }
+
+        if(threadIdx.x % warp_size == 0) {
+            atomicAdd(&result, summand);
+        }
+    }
+
+    __syncthreads();
+}
+
+} // namespace rbm_on_gpu
