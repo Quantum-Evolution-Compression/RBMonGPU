@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.8)
 project(pyRBMonGPU)
 
+execute_process (
+    COMMAND bash -c "which gcc"
+    OUTPUT_VARIABLE ENV{CC}
+)
+execute_process (
+    COMMAND bash -c "which g++"
+    OUTPUT_VARIABLE ENV{CXX}
+)
+
 # set helper pathes to find libraries and packages
 list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local")
 list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local/lib")
@@ -69,13 +78,12 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
+link_directories(BEFORE ${LIBS})
 
 set(PYBIND11_CPP_STANDARD -std=c++14)
 find_package(pybind11 REQUIRED)
 pybind11_add_module(_pyRBMonGPU "${CMAKE_CURRENT_LIST_DIR}/pyRBMonGPU/main.cpp")
 
-link_directories(${LIBS})
-
 target_include_directories(_pyRBMonGPU PRIVATE ${CXX_INCLUDES})
 target_link_libraries(_pyRBMonGPU PRIVATE RBMonGPU)
-# target_link_libraries(_pyRBMonGPU PRIVATE ${LIBS})
+message(STATUS ${LIBS})
