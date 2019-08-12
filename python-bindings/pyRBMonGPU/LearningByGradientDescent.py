@@ -62,10 +62,11 @@ class LearningByGradientDescent:
             self.push_params(params)
 
         self.psi.active_params = params
+
         gradient, distance = self.hilbert_space_distance.gradient(
             self.psi0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
         )
-        gradient[self.psi.active_params_types == 1] *= 10
+
         gradient *= self.gradient_prefactor
         if self.regularization is not None:
             gradient += self.regularization.gradient(step, self.psi)
@@ -264,7 +265,7 @@ class LearningByGradientDescent:
             self.do_the_gradient_descent(eta)
 
         if not self.mc:
-            self.psi.prefactor /= self.psi.norm
+            self.psi.normalize()
 
     def intelligent_optimize_for(self, operator, exp=True, regularization=None, reversed_order=False):
         self.regularization = regularization

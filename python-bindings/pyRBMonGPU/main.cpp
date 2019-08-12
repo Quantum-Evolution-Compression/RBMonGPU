@@ -159,13 +159,15 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 
     py::class_<MonteCarloLoop>(m, "MonteCarloLoop")
         .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
-        .def(py::init<const MonteCarloLoop&>());
+        .def(py::init<const MonteCarloLoop&>())
+        .def_property_readonly("num_steps", &MonteCarloLoop::get_num_steps);
 
     py::class_<ExactSummation>(m, "ExactSummation")
         .def(py::init<unsigned int>())
         .def(py::init<const Psi&>())
         .def(py::init<const PsiW3&>())
-        .def("copy", &ExactSummation::copy);
+        .def("copy", &ExactSummation::copy)
+        .def_property_readonly("num_steps", &ExactSummation::get_num_steps);
 
     py::class_<SpinHistory>(m, "SpinHistory")
         .def(py::init<const unsigned int, const unsigned int, const bool, const bool>())

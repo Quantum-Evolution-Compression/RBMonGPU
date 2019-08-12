@@ -166,16 +166,17 @@ public:
     HDINLINE complex_t flip_spin_of_jth_angle(
         const complex_t* angles, const unsigned int j, const unsigned int position, const Spins& new_spins
     ) const {
-        complex_t result;
+        // return this->angle(j, new_spins);
+        complex_t new_angle;
         if(j < this->get_num_angles()) {
-            result = angles[j];
+            new_angle = angles[j];
             const auto relative_position = (position - this->spin_offset_list[j] + this->N) % this->N;
             if(relative_position < this->string_length_list[j]) {
-                result += 2.0 * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
+                new_angle += 2.0 * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
             }
         }
 
-        return result;
+        return new_angle;
     }
 
     template<typename Function>

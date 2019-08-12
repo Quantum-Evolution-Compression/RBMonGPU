@@ -43,7 +43,7 @@ def new_neural_network(
     result.update()
 
     if normalize:
-        result.prefactor /= result.norm
+        result.normalize()
 
     return result
 

@@ -103,6 +103,7 @@ public:
             for(auto i = 0u; i < this->num_sweeps * psi.get_num_spins(); i++) {
                 this->mc_update(psi, spins, log_psi_real, &local_random_state, angle_ptr);
             }
+
             psi.log_psi_s(log_psi, spins, angle_ptr);
 
             #ifdef __CUDA_ARCH__
@@ -187,7 +188,7 @@ public:
         complex_t next_angle[Psi_t::get_max_angles()];
 
         for(auto j = 0u; j < psi.get_num_angles(); j++) {
-            next_angle[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, position, next_spins[position]);
+            next_angle[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, position, next_spins);
         }
 
         double next_log_psi_real;
