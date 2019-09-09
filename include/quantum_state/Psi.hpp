@@ -330,7 +330,7 @@ public:
 
         this->allocate_memory();
         this->update_params(
-            a.raw_data(), b.raw_data(), W.raw_data(), n.raw_data()
+            a.data(), b.data(), W.data(), n.data()
         );
     }
 
@@ -341,7 +341,7 @@ public:
         const xt::pytensor<std::complex<double>, 1u>& n
     ) {
         this->update_params(
-            a.raw_data(), b.raw_data(), W.raw_data(), n.raw_data()
+            a.data(), b.data(), W.data(), n.data()
         );
     }
 
@@ -349,7 +349,7 @@ public:
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(pow(2, this->N))})
         );
-        this->as_vector(result.raw_data());
+        this->as_vector(result.data());
 
         return result;
     }
@@ -358,7 +358,7 @@ public:
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
-        this->O_k_vector(result.raw_data(), spins);
+        this->O_k_vector(result.data(), spins);
 
         return result;
     }

@@ -1,6 +1,4 @@
 from .NeuralNetwork import NeuralNetwork
-from .NeuralNetworkW3 import NeuralNetworkW3
-from .NeuralNetworkGD import NeuralNetworkGD
 from .NeuralNetworkSR import NeuralNetworkSR
 from pyRBMonGPU import PsiDynamical
 import pyRBMonGPU

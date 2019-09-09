@@ -1,5 +1,4 @@
 #include "spin_ensembles/ExactSummation.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/Psi.hpp"
 #include "types.h"
 
@@ -19,6 +18,5 @@ ExactSummation::ExactSummation(const Psi_t& psi)
 
 
 template ExactSummation::ExactSummation(const Psi& psi);
-template ExactSummation::ExactSummation(const PsiW3& psi);
 
 } // namespace rbm_on_gpu

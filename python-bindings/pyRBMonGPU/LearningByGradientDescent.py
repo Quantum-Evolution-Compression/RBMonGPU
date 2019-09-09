@@ -1,16 +1,19 @@
 import numpy as np
-from pathlib import Path
 import pyRBMonGPU
 from pyRBMonGPU import Operator
 import gradient_descent as gd
-from ParallelAverage import SimpleFlock
-from json_chain import EncoderChain
-from json_numpy import NumpyEncoder
-from .json_operator import OperatorEncoder
 from itertools import islice
 from scipy.ndimage import gaussian_filter1d
 from QuantumExpression import PauliExpression
-import json
+from HilbertSpaceCorrelations import HilbertSpaceCorrelations
+from collections import namedtuple
+
+
+# list of actions
+modes = namedtuple(
+    "modes",
+    "unitary_evolution groundstate"
+)._make(range(2))
 
 
 class DidNotConverge(RuntimeError):
@@ -19,12 +22,12 @@ class DidNotConverge(RuntimeError):
 
 class LearningByGradientDescent:
     def __init__(self, psi, spin_ensemble):
-        self.psi = psi
         self.gpu = psi.gpu
         self.mc = type(spin_ensemble) is pyRBMonGPU.MonteCarloLoop
         self.spin_ensemble = spin_ensemble
         self.num_params = psi.num_active_params
         self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(self.num_params, psi.gpu)
+        self.expectation_value = pyRBMonGPU.ExpectationValue(self.gpu)
         self.regularization = None
 
     @property
@@ -39,9 +42,19 @@ class LearningByGradientDescent:
         return abs(distances[1:] - distances[:-1])
 
     @property
+    def graph(self):
+        return np.log(self.smoothed_distance_history[-50:])
+
+    @property
     def is_highly_fluctuating(self):
-        graph = np.log(self.smoothed_distance_history[-50:])
-        return np.std(graph) > 0.25
+        graph = self.graph
+        diff_graph = graph[1:] - graph[:-1]
+        return np.std(diff_graph) > 0.25
+
+    @property
+    def is_descending(self):
+        graph = self.graph
+        return graph[-1] - graph[0] < -0.05
 
     def push_params(self, params):
         stack_size = 3
@@ -58,23 +71,45 @@ class LearningByGradientDescent:
         return np.mean(self.last_params_stack, axis=0)
 
     def set_params_and_return_gradient(self, step, params):
-        if self.mc:
-            self.push_params(params)
+        # if self.mc:
+        #     self.push_params(params)
 
         self.psi.active_params = params
+        if not self.mc:
+            self.psi.normalize()
 
-        gradient, distance = self.hilbert_space_distance.gradient(
-            self.psi0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
-        )
+        if self.mode == modes.unitary_evolution:
+            gradient, distance = self.hilbert_space_distance.gradient(
+                self.psi0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
+            )
 
-        gradient *= self.gradient_prefactor
-        if self.regularization is not None:
-            gradient += self.regularization.gradient(step, self.psi)
-            complexity = self.regularization.cost(step, self.psi)
-            self.verbose_distance_history.append((+distance, +complexity))
-            distance += complexity
+            gradient *= self.gradient_prefactor
+            if self.regularization is not None:
+                gradient += self.regularization.gradient(step, self.psi)
+                complexity = self.regularization.cost(step, self.psi)
+                self.verbose_distance_history.append((+distance, +complexity))
+                distance += complexity
 
-        self.distance_history.append(distance)
+            if step < 100:
+                gradient -= HilbertSpaceCorrelations(self.psi).gradient
+
+            self.distance_history.append(distance)
+        elif self.mode == modes.groundstate:
+            gradient, energy = self.expectation_value.gradient(self.psi, self.operator, self.spin_ensemble)
+            energy = energy.real
+            if step > 100 and energy < self.min_energy:
+                self.min_energy = energy
+                self.min_params = +params
+
+            self.energy_history.append(energy)
+
+            for excluded_state in self.excludes_states:
+                gradient -= self.hilbert_space_distance.gradient(
+                    excluded_state, self.psi, self.identity, True, self.spin_ensemble
+                )[0]
+
+            if step < 250:
+                gradient -= HilbertSpaceCorrelations(self.psi).gradient
 
         return gradient
 
@@ -124,48 +159,50 @@ class LearningByGradientDescent:
             # }
         ]
 
-    def save_gd_report(self, algorithm, psi0_params, eta, commentary=""):
-        database_path = Path("/home/burau/gd_reports.json")
-        database_path.touch()
-
-        with SimpleFlock(str(Path("/home/burau/gdlock"))):
-            with open(database_path, 'r+') as f:
-                if database_path.stat().st_size == 0:
-                    reports = []
-                else:
-                    reports = json.load(f)
-
-                print("n:", len(reports), ",", len(self.operator.coefficients))
-
-                reports.append({
-                    "algorithm": algorithm["name"],
-                    "psi0_params": psi0_params,
-                    "operator": self.operator,
-                    "is_unitary": self.is_unitary,
-                    "distance_history": self.distance_history,
-                    "verbose_distance_history": self.verbose_distance_history,
-                    # "params_history": self.params_history,
-                    "smoothed_distance_history": self.smoothed_distance_history,
-                    "sample_psi_prime": self.sample_psi_prime,
-                    "eta": eta,
-                    "commentary": commentary
-                })
-
-                f.seek(0)
-                json.dump(reports, f, indent=2, cls=EncoderChain(NumpyEncoder(), OperatorEncoder()))
-                f.truncate()
-
     @property
     def min_report(self):
         result = {
-            "operator": self.operator,
-            "is_unitary": self.is_unitary,
-            "distance_history": self.distance_history
+            "operator": self.operator.expr.to_json()
         }
+        if hasattr(self, "is_unitary"):
+            result["is_unitary"] = self.is_unitary
+        if hasattr(self, "distance_history"):
+            result["distance_history"] = self.distance_history
+        if hasattr(self, "energy_history"):
+            result["energy_history"] = self.energy_history
 
-        return json.loads(json.dumps(
-            result, cls=EncoderChain(NumpyEncoder(), OperatorEncoder())
-        ))
+        return result
+
+    @property
+    def report(self):
+        result = self.min_report
+        if hasattr(self, "psi0"):
+            result["psi0"] = self.psi0.to_json()
+        if hasattr(self, "psi"):
+            result["psi"] = self.psi.to_json()
+
+        return result
+
+    def find_low_laying_state(self, psi_init, operator, excludes_states=[], eta=1e-3):
+        self.psi0 = psi_init
+        self.psi = +psi_init
+        self.identity = Operator(PauliExpression(0, 0), self.gpu)
+        self.operator = Operator(operator, self.gpu)
+        self.excludes_states = excludes_states
+        self.energy_history = []
+        self.min_energy = float("+inf")
+        self.mode = modes.groundstate
+
+        algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
+        algorithm_iter = algorithm["iter"]()
+
+        list(islice(algorithm_iter, 500))
+
+        self.psi.active_params = self.min_params
+        if not self.mc:
+            self.psi.normalize()
+
+        return self.psi
 
     def do_the_gradient_descent(self, eta):
         # max_steps = 400
@@ -178,30 +215,31 @@ class LearningByGradientDescent:
             self.gradient_prefactor = 1
             # self.params_history = []
 
-            num_steps = 150
+            num_steps = 200
             algorithm_iter = algorithm["iter"]()
             list(islice(algorithm_iter, num_steps))
 
             smoothed_distance_history = self.smoothed_distance_history
-
             initial_distance = smoothed_distance_history[0]
 
+            while num_steps <= 1000 and self.is_descending:
+                list(islice(algorithm_iter, 200))
+                num_steps += 200
+
+            # v2
             if (
                 initial_distance > 2e-4 and self.smoothed_distance_history[-1] / initial_distance > 0.1
             ):
                 params_at_mark_A = self.psi.active_params
-                is_highly_fluctuating_at_mark_A = self.is_highly_fluctuating
-                self.gradient_prefactor = 1 / 8 if is_highly_fluctuating_at_mark_A else 8
-                list(islice(algorithm_iter, 200))
-                num_steps += 200
+                self.gradient_prefactor = 1 / 2 if self.is_highly_fluctuating else 2
+                list(islice(algorithm_iter, 300))
+                num_steps += 300
+                while num_steps <= 1200 and self.is_descending:
+                    list(islice(algorithm_iter, 200))
+                    num_steps += 200
 
                 if self.smoothed_distance_history[-1] / initial_distance > 0.1:
                     self.psi.active_params = params_at_mark_A
-                    self.gradient_prefactor = 1 / 4 if is_highly_fluctuating_at_mark_A else 4
-                    list(islice(algorithm_iter, 400))
-                    num_steps += 400
-                    if self.smoothed_distance_history[-1] / initial_distance > 0.1:
-                        self.psi.active_params = params_at_mark_A
 
             # if self.smoothed_distance_history[-1] >= initial_distance:
             #     self.save_gd_report(algorithm, self.psi0.active_params, eta)
@@ -235,7 +273,8 @@ class LearningByGradientDescent:
         self.psi.active_params = self.psi0.active_params
         raise DidNotConverge()
 
-    def optimize_for(self, operator, is_unitary=False, regularization=None, eta=None):
+    def optimize_for(self, psi, operator, is_unitary=False, regularization=None, eta=None):
+        self.psi = psi
         norm_threshold = 1e-1
 
         eta = eta or 1e-3
@@ -243,6 +282,7 @@ class LearningByGradientDescent:
         self.regularization = regularization
         self.operator = Operator(operator, self.gpu)
         self.is_unitary = is_unitary
+        self.mode = modes.unitary_evolution
 
         if is_unitary:
             success = False
@@ -267,7 +307,7 @@ class LearningByGradientDescent:
         if not self.mc:
             self.psi.normalize()
 
-    def intelligent_optimize_for(self, operator, exp=True, regularization=None, reversed_order=False):
+    def intelligent_optimize_for(self, psi, operator, exp=True, regularization=None, reversed_order=False):
         self.regularization = regularization
         length_limit = 1
 
@@ -286,9 +326,9 @@ class LearningByGradientDescent:
                 unitary_ops.append(unitary_op)
 
             for unitary_op in (reversed(unitary_ops) if reversed_order else unitary_ops):
-                self.optimize_for(unitary_op, True, regularization)
+                self.optimize_for(psi, unitary_op, True, regularization)
         else:
             group_size = 1
             for i in range(0, len(terms), group_size):
                 group = sum(terms[i: i + group_size])
-                self.optimize_for(group, False, regularization)
+                self.optimize_for(psi, group, False, regularization)

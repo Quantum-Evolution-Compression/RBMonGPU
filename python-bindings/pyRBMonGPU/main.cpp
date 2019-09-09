@@ -1,6 +1,5 @@
 #define __PYTHONCC__
 #include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "operator/Operator.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
@@ -69,39 +68,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("num_active_params", &Psi::num_active_params)
         .def_property_readonly("num_angles", &Psi::get_num_angles);
 
-    py::class_<PsiW3>(m, "PsiW3")
-        .def(py::init<
-            const complex_tensor<1u>&,
-            const complex_tensor<1u>&,
-            const complex_tensor<2u>&,
-            const complex_tensor<1u>&,
-            const complex_tensor<2u>&,
-            const complex_tensor<2u>&,
-            const double,
-            const bool
-        >())
-        .def(
-            "update_params",
-            py::overload_cast<
-                const complex_tensor<1u>&,
-                const complex_tensor<1u>&,
-                const complex_tensor<2u>&,
-                const complex_tensor<1u>&,
-                const complex_tensor<2u>&,
-                const complex_tensor<2u>&
-            >(&PsiW3::update_params)
-        )
-        .def_property_readonly("vector", &PsiW3::as_vector_py)
-        .def_property_readonly("norm", &PsiW3::norm_function)
-        .def("O_k_vector", &PsiW3::O_k_vector_py)
-        .def_readwrite("prefactor", &PsiW3::prefactor)
-        .def_readonly("gpu", &PsiW3::gpu)
-        .def_readonly("N", &PsiW3::N)
-        .def_readonly("M", &PsiW3::M)
-        .def_readonly("F", &PsiW3::F)
-        .def_property_readonly("num_params", &PsiW3::get_num_params_py)
-        .def_readonly("num_active_params", &PsiW3::num_active_params);
-
     py::class_<PsiDynamical::Link>(m, "PsiDynamical_Link")
         .def_readonly("first_spin", &PsiDynamical::Link::first_spin)
         .def_readonly("weights", &PsiDynamical::Link::weights)
@@ -131,7 +97,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property("a", &PsiDynamical::a_py, &PsiDynamical::set_a_py)
         .def_property_readonly("b", &PsiDynamical::b_py)
         .def_property_readonly("W", &PsiDynamical::dense_W_py)
-        .def_property_readonly("num_angles", &PsiDynamical::get_num_angles);
+        .def_property_readonly("num_angles", &PsiDynamical::get_num_angles)
+        .def_readonly("index_pairs", &PsiDynamical::index_pair_list);
 
     py::class_<Operator>(m, "Operator")
         .def(py::init<
@@ -165,7 +132,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<ExactSummation>(m, "ExactSummation")
         .def(py::init<unsigned int>())
         .def(py::init<const Psi&>())
-        .def(py::init<const PsiW3&>())
         .def("copy", &ExactSummation::copy)
         .def_property_readonly("num_steps", &ExactSummation::get_num_steps);
 
@@ -183,10 +149,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &ExpectationValue::__call__vector<Psi, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__<Psi, MonteCarloLoop>)
         .def("__call__", &ExpectationValue::__call__vector<Psi, MonteCarloLoop>)
-        .def("__call__", &ExpectationValue::__call__<PsiW3, ExactSummation>)
-        .def("__call__", &ExpectationValue::__call__vector<PsiW3, ExactSummation>)
-        .def("__call__", &ExpectationValue::__call__<PsiW3, MonteCarloLoop>)
-        .def("__call__", &ExpectationValue::__call__vector<PsiW3, MonteCarloLoop>)
         .def("__call__", &ExpectationValue::__call__<PsiDynamical, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__vector<PsiDynamical, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__<PsiDynamical, MonteCarloLoop>)

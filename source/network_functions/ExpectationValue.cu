@@ -3,7 +3,6 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "spin_ensembles/SpinHistory.hpp"
 #include "quantum_state/PsiDynamical.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/Psi.hpp"
 #include "Array.hpp"
 
@@ -128,7 +127,7 @@ pair<double, complex<double>> ExpectationValue::fluctuation(const Psi_t& psi, co
 }
 
 template<typename Psi_t, typename SpinEnsemble>
-void ExpectationValue::gradient(
+complex<double> ExpectationValue::gradient(
     complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
 ) const {
     const auto O_k_length = psi.get_num_active_params();
@@ -216,6 +215,8 @@ void ExpectationValue::gradient(
             E_loc_O_k_avg.host[k] + conj(E_loc_k_avg.host[k]) - 2.0 * E_loc_avg.host.front() * conj(O_k_avg.host[k])
         ).to_std();
     }
+
+    return E_loc_avg.host.front().to_std();
 }
 
 template<typename Psi_t, typename SpinEnsemble>
@@ -505,8 +506,6 @@ vector<complex<double>> ExpectationValue::operator() (
 
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const ExactSummation&) const;
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::operator()(const PsiW3& psi, const Operator& operator_, const ExactSummation&) const;
-template complex<double> ExpectationValue::operator()(const PsiW3& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::operator()(const PsiDynamical& psi, const Operator& operator_, const ExactSummation&) const;
 template complex<double> ExpectationValue::operator()(const PsiDynamical& psi, const Operator& operator_, const MonteCarloLoop&) const;
 
@@ -517,12 +516,12 @@ template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDy
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
 
 
-template void ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
-template void ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
-template void ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const SpinHistory&) const;
-template void ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const ExactSummation&) const;
-template void ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
-template void ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const SpinHistory&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const SpinHistory&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const ExactSummation&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
+template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const SpinHistory&) const;
 
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
@@ -539,12 +538,6 @@ template vector<complex<double>> ExpectationValue::operator()(
 ) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const Psi& psi, const vector<Operator>& operator_, const MonteCarloLoop&
-) const;
-template vector<complex<double>> ExpectationValue::operator()(
-    const PsiW3& psi, const vector<Operator>& operator_, const ExactSummation&
-) const;
-template vector<complex<double>> ExpectationValue::operator()(
-    const PsiW3& psi, const vector<Operator>& operator_, const MonteCarloLoop&
 ) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiDynamical& psi, const vector<Operator>& operator_, const ExactSummation&

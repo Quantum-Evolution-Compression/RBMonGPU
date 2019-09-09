@@ -260,9 +260,9 @@ public:
         this->max_string_length = pauli_types.shape()[1];
 
         this->allocate_memory_and_initialize(
-            coefficients.raw_data(),
-            reinterpret_cast<const PauliMatrices*>(pauli_types.raw_data()),
-            pauli_indices.raw_data(),
+            coefficients.data(),
+            reinterpret_cast<const PauliMatrices*>(pauli_types.data()),
+            pauli_indices.data(),
             false
         );
     }
@@ -270,21 +270,21 @@ public:
     decltype(auto) get_coefficients_py() const {
         xt::pytensor<complex<double>, 1u> result(array<long int, 1u>({(long int)this->num_strings}));
 
-        this->get_coefficients(result.raw_data());
+        this->get_coefficients(result.data());
 
         return result;
     }
     decltype(auto) get_pauli_types_py() const {
         xt::pytensor<int, 2u> result(array<long int, 2u>({(long int)this->num_strings, (long int)this->max_string_length}));
 
-        this->get_pauli_types(result.raw_data());
+        this->get_pauli_types(result.data());
 
         return result;
     }
     decltype(auto) get_pauli_indices_py() const {
         xt::pytensor<int, 2u> result(array<long int, 2u>({(long int)this->num_strings, (long int)this->max_string_length}));
 
-        this->get_pauli_indices(result.raw_data());
+        this->get_pauli_indices(result.data());
 
         return result;
     }

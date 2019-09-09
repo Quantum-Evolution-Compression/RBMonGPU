@@ -1,5 +1,4 @@
 from make_Psi import psi_random
-from make_PsiW3 import psi_random as psiw3_random
 from make_PsiDynamical import psi_random as psidynamical_random
 # from pyRBMonGPU import ExactSummation, MonteCarloLoop
 import quantum_tools as qt
@@ -24,10 +23,7 @@ def pytest_generate_tests(metafunc):
         psi_list = [
             lambda gpu: psidynamical_random(2, 2, 0.01, gpu),
             # lambda gpu: psi_random(2, 2, 0.01, gpu),
-            # lambda gpu: psiw3_random(2, 2, 2, 0.1, gpu),
             # lambda gpu: psi_random(5, 10, 0.1, gpu),
-            # lambda gpu: psiw3_random(4, 3, 7, 0.1, gpu),
-            # lambda gpu: psiw3_random(4, 6, 5, 0.1, gpu)
         ]
         metafunc.parametrize("psi", psi_list)
 

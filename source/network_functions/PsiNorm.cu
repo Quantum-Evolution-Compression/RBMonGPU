@@ -1,6 +1,5 @@
 #include "network_functions/PsiNorm.hpp"
 #include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
@@ -45,7 +44,6 @@ double psi_norm(const Psi_t& psi) {
 
 
 template double psi_norm(const Psi& psi);
-template double psi_norm(const PsiW3& psi);
 template double psi_norm(const PsiDynamical& psi);
 
 } // namespace rbm_on_gpu

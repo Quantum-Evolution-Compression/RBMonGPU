@@ -24,6 +24,7 @@ def to_json(self):
         json.dumps(obj, cls=ComplexEncoder)
     )
 
+
 @staticmethod
 def from_json(json_obj, gpu):
     obj = json.loads(
@@ -43,10 +44,16 @@ def from_json(json_obj, gpu):
     result.update()
     return result
 
+
 def normalize(self):
     self.prefactor /= self.norm
+
+
+def __pos__(self):
+    return self.copy()
 
 
 setattr(PsiDynamical, "to_json", to_json)
 setattr(PsiDynamical, "from_json", from_json)
 setattr(PsiDynamical, "normalize", normalize)
+setattr(PsiDynamical, "__pos__", __pos__)

@@ -1,6 +1,5 @@
 from ._pyRBMonGPU import (
     Psi,
-    PsiW3,
     Operator,
     Spins,
     MonteCarloLoop,
@@ -8,7 +7,8 @@ from ._pyRBMonGPU import (
     SpinHistory,
     ExpectationValue,
     DifferentiatePsi,
-    HilbertSpaceDistance
+    HilbertSpaceDistance,
+    setDevice
 )
 
 from .PsiDynamical import PsiDynamical

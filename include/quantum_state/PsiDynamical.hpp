@@ -240,6 +240,7 @@ public:
 
     clist spin_weights;
     vector<Link> links;
+    vector<pair<int, int>> index_pair_list;
     bool gpu;
 
 public:
@@ -262,7 +263,7 @@ public:
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(pow(2, this->N))})
         );
-        this->as_vector(result.raw_data());
+        this->as_vector(result.data());
 
         return result;
     }
@@ -271,7 +272,7 @@ public:
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
-        this->O_k_vector(result.raw_data(), spins);
+        this->O_k_vector(result.data(), spins);
 
         return result;
     }
@@ -281,13 +282,13 @@ public:
             std::array<long int, 1>({static_cast<long int>(this->N)})
         );
 
-        memcpy(result.raw_data(), this->spin_weights.data(), sizeof(complex_t) * this->N);
+        memcpy(result.data(), this->spin_weights.data(), sizeof(complex_t) * this->N);
 
         return result;
     }
 
     void set_a_py(const xt::pytensor<complex<double>, 1>& new_a) {
-        memcpy(this->spin_weights.data(), new_a.raw_data(), sizeof(complex_t) * this->N);
+        memcpy(this->spin_weights.data(), new_a.data(), sizeof(complex_t) * this->N);
     }
 
     xt::pytensor<complex<double>, 1> b_py() const {
@@ -297,7 +298,7 @@ public:
 
         auto j = 0u;
         for(const auto& link : this->links) {
-            result.raw_data()[j] = link.hidden_spin_weight;
+            result.data()[j] = link.hidden_spin_weight;
 
             j++;
         }
@@ -311,7 +312,7 @@ public:
                 {static_cast<long int>(this->N), static_cast<long int>(this->M)}
             )
         );
-        this->dense_W(result.raw_data());
+        this->dense_W(result.data());
 
         return result;
     }
@@ -320,20 +321,20 @@ public:
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
-        this->get_active_params(result.raw_data());
+        this->get_active_params(result.data());
 
         return result;
     }
 
     void set_active_params_py(const xt::pytensor<complex<double>, 1>& new_params) {
-        this->set_active_params(new_params.raw_data());
+        this->set_active_params(new_params.data());
     }
 
     xt::pytensor<int, 1> get_active_params_types_py() const {
         auto result = xt::pytensor<int, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
-        this->get_active_params_types(result.raw_data());
+        this->get_active_params_types(result.data());
 
         return result;
     }

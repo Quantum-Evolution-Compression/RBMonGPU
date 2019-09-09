@@ -1,6 +1,5 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
@@ -121,7 +120,6 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
 
 
 template void psi_O_k_vector(complex<double>* result, const Psi& psi, const Spins& spins);
-template void psi_O_k_vector(complex<double>* result, const PsiW3& psi, const Spins& spins);
 template void psi_O_k_vector(complex<double>* result, const PsiDynamical& psi, const Spins& spins);
 
 

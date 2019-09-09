@@ -93,7 +93,7 @@ public:
     ) {
         xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_active_params()}));
 
-        const double distance = this->gradient(grad.raw_data(), psi, psi_prime, operator_, is_unitary, spin_ensemble, use_record);
+        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble, use_record);
 
         return {grad, distance};
     }

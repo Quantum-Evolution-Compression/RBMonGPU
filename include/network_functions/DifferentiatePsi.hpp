@@ -279,7 +279,7 @@ public:
         const double        rtol=1e-6
     ) {
         xt::pytensor<std::complex<double>, 1u> result(std::array<long int, 1u>({(long int)psi.get_num_params()}));
-        (*this)(psi, operator_, spin_ensemble, result.raw_data(), rtol);
+        (*this)(psi, operator_, spin_ensemble, result.data(), rtol);
 
         return result;
     }

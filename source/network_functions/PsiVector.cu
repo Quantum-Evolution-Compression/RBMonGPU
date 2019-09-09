@@ -1,6 +1,5 @@
 #include "network_functions/PsiVector.hpp"
 #include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
@@ -42,7 +41,6 @@ void psi_vector(complex<double>* result, const Psi_t& psi) {
 
 
 template void psi_vector(complex<double>* result, const Psi& psi);
-template void psi_vector(complex<double>* result, const PsiW3& psi);
 template void psi_vector(complex<double>* result, const PsiDynamical& psi);
 
 } // namespace rbm_on_gpu

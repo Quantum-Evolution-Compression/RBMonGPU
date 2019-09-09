@@ -4,6 +4,7 @@
 #include "network_functions/PsiOkVector.hpp"
 
 #include <algorithm>
+#include <utility>
 
 
 namespace rbm_on_gpu {
@@ -46,6 +47,10 @@ void PsiDynamical::init(const complex<double>* a, const unsigned int N, const bo
     this->param_offset_list = nullptr;
     this->string_length_list = nullptr;
     this->hidden_spin_type_list = nullptr;
+
+    for(int i = 0; i < int(N); i++) {
+        this->index_pair_list.push_back(make_pair(i, -1));
+    }
 }
 
 void PsiDynamical::clear_hidden_spins() {
@@ -133,11 +138,17 @@ void PsiDynamical::update(bool resize) {
         hidden_spin_type_host.reserve(this->M);
 
         this->num_active_params = N + M;
+
+        this->index_pair_list.resize(N + M);
+        for(int j = 0; j < int(M); j++) {
+            this->index_pair_list[N + j] = make_pair(-1, j);
+        }
     }
 
     auto W_offset = 0u;
     auto param_offset = this->N + this->M;
 
+    int j = 0;
     for(const auto& link : this->links) {
         b_host.push_back(link.hidden_spin_weight);
         copy(link.weights.begin(), link.weights.end(), back_inserter(W_host));
@@ -152,7 +163,13 @@ void PsiDynamical::update(bool resize) {
             W_offset += link.weights.size();
             param_offset += link.weights.size();
             this->num_active_params += link.weights.size();
+
+            for(int i = link.first_spin; i < link.first_spin + link.weights.size(); i++) {
+                this->index_pair_list.push_back(make_pair(i % N, j));
+            }
         }
+
+        j++;
     }
 
     if(resize) {

@@ -31,7 +31,7 @@ inline pair<xt::pytensor<complex<double>, 1>, xt::pytensor<complex<double>, 1>> 
         std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
     );
 
-    psi_O_k_vector(result.raw_data(), result_std.raw_data(), psi, spin_ensemble);
+    psi_O_k_vector(result.data(), result_std.data(), psi, spin_ensemble);
 
     return {result, result_std};
 }

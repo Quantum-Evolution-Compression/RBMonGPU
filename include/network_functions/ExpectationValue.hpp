@@ -33,7 +33,7 @@ public:
     pair<double, complex<double>> fluctuation(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    void gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+    complex<double> gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
     void fluctuation_gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
@@ -56,16 +56,16 @@ public:
 #ifdef __PYTHONCC__
 
     template<typename Psi_t, typename SpinEnsemble>
-    inline xt::pytensor<complex<double>, 1> gradient_py(
+    inline pair<xt::pytensor<complex<double>, 1>, complex<double>> gradient_py(
         const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
     ) const {
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
         );
 
-        this->gradient(result.raw_data(), psi, operator_, spin_ensemble);
+        const auto expectation_value = this->gradient(result.data(), psi, operator_, spin_ensemble);
 
-        return result;
+        return {result, expectation_value};
     }
 
     template<typename Psi_t, typename SpinEnsemble>
@@ -76,7 +76,7 @@ public:
             std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
         );
 
-        this->fluctuation_gradient(result.raw_data(), psi, operator_, spin_ensemble);
+        this->fluctuation_gradient(result.data(), psi, operator_, spin_ensemble);
 
         return result;
     }

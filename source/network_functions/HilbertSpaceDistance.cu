@@ -3,7 +3,6 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "spin_ensembles/SpinHistory.hpp"
 #include "quantum_state/PsiDynamical.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/Psi.hpp"
 
 #include <cstring>

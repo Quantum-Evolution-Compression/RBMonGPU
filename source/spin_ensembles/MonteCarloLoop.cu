@@ -1,5 +1,4 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
-#include "quantum_state/PsiW3.hpp"
 #include "quantum_state/Psi.hpp"
 
 #include <cassert>
