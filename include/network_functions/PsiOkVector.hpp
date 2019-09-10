@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Spins.h"
 #ifdef __PYTHONCC__
     #define FORCE_IMPORT_ARRAY

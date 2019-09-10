@@ -9,7 +9,7 @@ namespace rbm_on_gpu {
 
 template<typename Psi_t>
 void psi_vector(complex<double>* result, const Psi_t& psi) {
-    ExactSummation exact_summation(psi.N);
+    ExactSummation exact_summation(psi.N, psi.gpu);
 
     complex_t* result_ptr;
     MALLOC(result_ptr, sizeof(complex_t) * exact_summation.get_num_steps(), psi.gpu);

@@ -32,11 +32,17 @@ struct Array : public kernel::Array<T> {
     }
 
     inline T* data() {
-        return this->device;
+        if(this->gpu) {
+            return this->device;
+        }
+        else {
+            return this->host.data();
+        }
     }
 
     void clear();
     void update_host();
+    void update_device();
 };
 
 } // namespace rbm_on_gpu

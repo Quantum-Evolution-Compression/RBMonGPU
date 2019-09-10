@@ -101,8 +101,8 @@ void Psi::as_vector(complex<double>* result) const {
     psi_vector(result, *this);
 }
 
-double Psi::norm_function() const {
-    return psi_norm(*this);
+double Psi::norm_function(const ExactSummation& exact_summation) const {
+    return psi_norm(*this, exact_summation);
 }
 
 void Psi::O_k_vector(complex<double>* result, const Spins& spins) const {

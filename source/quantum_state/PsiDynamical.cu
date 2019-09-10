@@ -76,8 +76,8 @@ void PsiDynamical::as_vector(complex<double>* result) const {
     psi_vector(result, *this);
 }
 
-double PsiDynamical::norm_function() const {
-    return psi_norm(*this);
+double PsiDynamical::norm_function(const ExactSummation& exact_summation) const {
+    return psi_norm(*this, exact_summation);
 }
 
 void PsiDynamical::O_k_vector(complex<double>* result, const Spins& spins) const {

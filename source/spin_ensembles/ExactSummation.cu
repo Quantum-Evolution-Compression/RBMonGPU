@@ -3,20 +3,48 @@
 #include "types.h"
 
 #include <cassert>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
 
 
 namespace rbm_on_gpu {
 
-ExactSummation::ExactSummation(const unsigned int num_spins)
-    : num_spin_configurations(pow(2, num_spins))
-    {}
+ExactSummation::ExactSummation(const unsigned int num_spins, const bool gpu)
+    :
+        gpu(gpu),
+        num_spins(num_spins),
+        allowed_spin_configurations_vec(nullptr)
+    {
+        this->num_spin_configurations = pow(2, num_spins);
+        this->has_total_z_symmetry = false;
+    }
 
-template<typename Psi_t>
-ExactSummation::ExactSummation(const Psi_t& psi)
-    : num_spin_configurations(pow(2, psi.get_num_spins()))
-    {}
+ExactSummation::~ExactSummation() noexcept(false) {
+    delete this->allowed_spin_configurations_vec;
+}
 
+void ExactSummation::set_total_z_symmetry(const int sector) {
+    vector<Spins> spins_tmp;
+    const auto hilbert_space_dim = pow(2, this->num_spins);
 
-template ExactSummation::ExactSummation(const Psi& psi);
+    for(auto spin_index = 0u; spin_index < hilbert_space_dim; spin_index++) {
+        Spins spins = {(Spins::type)spin_index};
+
+        if(spins.total_z(this->num_spins) == sector) {
+            spins_tmp.push_back(spins);
+        }
+    }
+
+    this->num_spin_configurations = spins_tmp.size();
+    delete this->allowed_spin_configurations_vec;
+    this->allowed_spin_configurations_vec = new Array<Spins>(spins_tmp.size(), this->gpu);
+    this->allowed_spin_configurations_vec->host = spins_tmp;
+    this->allowed_spin_configurations_vec->update_device();
+    this->allowed_spin_configurations = this->allowed_spin_configurations_vec->data();
+
+    this->has_total_z_symmetry = true;
+}
 
 } // namespace rbm_on_gpu

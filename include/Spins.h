@@ -119,6 +119,14 @@ struct Spins {
             return (this->configuration_first == other.configuration_first) && (this->configuration_second == other.configuration_second);
         #endif
     }
+
+    HDINLINE int total_z(const unsigned int num_spins) const {
+        #ifdef __CUDA_ARCH__
+            return 2 * __popcll(this->configuration & ((1u << num_spins) - 1)) - num_spins;
+        #else
+            return 2 * __builtin_popcountll(this->configuration & ((1u << num_spins) - 1)) - num_spins;
+        #endif
+    }
 };
 
 }

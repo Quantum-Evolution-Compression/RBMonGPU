@@ -1,6 +1,11 @@
+#pragma once
+
+#include "spin_ensembles/ExactSummation.hpp"
+
+
 namespace rbm_on_gpu {
 
 template<typename Psi_t>
-double psi_norm(const Psi_t& psi);
+double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation);
 
 } // namespace rbm_on_gpu

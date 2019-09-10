@@ -24,7 +24,6 @@ def new_neural_network(
     initial_value=(0.01 + 1j * math.pi / 4),
     connectivity=5,
     noise=1e-6,
-    normalize=False,
     gpu=False,
 ):
     a = noise * complex_noise(N)
@@ -39,9 +38,6 @@ def new_neural_network(
         result.add_hidden_spin(first_spin, W_j, b_spin, 0)
 
     result.update()
-
-    if normalize:
-        result.normalize()
 
     return result
 

@@ -70,7 +70,7 @@ int main(void)
 
     // std::vector<std::complex<double>> dpsi(psi.get_num_params());
 
-    ExactSummation exact_summation(N);
+    ExactSummation exact_summation(N, gpu);
     MonteCarloLoop monte_carlo_loop(
         pow(2, 16), 1, 2, gpu ? 256 : 1, gpu
     );

@@ -2,6 +2,7 @@
 
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiCache.hpp"
+#include "spin_ensembles/ExactSummation.hpp"
 #include "Spins.h"
 #include "types.h"
 #ifdef __CUDACC__
@@ -381,7 +382,7 @@ public:
 
     void as_vector(complex<double>* result) const;
     void O_k_vector(complex<double>* result, const Spins& spins) const;
-    double norm_function() const;
+    double norm_function(const ExactSummation& exact_summation) const;
     std::complex<double> log_psi_s_std(const Spins& spins) const;
 
     unsigned int get_num_params_py() const {

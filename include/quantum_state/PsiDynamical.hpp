@@ -3,6 +3,7 @@
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiDynamicalCache.hpp"
+#include "spin_ensembles/ExactSummation.hpp"
 #include "Spins.h"
 #include "types.h"
 #include "cuda_complex.hpp"
@@ -347,7 +348,7 @@ public:
 
     void as_vector(complex<double>* result) const;
     void O_k_vector(complex<double>* result, const Spins& spins) const;
-    double norm_function() const;
+    double norm_function(const ExactSummation& exact_summation) const;
     void dense_W(complex<double>* result) const;
 
     unsigned int get_num_params_py() const {

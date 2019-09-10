@@ -1,4 +1,9 @@
+#include "Spins.h"
 #include "Array.hpp"
+#include <algorithm>
+
+
+using namespace std;
 
 namespace rbm_on_gpu {
 
@@ -21,18 +26,31 @@ Array<T>::~Array() noexcept(false) {
 
 template<typename T>
 void Array<T>::clear() {
-    MEMSET(this->data(), 0, sizeof(T) * this->size(), this->gpu);
+    if(this->gpu) {
+        MEMSET(this->device, 0, sizeof(T) * this->size(), this->gpu);
+    }
+    else{
+        fill(this->host.begin(), this->host.end(), 0);
+    }
 }
 
 template<typename T>
 void Array<T>::update_host() {
     if(this->gpu) {
-        MEMCPY_TO_HOST(this->host.data(), this->data(), sizeof(T) * this->size(), true);
+        MEMCPY_TO_HOST(this->host.data(), this->device, sizeof(T) * this->size(), true);
+    }
+}
+
+template<typename T>
+void Array<T>::update_device() {
+    if(this->gpu) {
+        MEMCPY(this->device, this->host.data(), sizeof(T) * this->size(), true, false);
     }
 }
 
 
 template class Array<double>;
 template class Array<complex_t>;
+template class Array<Spins>;
 
 } // namespace rbm_on_gpu

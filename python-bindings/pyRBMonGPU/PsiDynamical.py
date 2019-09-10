@@ -45,8 +45,8 @@ def from_json(json_obj, gpu):
     return result
 
 
-def normalize(self):
-    self.prefactor /= self.norm
+def normalize(self, exact_summation):
+    self.prefactor /= self.norm(exact_summation)
 
 
 def __pos__(self):
