@@ -21,10 +21,6 @@ ExactSummation::ExactSummation(const unsigned int num_spins, const bool gpu)
         this->has_total_z_symmetry = false;
     }
 
-ExactSummation::~ExactSummation() noexcept(false) {
-    delete this->allowed_spin_configurations_vec;
-}
-
 void ExactSummation::set_total_z_symmetry(const int sector) {
     vector<Spins> spins_tmp;
     const auto hilbert_space_dim = pow(2, this->num_spins);
@@ -38,8 +34,7 @@ void ExactSummation::set_total_z_symmetry(const int sector) {
     }
 
     this->num_spin_configurations = spins_tmp.size();
-    delete this->allowed_spin_configurations_vec;
-    this->allowed_spin_configurations_vec = new Array<Spins>(spins_tmp.size(), this->gpu);
+    this->allowed_spin_configurations_vec = unique_ptr<Array<Spins>>(new Array<Spins>(spins_tmp.size(), this->gpu));
     this->allowed_spin_configurations_vec->host = spins_tmp;
     this->allowed_spin_configurations_vec->update_device();
     this->allowed_spin_configurations = this->allowed_spin_configurations_vec->data();

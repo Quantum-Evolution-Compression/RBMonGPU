@@ -12,7 +12,7 @@
 #endif // __CUDACC__
 
 // #include <vector>
-// #include <memory>
+#include <memory>
 #include <cmath>
 
 
@@ -96,6 +96,10 @@ public:
 
 #endif // __CUDACC__
 
+    ExactSummation get_kernel() const {
+        return *this;
+    }
+
 };
 
 } // namespace kernel
@@ -105,11 +109,10 @@ protected:
 
     bool          gpu;
     unsigned int  num_spins;
-    Array<Spins>* allowed_spin_configurations_vec;
+    unique_ptr<Array<Spins>> allowed_spin_configurations_vec;
 
 public:
     ExactSummation(const unsigned int num_spins, const bool gpu);
-    ~ExactSummation() noexcept(false);
 
     // ExactSummation copy() const {
     //     return *this;
@@ -120,17 +123,17 @@ public:
 #ifdef __CUDACC__
     template<typename Psi_t, typename Function>
     inline void foreach(const Psi_t& psi, const Function& function, const int blockDim=-1) const {
-        // compute list of spins and angles
+        auto this_kernel = this->get_kernel();
         const auto psi_kernel = psi.get_kernel();
         if(psi.on_gpu()) {
             const auto blockDim_ = blockDim == -1 ? psi.get_num_angles() : blockDim;
 
             cuda_kernel<<<this->num_spin_configurations, blockDim_>>>(
-                [=, *this] __device__ () {this->kernel_foreach(psi_kernel, function);}
+                [=] __device__ () {this_kernel.kernel_foreach(psi_kernel, function);}
             );
         }
         else {
-            this->kernel_foreach(psi_kernel, function);
+            this_kernel.kernel_foreach(psi_kernel, function);
         }
     }
 #endif
