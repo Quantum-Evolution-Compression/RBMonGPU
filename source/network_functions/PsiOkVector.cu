@@ -17,17 +17,13 @@ void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spin
     MALLOC(result_ptr, sizeof(complex_t) * O_k_length, psi.gpu);
 
     const auto functor = [=] __host__ __device__ () {
-        #ifdef __CUDA_ARCH__
-        #define SHARED __shared__
-        #else
-        #define SHARED
-        #endif
+        #include "cuda_kernel_defines.h"
 
-        SHARED complex_t angles[Psi_t::get_max_angles()];
-        psi_kernel.init_angles(angles, spins);
+        SHARED typename Psi_t::Angles angles;
+        angles.init(psi_kernel, spins);
 
-        SHARED typename Psi_t::Cache psi_cache;
-        psi_cache.init(angles, psi_kernel);
+        SHARED typename Psi_t::Derivatives psi_derivatives;
+        psi_derivatives.init(psi_kernel, angles);
 
         #ifdef __CUDA_ARCH__
         __syncthreads();
@@ -35,7 +31,7 @@ void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spin
 
         psi_kernel.foreach_O_k(
             spins,
-            psi_cache,
+            psi_derivatives,
             [&](const unsigned int k, const complex_t& O_k_element) {
                 result_ptr[k] = O_k_element;
             }
@@ -73,17 +69,13 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
-            SHARED typename Psi_t::Cache psi_cache;
-            psi_cache.init(angle_ptr, psi_kernel);
+            SHARED typename Psi_t::Derivatives psi_derivatives;
+            psi_derivatives.init(psi_kernel, angles);
 
             #ifdef __CUDA_ARCH__
             __syncthreads();
@@ -91,7 +83,7 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
 
             psi_kernel.foreach_O_k(
                 spins,
-                psi_cache,
+                psi_derivatives,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&result_device[k], weight * O_k_element);
                     const auto O_k_element2 = complex_t(

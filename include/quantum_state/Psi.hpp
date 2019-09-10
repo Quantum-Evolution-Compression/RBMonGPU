@@ -43,9 +43,11 @@ public:
     complex_t* W;
     complex_t* n;
 
-#ifdef __CUDACC__
-    using Cache = rbm_on_gpu::PsiCache;
-#endif
+// #ifdef __CUDACC__
+    using Angles = rbm_on_gpu::PsiAngles;
+    using Derivatives = rbm_on_gpu::PsiDerivatives;
+
+// #endif
 
 public:
 
@@ -62,26 +64,13 @@ public:
     }
 
     HDINLINE
-    void init_angles(complex_t* angles, const Spins& spins) const {
-        #ifdef __CUDA_ARCH__
-            const auto j = threadIdx.x;
-            if(j < this->M)
-        #else
-            for(auto j = 0u; j < this->M; j++)
-        #endif
-        {
-            angles[j] = this->angle(j, spins);
-        }
-    }
-
-    HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
         complex_t result(0.0, 0.0);
         for(unsigned int i = 0; i < this->N; i++) {
             result += this->a[i] * spins[i];
         }
         for(unsigned int j = 0; j < this->M; j++) {
-            result += /*this->n[j] **/ my_logcosh(this->angle(j, spins));
+            result += my_logcosh(this->angle(j, spins));
         }
 
         return result;
@@ -90,7 +79,7 @@ public:
 #ifdef __CUDACC__
 
     HDINLINE
-    void log_psi_s(complex_t& result, const Spins& spins, const complex_t* angle_ptr) const {
+    void log_psi_s(complex_t& result, const Spins& spins, const Angles& angles) const {
         // CAUTION: 'result' has to be a shared variable.
         // j = threadIdx.x
 
@@ -98,7 +87,7 @@ public:
 
         auto summand = complex_t(
             (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0, 0.0)) +
-            (threadIdx.x < this->M ? my_logcosh(angle_ptr[threadIdx.x]) : complex_t(0.0, 0.0))
+            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]) : complex_t(0.0, 0.0))
         );
 
         tree_sum(result, this->M, summand);
@@ -110,22 +99,22 @@ public:
             result += this->a[i] * spins[i];
         }
         for(auto j = 0u; j < this->M; j++) {
-            result += my_logcosh(angle_ptr[j]);
+            result += my_logcosh(angles[j]);
         }
 
         #endif
     }
 
     HDINLINE
-    void log_psi_s_real(double& result, const Spins& spins, const complex_t* angle_ptr) const {
+    void log_psi_s_real(double& result, const Spins& spins, const Angles& angles) const {
         // CAUTION: 'result' has to be a shared variable.
         // j = threadIdx.x
 
         #ifdef __CUDA_ARCH__
 
-        double summand = (
+        auto summand = double(
             (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0) +
-            (threadIdx.x < this->M ? my_logcosh(angle_ptr[threadIdx.x]).real() : 0.0)
+            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]).real() : 0.0)
         );
 
         tree_sum(result, this->M, summand);
@@ -137,55 +126,44 @@ public:
             result += this->a[i].real() * spins[i];
         }
         for(auto j = 0u; j < this->M; j++) {
-            result += my_logcosh(angle_ptr[j]).real();
+            result += my_logcosh(angles[j]).real();
         }
 
         #endif
     }
 
-    HDINLINE complex_t flip_spin_of_jth_angle(
-        const complex_t* angles, const unsigned int j, const unsigned int position, const Spins& new_spins
+    HDINLINE void flip_spin_of_jth_angle(
+        const unsigned int j, const unsigned int position, const Spins& new_spins, Angles& angles
     ) const {
-        if(j >= this->get_num_angles()) {
-            return complex_t();
+        if(j < this->get_num_angles()) {
+            angles[j] += 2.0 * new_spins[position] * this->W[position * this->M + j];
         }
-
-        return angles[j] + 2.0 * new_spins[position] * this->W[position * this->M + j];
     }
 
     HDINLINE
-    complex_t psi_s(const Spins& spins, const complex_t* angle_ptr) const {
-        #ifdef __CUDA_ARCH__
-        #define SHARED __shared__
-        #else
-        #define SHARED
-        #endif
+    complex_t psi_s(const Spins& spins, const Angles& angles) const {
+        #include "cuda_kernel_defines.h"
 
         SHARED complex_t log_psi;
-        this->log_psi_s(log_psi, spins, angle_ptr);
+        this->log_psi_s(log_psi, spins, angles);
 
         return exp(log(this->prefactor) + log_psi);
     }
 
 #endif // __CUDACC__
 
-    HDINLINE
-    complex_t psi_s(const Spins& spins) const {
-        return exp(log(this->prefactor) + this->log_psi_s(spins));
-    }
+    // complex<double> psi_s_std(const Spins& spins) const {
+    //     return this->psi_s(spins).to_std();
+    // }
 
-    complex<double> psi_s_std(const Spins& spins) const {
-        return this->psi_s(spins).to_std();
-    }
+    // HDINLINE
+    // double probability_s(const Spins& spins, const Angles& angles) const {
+    //     return exp(2.0 * (log(this->prefactor) + this->log_psi_s(spins, angles).real()));
+    // }
 
-    HDINLINE
-    double probability_s(const Spins& spins) const {
-        return exp(2.0 * (log(this->prefactor) + this->log_psi_s(spins).real()));
-    }
-
-    double probability_s_py(const Spins& spins) const {
-        return this->probability_s(spins);
-    }
+    // double probability_s_py(const Spins& spins) const {
+    //     return this->probability_s(spins);
+    // }
 
     HDINLINE
     double probability_s(const double log_psi_s_real) const {
@@ -243,7 +221,7 @@ public:
     complex_t get_O_k_element(
         const unsigned int k,
         const Spins& spins,
-        const complex_t* tanh_angles
+        const PsiDerivatives& psi_derivatives
     ) const {
         if(k < this->N) {
             return complex_t(spins[k], 0.0);
@@ -252,41 +230,38 @@ public:
         const auto N_plus_M = this->N + this->M;
         if(k < N_plus_M) {
             const auto j = k - this->N;
-            return /*this->n[j] **/ tanh_angles[j];
+            return psi_derivatives.tanh_angles[j];
         }
 
         const auto i = (k - N_plus_M) / this->M;
         const auto j = (k - N_plus_M) % this->M;
-        return /*this->n[j] **/ tanh_angles[j] * spins[i];
-
-        // const auto j = k - this->num_active_params;
-        // return complex_t(0.0, 0.0); // logcosh_angles[j];
+        return psi_derivatives.tanh_angles[j] * spins[i];
     }
 
-    template<typename PsiCacheType>
+    template<typename DerivativesType>
     HDINLINE
     complex_t get_O_k_element(
         const unsigned int k,
         const Spins& spins,
-        const PsiCacheType& psi_cache
+        const DerivativesType& psi_derivatives
     ) const {
-        return this->get_O_k_element(k, spins, psi_cache.tanh_angles);
+        return this->get_O_k_element(k, spins, psi_derivatives);
     }
 
     template<typename Function>
     HDINLINE
-    void foreach_O_k(const Spins& spins, const Cache& cache, Function function) const {
+    void foreach_O_k(const Spins& spins, const Derivatives& derivatives, Function function) const {
         #ifdef __CUDA_ARCH__
         for(auto k = threadIdx.x; k < this->num_active_params; k += blockDim.x)
         #else
         for(auto k = 0u; k < this->num_active_params; k++)
         #endif
         {
-            function(k, this->get_O_k_element(k, spins, cache));
+            function(k, this->get_O_k_element(k, spins, derivatives));
         }
     }
 
-    const Psi& get_kernel() const {
+    Psi get_kernel() const {
         return *this;
     }
 
@@ -383,7 +358,7 @@ public:
     void as_vector(complex<double>* result) const;
     void O_k_vector(complex<double>* result, const Spins& spins) const;
     double norm_function(const ExactSummation& exact_summation) const;
-    std::complex<double> log_psi_s_std(const Spins& spins) const;
+    std::complex<double> log_psi_s_std(const Spins& spins);
 
     unsigned int get_num_params_py() const {
         return this->get_num_params();

@@ -41,12 +41,8 @@ public:
 
     template<typename Psi_t, typename Function>
     HDINLINE
-    void kernel_foreach(const Psi_t psi, Function function) const {
-        #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-        #else
-            #define SHARED
-        #endif
+    void kernel_foreach(Psi_t psi, Function function) const {
+        #include "cuda_kernel_defines.h"
 
         SHARED Spins        spins;
         SHARED complex_t    log_psi;
@@ -65,15 +61,14 @@ public:
                 spins = {(Spins::type)spin_index};
             }
 
-
-            SHARED complex_t angle_ptr[Psi_t::get_max_angles()];
-            psi.init_angles(angle_ptr, spins);
+            SHARED typename Psi_t::Angles angles;
+            angles.init(psi, spins);
 
             #ifdef __CUDA_ARCH__
             __syncthreads();
             #endif
 
-            psi.log_psi_s(log_psi, spins, angle_ptr);
+            psi.log_psi_s(log_psi, spins, angles);
 
             #ifdef __CUDA_ARCH__
             __syncthreads();
@@ -90,7 +85,7 @@ public:
             __syncthreads();
             #endif
 
-            function(spin_index, spins, log_psi, angle_ptr, weight);
+            function(spin_index, spins, log_psi, angles, weight);
         }
     }
 

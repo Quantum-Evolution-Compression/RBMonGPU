@@ -46,7 +46,6 @@ void PsiDynamical::init(const complex<double>* a, const unsigned int N, const bo
     this->W_offset_list = nullptr;
     this->param_offset_list = nullptr;
     this->string_length_list = nullptr;
-    this->hidden_spin_type_list = nullptr;
 
     for(int i = 0; i < int(N); i++) {
         this->index_pair_list.push_back(make_pair(i, -1));
@@ -60,7 +59,6 @@ void PsiDynamical::clear_hidden_spins() {
     FREE(this->W_offset_list, this->gpu);
     FREE(this->param_offset_list, this->gpu);
     FREE(this->string_length_list, this->gpu);
-    FREE(this->hidden_spin_type_list, this->gpu);
 }
 
 unsigned int PsiDynamical::sizeof_W() const {
@@ -98,9 +96,9 @@ void PsiDynamical::dense_W(complex<double>* result) const {
 }
 
 void PsiDynamical::add_hidden_spin(
-    const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight, const int hidden_spin_type
+    const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight
 ) {
-    this->links.push_back(Link{first_spin, link_weights, hidden_spin_weight, hidden_spin_type});
+    this->links.push_back(Link{first_spin, link_weights, hidden_spin_weight});
 }
 
 void PsiDynamical::update(bool resize) {
@@ -116,7 +114,6 @@ void PsiDynamical::update(bool resize) {
         MALLOC(this->W_offset_list, sizeof(unsigned int) * this->M, this->gpu);
         MALLOC(this->param_offset_list, sizeof(unsigned int) * this->M, this->gpu);
         MALLOC(this->string_length_list, sizeof(unsigned int) * this->M, this->gpu);
-        MALLOC(this->hidden_spin_type_list, sizeof(unsigned int) * this->M, this->gpu);
     }
 
     clist b_host;
@@ -126,7 +123,6 @@ void PsiDynamical::update(bool resize) {
     vector<unsigned int> W_offset_list_host;
     vector<unsigned int> param_offset_list_host;
     vector<unsigned int> string_length_list_host;
-    vector<unsigned int> hidden_spin_type_host;
 
     b_host.reserve(this->M);
     W_host.reserve(sizeof_W);
@@ -135,7 +131,6 @@ void PsiDynamical::update(bool resize) {
         W_offset_list_host.reserve(this->M);
         param_offset_list_host.reserve(this->M);
         string_length_list_host.reserve(this->M);
-        hidden_spin_type_host.reserve(this->M);
 
         this->num_active_params = N + M;
 
@@ -158,7 +153,6 @@ void PsiDynamical::update(bool resize) {
             W_offset_list_host.push_back(W_offset);
             param_offset_list_host.push_back(param_offset);
             string_length_list_host.push_back(link.weights.size());
-            hidden_spin_type_host.push_back(link.hidden_spin_type);
 
             W_offset += link.weights.size();
             param_offset += link.weights.size();
@@ -184,7 +178,6 @@ void PsiDynamical::update(bool resize) {
         MEMCPY(this->W_offset_list, W_offset_list_host.data(), sizeof(unsigned int) * this->M, this->gpu, false);
         MEMCPY(this->param_offset_list, param_offset_list_host.data(), sizeof(unsigned int) * this->M, this->gpu, false);
         MEMCPY(this->string_length_list, string_length_list_host.data(), sizeof(unsigned int) * this->M, this->gpu, false);
-        MEMCPY(this->hidden_spin_type_list, hidden_spin_type_host.data(), sizeof(unsigned int) * this->M, this->gpu, false);
     }
 }
 
@@ -218,23 +211,6 @@ void PsiDynamical::set_active_params(const complex<double>* new_params) {
     }
 
     this->update(false);
-}
-
-void PsiDynamical::get_active_params_types(int* result) const {
-    for(auto i = 0u; i < this->N; i++) {
-        result[i] = -1;
-    }
-
-    auto param_offset = this->N + this->M;
-    for(auto j = 0u; j < this->M; j++) {
-        auto& link = this->links[j];
-
-        result[this->N + j] = link.hidden_spin_type;
-        for(auto i = 0u; i < link.weights.size(); i++) {
-            result[param_offset + i] = link.hidden_spin_type;
-        }
-        param_offset += link.weights.size();
-    }
 }
 
 } // namespace rbm_on_gpu

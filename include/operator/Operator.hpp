@@ -44,7 +44,8 @@ public:
 
     template<typename Psi_t>
     HDINLINE
-    MatrixElement nth_matrix_element(const Spins& spins, const int n, const Psi_t& psi, complex_t* angle_ptr) const {
+    MatrixElement nth_matrix_element(const Spins& spins, const int n, const Psi_t& psi, typename Psi_t::Angles& angles) const {
+        #include "cuda_kernel_defines.h"
         MatrixElement result = {this->coefficients[n], spins};
 
         for(auto table_index = n * this->max_string_length; true; table_index++) {
@@ -63,42 +64,19 @@ public:
             if(pauli_type == PauliMatrices::SigmaX) {
                 result.spins = result.spins.flip(pauli_index);
 
-                #ifdef __CUDA_ARCH__
-
-                const auto j = threadIdx.x;
-                const auto new_angle = psi.flip_spin_of_jth_angle(angle_ptr, j, pauli_index, result.spins);
-                if(j < psi.get_num_angles()) {
-                    angle_ptr[j] = new_angle;
-                }
-
-                #else
-
-                for(auto j = 0u; j < psi.get_num_angles(); j++)
+                MULTI(j, psi.get_num_angles())
                 {
-                    angle_ptr[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, pauli_index, result.spins);
+                    psi.flip_spin_of_jth_angle(j, pauli_index, result.spins, angles);
                 }
-
-                #endif
             }
             else if(pauli_type == PauliMatrices::SigmaY) {
                 result.spins = result.spins.flip(pauli_index);
 
-                #ifdef __CUDA_ARCH__
-
-                const auto j = threadIdx.x;
-                const auto new_angle = psi.flip_spin_of_jth_angle(angle_ptr, j, pauli_index, result.spins);
-                if(j < psi.get_num_angles()) {
-                    angle_ptr[j] = new_angle;
-                }
-
-                #else
-
-                for(auto j = 0u; j < psi.get_num_angles(); j++)
+                MULTI(j, psi.get_num_angles())
                 {
-                    angle_ptr[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, pauli_index, result.spins);
+                    psi.flip_spin_of_jth_angle(j, pauli_index, result.spins, angles);
                 }
 
-                #endif
                 result.coefficient *= complex_t(0.0, -1.0) * spins[pauli_index];
             }
             else if(pauli_type == PauliMatrices::SigmaZ) {
@@ -111,7 +89,7 @@ public:
 
     template<typename Psi_t>
     HDINLINE
-    void local_energy(complex_t& result, const Psi_t& psi, const Spins& spins, const complex_t& log_psi, const complex_t* angle_ptr) const {
+    void local_energy(complex_t& result, const Psi_t& psi, const Spins& spins, const complex_t& log_psi, const typename Psi_t::Angles& angles) const {
         // CAUTION: 'result' is only updated by the first thread.
 
         #ifdef __CUDA_ARCH__
@@ -120,19 +98,17 @@ public:
             result = complex_t(0.0, 0.0);
         }
 
-        __shared__ complex_t new_angle[Psi_t::get_max_angles()];
+        __shared__ typename Psi_t::Angles angles_prime;
 
         for(auto n = 0u; n < this->num_strings; n++) {
-            if(threadIdx.x < psi.get_num_angles()) {
-                new_angle[threadIdx.x] = angle_ptr[threadIdx.x];
-            }
+            angles_prime.init(psi, angles);
 
             const auto matrix_element = this->nth_matrix_element(
-                spins, n, psi, new_angle
+                spins, n, psi, angles_prime
             );
 
             __shared__ complex_t log_psi_prime;
-            psi.log_psi_s(log_psi_prime, matrix_element.spins, new_angle);
+            psi.log_psi_s(log_psi_prime, matrix_element.spins, angles_prime);
             if(threadIdx.x == 0) {
                 result += matrix_element.coefficient * exp(log_psi_prime - log_psi);
             }
@@ -141,19 +117,17 @@ public:
         #else
 
         result = complex_t(0.0, 0.0);
+        typename Psi_t::Angles angles_prime;
 
         for(auto n = 0u; n < this->num_strings; n++) {
-            complex_t new_angle[Psi_t::get_max_angles()];
-            for(auto j = 0u; j < psi.get_num_angles(); j++) {
-                new_angle[j] = angle_ptr[j];
-            }
+            angles_prime.init(psi, angles);
 
             const auto matrix_element = this->nth_matrix_element(
-                spins, n, psi, new_angle
+                spins, n, psi, angles_prime
             );
 
             complex_t log_psi_prime;
-            psi.log_psi_s(log_psi_prime, matrix_element.spins, new_angle);
+            psi.log_psi_s(log_psi_prime, matrix_element.spins, angles_prime);
 
             result += matrix_element.coefficient * exp(log_psi_prime - log_psi);
         }
@@ -164,54 +138,46 @@ public:
     template<typename Psi_t, typename Function>
     HDINLINE
     void foreach_E_k_s_prime(
-        const Psi_t& psi, const Spins& spins, const complex_t& log_psi, const complex_t* angle_ptr, Function function
+        const Psi_t& psi, const Spins& spins, const complex_t& log_psi, const typename Psi_t::Angles& angles, Function function
     ) const {
         // E_k = sum_s' E_ss' * psi(s') / psi(s) * O_k(s')
+        #include "cuda_kernel_defines.h"
 
-        #ifdef __CUDA_ARCH__
-        #define SHARED __shared__
-        #else
-        #define SHARED
-        #endif
-
-        SHARED complex_t new_angle[Psi_t::get_max_angles()];
+        SHARED typename Psi_t::Angles angles_primes;
 
         for(auto n = 0u; n < this->num_strings; n++) {
-            #ifdef __CUDA_ARCH__
-            const auto j = threadIdx.x;
-            if(j < psi.get_num_angles())
-            #else
-            for(auto j = 0u; j < psi.get_num_angles(); j++)
-            #endif
-            {
-                new_angle[j] = angle_ptr[j];
-            }
+            // #ifdef __CUDA_ARCH__
+            // const auto j = threadIdx.x;
+            // if(j < psi.get_num_angles())
+            // #else
+            // for(auto j = 0u; j < psi.get_num_angles(); j++)
+            // #endif
+            // {
+            //     new_angle[j] = angle_ptr[j];
+            // }
+            angles_primes.init(psi, angles);
 
             const auto matrix_element = this->nth_matrix_element(
-                spins, n, psi, new_angle
+                spins, n, psi, angles_primes
             );
 
             SHARED complex_t log_psi_prime;
-            psi.log_psi_s(log_psi_prime, matrix_element.spins, new_angle);
+            psi.log_psi_s(log_psi_prime, matrix_element.spins, angles_primes);
 
             SHARED complex_t E_s_prime;
-            #ifdef __CUDA_ARCH__
-            if(threadIdx.x == 0)
-            #endif
+            SINGLE
             {
                 E_s_prime = matrix_element.coefficient * exp(log_psi_prime - log_psi);
             }
 
-            SHARED typename Psi_t::Cache psi_cache;
-            psi_cache.init(new_angle, psi);
+            SHARED typename Psi_t::Derivatives derivatives;
+            derivatives.init(psi, angles_primes);
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
+            SYNC;
 
             psi.foreach_O_k(
                 matrix_element.spins,
-                psi_cache,
+                derivatives,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     function(k, E_s_prime * O_k_element);
                 }

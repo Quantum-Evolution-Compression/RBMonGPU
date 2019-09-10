@@ -82,8 +82,8 @@ public:
             }
             __syncthreads();
 
-            __shared__ complex_t angle_ptr[Psi_t::get_max_angles()];
-            psi.init_angles(angle_ptr, spins);
+            __shared__ typename Psi_t::Angles angles;
+            angles.init(psi, spins);
 
             __syncthreads();
 
@@ -108,30 +108,30 @@ public:
                 spins = Spins::random(&local_random_state);
             }
 
-            complex_t angle_ptr[Psi_t::get_max_angles()];
-            psi.init_angles(angle_ptr, spins);
+            typename Psi_t::Angles angles;
+            angles.init(psi, spins);
 
             #define SHARED
 
         #endif
 
-        this->thermalize<total_z_symmetry>(psi, spins, this->num_thermalization_sweeps, &local_random_state, angle_ptr);
+        this->thermalize<total_z_symmetry>(psi, spins, this->num_thermalization_sweeps, &local_random_state, angles);
 
         SHARED complex_t log_psi;
         // This need not to be shared. It's just a question of speed.
         SHARED double log_psi_real;
 
-        psi.log_psi_s_real(log_psi_real, spins, angle_ptr);
+        psi.log_psi_s_real(log_psi_real, spins, angles);
 
         const auto num_mc_steps_per_chain = this->num_samples / this->num_markov_chains;
 
         for(auto mc_step_within_chain = 0u; mc_step_within_chain < num_mc_steps_per_chain; mc_step_within_chain++) {
 
             for(auto i = 0u; i < this->num_sweeps * psi.get_num_spins(); i++) {
-                this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, &local_random_state, angle_ptr);
+                this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, &local_random_state, angles);
             }
 
-            psi.log_psi_s(log_psi, spins, angle_ptr);
+            psi.log_psi_s(log_psi, spins, angles);
 
             #ifdef __CUDA_ARCH__
             const auto mc_step = mc_step_within_chain * this->num_markov_chains + blockIdx.x;
@@ -139,7 +139,7 @@ public:
             const auto mc_step = mc_step_within_chain;
             #endif
 
-            function(mc_step, spins, log_psi, angle_ptr, 1.0);
+            function(mc_step, spins, log_psi, angles, 1.0);
         }
 
         #ifdef __CUDA_ARCH__
@@ -153,56 +153,51 @@ public:
 
     template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
-    void thermalize(const Psi_t& psi, Spins& spins, const unsigned int num_sweeps, void* local_random_state, complex_t* angle_ptr) const {
-        #ifdef __CUDA_ARCH__
-        __shared__ double log_psi_real;
-        #else
-        double log_psi_real;
-        #endif
+    void thermalize(const Psi_t& psi, Spins& spins, const unsigned int num_sweeps, void* local_random_state, typename Psi_t::Angles& angles) const {
+        #include "cuda_kernel_defines.h"
 
-        psi.log_psi_s_real(log_psi_real, spins, angle_ptr);
+        SHARED double log_psi_real;
+        psi.log_psi_s_real(log_psi_real, spins, angles);
 
         for(auto i = 0u; i < num_sweeps * psi.get_num_spins(); i++) {
-            this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, local_random_state, angle_ptr);
+            this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, local_random_state, angles);
         }
     }
 
     template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
-    void mc_update(const Psi_t& psi, Spins& spins, double& log_psi_real, void* local_random_state, complex_t* angle_ptr) const {
+    void mc_update(const Psi_t& psi, Spins& spins, double& log_psi_real, void* local_random_state, typename Psi_t::Angles& angles) const {
         #ifdef __CUDA_ARCH__
 
         __shared__ int position;
-        __shared__ Spins next_spins;
+        __shared__ int second_position;
 
         if(threadIdx.x == 0) {
             position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
-            next_spins = spins.flip(position);
+            spins = spins.flip(position);
         }
         __syncthreads();
 
-        auto next_angle = psi.flip_spin_of_jth_angle(angle_ptr, threadIdx.x, position, next_spins);
+        psi.flip_spin_of_jth_angle(threadIdx.x, position, spins, angles);
 
         if(total_z_symmetry) {
             __syncthreads();
 
-            __shared__ int second_position;
-
             if(threadIdx.x == 0) {
                 while(true) {
                     second_position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
-                    if(next_spins[second_position] == next_spins[position]) {
-                        next_spins = next_spins.flip(second_position);
+                    if(spins[second_position] == spins[position]) {
+                        spins = spins.flip(second_position);
                         break;
                     }
                 }
             }
             __syncthreads();
-            next_angle = psi.flip_spin_of_jth_angle(&next_angle - threadIdx.x, threadIdx.x, second_position, next_spins);
+            psi.flip_spin_of_jth_angle(threadIdx.x, second_position, spins, angles);
         }
 
         __shared__ double next_log_psi_real;
-        psi.log_psi_s_real(next_log_psi_real, next_spins, &next_angle - threadIdx.x);
+        psi.log_psi_s_real(next_log_psi_real, spins, angles);
 
         __shared__ bool spin_flip;
 
@@ -210,7 +205,6 @@ public:
             const auto ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
 
             if(ratio > 1.0 || curand_uniform((curandState_t*)local_random_state) <= ratio) {
-                spins = next_spins;
                 log_psi_real = next_log_psi_real;
                 spin_flip = true;
             }
@@ -220,47 +214,70 @@ public:
         }
         __syncthreads();
 
-        if(spin_flip && threadIdx.x < psi.get_num_angles()) {
-            angle_ptr[threadIdx.x] = next_angle;
+        if(!spin_flip) {
+            // flip back spin(s)
+
+            if(threadIdx.x == 0) {
+                spins = spins.flip(position);
+            }
+            __syncthreads();
+            psi.flip_spin_of_jth_angle(threadIdx.x, position, spins, angles);
+
+            if(total_z_symmetry) {
+                if(threadIdx.x == 0) {
+                    spins = spins.flip(second_position);
+                }
+                __syncthreads();
+                psi.flip_spin_of_jth_angle(threadIdx.x, second_position, spins, angles);
+            }
         }
 
         #else
 
         std::uniform_int_distribution<int> random_spin(0, psi.get_num_spins() - 1);
         const auto position = random_spin(*(std::mt19937*)local_random_state);
-        Spins next_spins = spins.flip(position);
-
-        complex_t next_angle[Psi_t::get_max_angles()];
+        spins = spins.flip(position);
 
         for(auto j = 0u; j < psi.get_num_angles(); j++) {
-            next_angle[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, position, next_spins);
+            psi.flip_spin_of_jth_angle(j, position, spins, angles);
         }
 
+        int second_position;
         if(total_z_symmetry) {
-            int second_position;
             while(true) {
-                const auto second_position = random_spin(*(std::mt19937*)local_random_state);
+                second_position = random_spin(*(std::mt19937*)local_random_state);
 
-                if(next_spins[second_position] == next_spins[position]) {
-                    next_spins = next_spins.flip(second_position);
+                if(spins[second_position] == spins[position]) {
+                    spins = spins.flip(second_position);
                     break;
                 }
             }
             for(auto j = 0u; j < psi.get_num_angles(); j++) {
-                next_angle[j] = psi.flip_spin_of_jth_angle(next_angle, j, second_position, next_spins);
+                psi.flip_spin_of_jth_angle(j, second_position, spins, angles);
             }
         }
 
         double next_log_psi_real;
-        psi.log_psi_s_real(next_log_psi_real, next_spins, next_angle);
+        psi.log_psi_s_real(next_log_psi_real, spins, angles);
         const auto ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
 
         std::uniform_real_distribution<double> random_real(0.0, 1.0);
         if(ratio > 1.0 || random_real(*(std::mt19937*)local_random_state) <= ratio) {
-            spins = next_spins;
             log_psi_real = next_log_psi_real;
+        }
+        else {
+            // flip back spin(s)
+
+            spins = spins.flip(position);
             for(auto j = 0u; j < psi.get_num_angles(); j++) {
-                angle_ptr[j] = next_angle[j];
+                psi.flip_spin_of_jth_angle(j, position, spins, angles);
+            }
+
+            if(total_z_symmetry) {
+                spins = spins.flip(second_position);
+                for(auto j = 0u; j < psi.get_num_angles(); j++) {
+                    psi.flip_spin_of_jth_angle(j, second_position, spins, angles);
+                }
             }
         }
 

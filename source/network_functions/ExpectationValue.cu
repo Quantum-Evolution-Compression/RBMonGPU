@@ -1,7 +1,6 @@
 #include "network_functions/ExpectationValue.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
-#include "spin_ensembles/SpinHistory.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "quantum_state/Psi.hpp"
 #include "Array.hpp"
@@ -36,11 +35,11 @@ complex<double> ExpectationValue::operator()(
                 const unsigned int spin_index,
                 const Spins spins,
                 const complex_t log_psi,
-                const complex_t* angle_ptr,
+                const typename Psi_t::Angles& angles,
                 const double weight
             ) {
                 __shared__ complex_t local_energy;
-                operator_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+                operator_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
                 if(threadIdx.x == 0) {
                     atomicAdd(this_result, weight * local_energy);
                 }
@@ -58,11 +57,11 @@ complex<double> ExpectationValue::operator()(
                 const unsigned int spin_index,
                 const Spins spins,
                 const complex_t log_psi,
-                const complex_t* angle_ptr,
+                const typename Psi_t::Angles& angles,
                 const double weight
             ) {
                 complex_t local_energy;
-                operator_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+                operator_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
                 *this_result += weight * local_energy;
             }
         );
@@ -95,17 +94,13 @@ pair<double, complex<double>> ExpectationValue::fluctuation(const Psi_t& psi, co
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
             #ifdef __CUDA_ARCH__
             if(threadIdx.x == 0)
@@ -155,44 +150,36 @@ complex<double> ExpectationValue::gradient(
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED typename Psi_t::Cache psi_cache;
-            psi_cache.init(angle_ptr, psi_kernel);
+            SHARED typename Psi_t::Derivatives psi_derivatives;
+            psi_derivatives.init(psi_kernel, angles);
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            if(threadIdx.x == 0)
-            #endif
+            SYNC;
+            SINGLE
             {
                 generic_atomicAdd(E_loc_ptr, weight * local_energy);
             }
 
             psi_kernel.foreach_O_k(
                 spins,
-                psi_cache,
+                psi_derivatives,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&O_k_ptr[k], weight * O_k_element);
                     generic_atomicAdd(&E_loc_O_k_ptr[k], weight * local_energy * conj(O_k_element));
                 }
             );
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
+            SYNC;
 
             op_kernel.foreach_E_k_s_prime(
-                psi_kernel, spins, log_psi, angle_ptr, [&](const unsigned int k, const complex_t& E_k_s_prime) {
+                psi_kernel, spins, log_psi, angles, [&](const unsigned int k, const complex_t& E_k_s_prime) {
                     generic_atomicAdd(&E_loc_k_ptr[k], weight * E_k_s_prime);
                 }
             );
@@ -252,25 +239,19 @@ void ExpectationValue::fluctuation_gradient(complex<double>* result, const Psi_t
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED typename Psi_t::Cache psi_cache;
-            psi_cache.init(angle_ptr, psi_kernel);
+            SHARED typename Psi_t::Derivatives psi_derivatives;
+            psi_derivatives.init(psi_kernel, angles);
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            if(threadIdx.x == 0)
-            #endif
+            SYNC;
+            SINGLE
             {
                 generic_atomicAdd(E_loc_ptr, weight * local_energy);
                 generic_atomicAdd(E_loc2_ptr, weight * norm(local_energy));
@@ -278,19 +259,17 @@ void ExpectationValue::fluctuation_gradient(complex<double>* result, const Psi_t
 
             psi_kernel.foreach_O_k(
                 spins,
-                psi_cache,
+                psi_derivatives,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&O_k_ptr[k], weight * O_k_element);
                     generic_atomicAdd(&E_loc_O_k_ptr[k], weight * local_energy * conj(O_k_element));
                 }
             );
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
+            SYNC;
 
             op_kernel.foreach_E_k_s_prime(
-                psi_kernel, spins, log_psi, angle_ptr, [&](const unsigned int k, const complex_t& E_k_s_prime) {
+                psi_kernel, spins, log_psi, angles, [&](const unsigned int k, const complex_t& E_k_s_prime) {
                     generic_atomicAdd(&E_loc_k_ptr[k], weight * E_k_s_prime);
                     generic_atomicAdd(&E_loc_E_loc_k_ptr[k], weight * (conj(local_energy) * E_k_s_prime));
                 }
@@ -354,25 +333,19 @@ vector<complex<double>> ExpectationValue::difference(
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
-            SHARED complex_t angle_prime_ptr[Psi_t::get_max_angles()];
-            psi_prime_kernel.init_angles(angle_prime_ptr, spins);
+            SHARED typename Psi_t::Angles angles_prime;
+            angles_prime.init(psi_prime_kernel, spins);
 
             SHARED complex_t log_psi_prime;
-            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angle_prime_ptr);
+            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
 
             double probability_ratio;
-            #ifdef __CUDA_ARCH__
-            if(threadIdx.x == 0)
-            #endif
+            SINGLE
             {
                 probability_ratio = exp(2.0 * (log_psi.real() - log_psi_prime.real()));
             }
@@ -381,21 +354,17 @@ vector<complex<double>> ExpectationValue::difference(
             SHARED complex_t local_energy_prime;
 
             for(auto i = 0u; i < length; i++) {
-                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
-                operator_list[i].local_energy(local_energy_prime, psi_prime_kernel, spins, log_psi_prime, angle_prime_ptr);
+                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angles);
+                operator_list[i].local_energy(local_energy_prime, psi_prime_kernel, spins, log_psi_prime, angles_prime);
 
-                #ifdef __CUDA_ARCH__
-                if(threadIdx.x == 0)
-                #endif
+                SINGLE
                 {
                     generic_atomicAdd(&a_list[i], weight * local_energy_prime);
                     generic_atomicAdd(&b_list[i], weight * probability_ratio * local_energy);
                 }
             }
 
-            #ifdef __CUDA_ARCH__
-            if(threadIdx.x == 0)
-            #endif
+            SINGLE
             {
                 generic_atomicAdd(probability_ratio_avg, weight * probability_ratio);
             }
@@ -464,14 +433,14 @@ vector<complex<double>> ExpectationValue::operator() (
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
             #ifdef __CUDA_ARCH__
 
             __shared__ complex_t local_energy;
             for(auto i = 0u; i < length; i++) {
-                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angles);
                 if(threadIdx.x == 0) {
                     atomicAdd(&result[i], weight * local_energy);
                 }
@@ -481,7 +450,7 @@ vector<complex<double>> ExpectationValue::operator() (
 
             complex_t local_energy;
             for(auto i = 0u; i < length; i++) {
-                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
+                operator_list[i].local_energy(local_energy, psi_kernel, spins, log_psi, angles);
                 result[i] += weight * local_energy;
             }
 
@@ -518,10 +487,8 @@ template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDy
 
 template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const SpinHistory&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const SpinHistory&) const;
 
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;

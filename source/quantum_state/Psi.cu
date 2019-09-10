@@ -109,21 +109,17 @@ void Psi::O_k_vector(complex<double>* result, const Spins& spins) const {
     psi_O_k_vector(result, *this, spins);
 }
 
-std::complex<double> Psi::log_psi_s_std(const Spins& spins) const {
+std::complex<double> Psi::log_psi_s_std(const Spins& spins) {
     complex_t* result;
     MALLOC(result, sizeof(complex_t), this->gpu);
 
     auto this_ = this->get_kernel();
 
     const auto functor = [=] __host__ __device__ () {
-        #ifdef __CUDA_ARCH__
-        #define SHARED __shared__
-        #else
-        #define SHARED
-        #endif
+        #include "cuda_kernel_defines.h"
 
-        SHARED complex_t angles[Psi::get_max_angles()];
-        this_.init_angles(angles, spins);
+        SHARED Psi::Angles angles;
+        angles.init(this_, spins);
 
         SHARED complex_t log_psi;
         this_.log_psi_s(log_psi, spins, angles);

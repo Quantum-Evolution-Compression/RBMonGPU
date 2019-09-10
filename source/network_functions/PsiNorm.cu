@@ -21,7 +21,7 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
             #ifdef __CUDA_ARCH__

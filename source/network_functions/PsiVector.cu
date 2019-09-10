@@ -23,7 +23,7 @@ void psi_vector(complex<double>* result, const Psi_t& psi) {
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            const typename Psi_t::Angles& angles,
             const double weight
         ) {
             #ifdef __CUDA_ARCH__

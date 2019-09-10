@@ -4,9 +4,7 @@ from ._pyRBMonGPU import (
     Spins,
     MonteCarloLoop,
     ExactSummation,
-    SpinHistory,
     ExpectationValue,
-    DifferentiatePsi,
     HilbertSpaceDistance,
     setDevice
 )

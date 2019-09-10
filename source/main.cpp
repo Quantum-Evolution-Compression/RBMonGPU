@@ -1,12 +1,10 @@
 #define PY_ARRAY_UNIQUE_SYMBOL my_uniqe_array_api_main_cpp
 
-#include "network_functions/DifferentiatePsi.hpp"
 #include "network_functions/ExpectationValue.hpp"
 #include "network_functions/HilbertSpaceDistance.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "quantum_state/Psi.hpp"
-#include "zMinResQLP.h"
 #include "cuda_profiler_api.h"
 
 #include <vector>

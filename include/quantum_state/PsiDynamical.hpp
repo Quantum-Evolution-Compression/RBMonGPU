@@ -2,7 +2,7 @@
 
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/psi_functions.hpp"
-#include "quantum_state/PsiDynamicalCache.hpp"
+#include "quantum_state/PsiCache.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -33,11 +33,11 @@ public:
     unsigned int* W_offset_list;
     unsigned int* param_offset_list;
     unsigned int* string_length_list;
-    int* hidden_spin_type_list;
 
 
 #ifdef __CUDACC__
-    using Cache = rbm_on_gpu::PsiDynamicalCache;
+    using Angles = rbm_on_gpu::PsiAngles;
+    using Derivatives = rbm_on_gpu::PsiDerivatives;
 #endif
 
 public:
@@ -58,152 +58,37 @@ public:
         return result;
     }
 
-    HDINLINE
-    void init_angles(complex_t* angles, const Spins& spins) const {
-        #ifdef __CUDA_ARCH__
-            const auto j = threadIdx.x;
-            if(j < this->M)
-        #else
-            for(auto j = 0u; j < this->M; j++)
-        #endif
-        {
-            angles[j] = this->angle(j, spins);
-        }
-    }
-
-    HDINLINE
-    complex_t log_psi_s(const Spins& spins) const {
-        complex_t result(0.0, 0.0);
-        for(unsigned int i = 0; i < this->N; i++) {
-            result += this->a[i] * spins[i];
-        }
-        for(unsigned int j = 0; j < this->M; j++) {
-            auto angle = this->angle(j, spins);
-            if(this->hidden_spin_type_list[j] == 1) {
-                angle = angle * angle;
-            }
-            result += /*this->n[j] **/ my_logcosh(angle);
-        }
-
-        return result;
-    }
-
-    HDINLINE
-    void log_psi_s(complex_t& result, const Spins& spins, const complex_t* angle_ptr) const {
-        // CAUTION: 'result' has to be a shared variable.
-        // j = threadIdx.x
-
-        #ifdef __CUDA_ARCH__
-
-        auto summand = complex_t(0.0, 0.0);
-        if(threadIdx.x < this->N) {
-            summand += this->a[threadIdx.x] * spins[threadIdx.x];
-        }
-        if(threadIdx.x < this->M) {
-            auto angle = angle_ptr[threadIdx.x];
-            if(this->hidden_spin_type_list[threadIdx.x] == 1) {
-                angle = angle * angle;
-            }
-            summand += my_logcosh(angle);
-        }
-
-        tree_sum(result, this->M, summand);
-
-        #else
-
-        result = complex_t(0.0, 0.0);
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i] * spins[i];
-        }
-        for(auto j = 0u; j < this->M; j++) {
-            auto angle = angle_ptr[j];
-            if(this->hidden_spin_type_list[j] == 1) {
-                angle = angle * angle;
-            }
-            result += my_logcosh(angle);
-        }
-
-        #endif
-    }
-
-    HDINLINE
-    void log_psi_s_real(double& result, const Spins& spins, const complex_t* angle_ptr) const {
-        // CAUTION: 'result' has to be a shared variable.
-        // j = threadIdx.x
-
-        #ifdef __CUDA_ARCH__
-
-        auto summand = 0.0;
-        if(threadIdx.x < this->N) {
-            summand += this->a[threadIdx.x].real() * spins[threadIdx.x];
-        }
-        if(threadIdx.x < this->M) {
-            auto angle = angle_ptr[threadIdx.x];
-            if(this->hidden_spin_type_list[threadIdx.x] == 1) {
-                angle = angle * angle;
-            }
-            summand += my_logcosh(angle).real();
-        }
-
-        tree_sum(result, this->M, summand);
-
-        #else
-
-        result = 0.0;
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i].real() * spins[i];
-        }
-        for(auto j = 0u; j < this->M; j++) {
-            auto angle = angle_ptr[j];
-            if(this->hidden_spin_type_list[j] == 1) {
-                angle = angle * angle;
-            }
-            result += my_logcosh(angle).real();
-        }
-
-        #endif
-    }
-
-    HDINLINE complex_t flip_spin_of_jth_angle(
-        const complex_t* angles, const unsigned int j, const unsigned int position, const Spins& new_spins
+    HDINLINE void flip_spin_of_jth_angle(
+        const unsigned int j, const unsigned int position, const Spins& new_spins, Angles& angles
     ) const {
         // return this->angle(j, new_spins);
-        complex_t new_angle;
         if(j < this->get_num_angles()) {
-            new_angle = angles[j];
             const auto relative_position = (position - this->spin_offset_list[j] + this->N) % this->N;
             if(relative_position < this->string_length_list[j]) {
-                new_angle += 2.0 * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
+                angles[j] += 2.0 * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
             }
         }
-
-        return new_angle;
     }
 
     template<typename Function>
     HDINLINE
-    void foreach_O_k(const Spins& spins, const Cache& cache, Function function) const {
-        #ifdef __CUDA_ARCH__
-        const auto j = threadIdx.x;
-        if(j < this->M)
-        #else
-        for(auto j = 0u; j < this->M; j++)
-        #endif
+    void foreach_O_k(const Spins& spins, const Derivatives& derivatives, Function function) const {
+        #include "cuda_kernel_defines.h"
+
+        MULTI(j, this->M)
         {
             if(j < this->N) {
                 function(j, complex_t(spins[j], 0.0));
             }
 
-            const auto tanh_angle = cache.tanh_angles[j];
-            const auto hidden_spin_type = this->hidden_spin_type_list[j];
-            const auto factor = hidden_spin_type == 1 ? 2.0 * cache.angles[j] : complex_t(1.0, 0.0);
+            const auto tanh_angle = derivatives.tanh_angles[j];
 
-            function(this->N + j, tanh_angle * factor);
+            function(this->N + j, tanh_angle);
 
             const auto spin_offset = this->spin_offset_list[j];
             const auto param_offset = this->param_offset_list[j];
             for(auto i = 0u; i < this->string_length_list[j]; i++) {
-                function(param_offset + i, tanh_angle * factor * spins[(spin_offset + i) % this->N]);
+                function(param_offset + i, tanh_angle * spins[(spin_offset + i) % this->N]);
             }
         }
     }
@@ -236,7 +121,6 @@ public:
         unsigned int    first_spin;
         clist           weights;
         complex<double> hidden_spin_weight;
-        int             hidden_spin_type;
     };
 
     clist spin_weights;
@@ -251,7 +135,7 @@ public:
     ~PsiDynamical() noexcept(false);
 
     void add_hidden_spin(
-        const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight, const int hidden_spin_type
+        const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight
     );
     void update(bool resize);
 
@@ -331,15 +215,6 @@ public:
         this->set_active_params(new_params.data());
     }
 
-    xt::pytensor<int, 1> get_active_params_types_py() const {
-        auto result = xt::pytensor<int, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
-        );
-        this->get_active_params_types(result.data());
-
-        return result;
-    }
-
     PsiDynamical copy() const {
         return *this;
     }
@@ -357,8 +232,6 @@ public:
 
     void get_active_params(complex<double>* result) const;
     void set_active_params(const complex<double>* new_params);
-
-    void get_active_params_types(int* result) const;
 
 private:
 

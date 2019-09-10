@@ -35,23 +35,23 @@ def new_neural_network(
         first_spin = (j - connectivity // 2 + N) % N
         W_j = noise * complex_noise(connectivity)
         W_j[connectivity // 2] = initial_value
-        result.add_hidden_spin(first_spin, W_j, b_spin, 0)
+        result.add_hidden_spin(first_spin, W_j, b_spin)
 
     result.update()
 
     return result
 
 
-def add_hidden_spin(psi, position, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6, hidden_spin_type=0):
+def add_hidden_spin(psi, position, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6):
     W_j = noise * complex_noise(connectivity)
     W_j[connectivity // 2] += initial_value
     # print([type(x) for x in (position - connectivity // 2, list(W_j), complex(noise * complex_noise(1)[0]))])
-    psi.add_hidden_spin((position - connectivity // 2 + psi.N) % psi.N, W_j, noise * complex_noise(1)[0], hidden_spin_type)
+    psi.add_hidden_spin((position - connectivity // 2 + psi.N) % psi.N, W_j, noise * complex_noise(1)[0])
 
 
-def add_hidden_layer(psi, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6, hidden_spin_type=0):
+def add_hidden_layer(psi, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6):
     for i in range(psi.N):
-        add_hidden_spin(psi, i, connectivity, initial_value, noise, hidden_spin_type)
+        add_hidden_spin(psi, i, connectivity, initial_value, noise)
 
 
 def fresh_neural_network(

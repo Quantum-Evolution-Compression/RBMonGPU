@@ -1,7 +1,6 @@
 #include "network_functions/HilbertSpaceDistance.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
-#include "spin_ensembles/SpinHistory.hpp"
 #include "quantum_state/PsiDynamical.hpp"
 #include "quantum_state/Psi.hpp"
 
@@ -13,44 +12,7 @@ namespace rbm_on_gpu {
 namespace kernel {
 
 
-template<typename Psi_t, typename SpinEnsemble>
-void kernel::HilbertSpaceDistance::record(
-    const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
-) {
-    const auto this_ = *this;
-    const auto psi_kernel = psi.get_kernel();
-
-    spin_ensemble.foreach(
-        psi,
-        [=] __device__ __host__ (
-            const unsigned int spin_index,
-            const Spins spins,
-            const complex_t log_psi,
-            const complex_t* angle_ptr,
-            const double weight
-        ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
-
-            SHARED complex_t local_energy;
-            operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
-
-            #ifdef __CUDA_ARCH__
-            if(threadIdx.x == 0)
-            #endif
-            {
-                this_.local_energies[spin_index] = local_energy;
-            }
-        },
-        psi.get_num_angles()
-    );
-}
-
-
-template<bool compute_gradient, bool use_record, typename Psi_t, typename SpinEnsemble>
+template<bool compute_gradient, typename Psi_t, typename SpinEnsemble>
 void kernel::HilbertSpaceDistance::compute_averages(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
@@ -73,33 +35,19 @@ void kernel::HilbertSpaceDistance::compute_averages(
             const unsigned int spin_index,
             const Spins spins,
             const complex_t log_psi,
-            const complex_t* angle_ptr,
+            typename Psi_t::Angles& angles,
             const double weight
         ) {
-            #ifdef __CUDA_ARCH__
-            #define SHARED __shared__
-            #else
-            #define SHARED
-            #endif
+            #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            if(use_record) {
-                #ifdef __CUDA_ARCH__
-                if(threadIdx.x == 0)
-                #endif
-                {
-                    local_energy = this_.local_energies[spin_index];
-                }
-            }
-            else {
-                operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angle_ptr);
-            }
+            operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED complex_t angle_prime_ptr[Psi_t::get_max_angles()];
-            psi_prime_kernel.init_angles(angle_prime_ptr, spins);
+            SHARED typename Psi_t::Angles angles_prime;
+            angles_prime.init(psi_prime_kernel, spins);
 
             SHARED complex_t log_psi_prime;
-            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angle_prime_ptr);
+            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
 
             SHARED complex_t   omega;
             SHARED double      probability_ratio;
@@ -130,16 +78,14 @@ void kernel::HilbertSpaceDistance::compute_averages(
             }
 
             if(compute_gradient) {
-                SHARED typename Psi_t::Cache psi_prime_cache;
-                psi_prime_cache.init(angle_prime_ptr, psi_prime_kernel);
+                SHARED typename Psi_t::Derivatives psi_derivatives;
+                psi_derivatives.init(psi_prime_kernel, angles_prime);
 
-                #ifdef __CUDA_ARCH__
-                __syncthreads();
-                #endif
+                SYNC;
 
                 psi_prime_kernel.foreach_O_k(
                     spins,
-                    psi_prime_cache,
+                    psi_derivatives,
                     [&](const unsigned int k, const complex_t& O_k_element) {
                         generic_atomicAdd(&this_.omega_O_k_avg[k], weight * omega * conj(O_k_element));
                         generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * 2.0 * conj(O_k_element));
@@ -189,25 +135,11 @@ void HilbertSpaceDistance::allocate_local_energies(const unsigned int num_local_
 }
 
 template<typename Psi_t, typename SpinEnsemble>
-void HilbertSpaceDistance::record(
-    const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
-) {
-    this->allocate_local_energies(spin_ensemble.get_num_steps());
-
-    kernel::HilbertSpaceDistance::record(psi, operator_, spin_ensemble);
-}
-
-template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinEnsemble& spin_ensemble, const bool use_record
+    const SpinEnsemble& spin_ensemble
 ) const {
-    if(use_record) {
-        this->compute_averages<false, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
-    }
-    else {
-        this->compute_averages<false, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
-    }
+    this->compute_averages<false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
 
     complex_t omega_avg_host;
     double probability_ratio_avg_host;
@@ -231,14 +163,9 @@ double HilbertSpaceDistance::distance(
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinEnsemble& spin_ensemble, const bool use_record
+    const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) {
-    if(use_record) {
-        this->compute_averages<true, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
-    }
-    else {
-        this->compute_averages<true, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
-    }
+    this->compute_averages<true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
 
     complex<double> omega_avg_host;
     double probability_ratio_avg_host;
@@ -275,59 +202,39 @@ double HilbertSpaceDistance::gradient(
 
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble, const bool use_record
+    const ExactSummation& spin_ensemble
 ) const;
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble, const bool use_record
-) const;
-template double HilbertSpaceDistance::distance(
-    const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinHistory& spin_ensemble, const bool use_record
+    const MonteCarloLoop& spin_ensemble
 ) const;
 
 template double HilbertSpaceDistance::distance(
     const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble, const bool use_record
+    const ExactSummation& spin_ensemble
 ) const;
 template double HilbertSpaceDistance::distance(
     const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble, const bool use_record
-) const;
-template double HilbertSpaceDistance::distance(
-    const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinHistory& spin_ensemble, const bool use_record
+    const MonteCarloLoop& spin_ensemble
 ) const;
 
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble, const bool use_record
+    const bool is_unitary, const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble, const bool use_record
-);
-template double HilbertSpaceDistance::gradient(
-    complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinHistory& spin_ensemble, const bool use_record
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble
 );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble, const bool use_record
+    const bool is_unitary, const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble, const bool use_record
-);
-template double HilbertSpaceDistance::gradient(
-    complex<double>* result, const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinHistory& spin_ensemble, const bool use_record
-);
-
-template void HilbertSpaceDistance::record(
-    const PsiDynamical& psi, const Operator& operator_, const SpinHistory& spin_ensemble
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble
 );
 
 } // namespace rbm_on_gpu
