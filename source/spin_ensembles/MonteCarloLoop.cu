@@ -26,6 +26,7 @@ MonteCarloLoop::MonteCarloLoop(
     this->num_sweeps = num_sweeps;
     this->num_thermalization_sweeps = num_thermalization_sweeps;
     this->num_markov_chains = num_markov_chains;
+    this->has_total_z_symmetry = false;
 
     this->allocate_memory();
 }
@@ -35,6 +36,8 @@ MonteCarloLoop::MonteCarloLoop(const MonteCarloLoop& other) : gpu(other.gpu) {
     this->num_sweeps = other.num_sweeps;
     this->num_thermalization_sweeps = other.num_thermalization_sweeps;
     this->num_markov_chains = other.num_markov_chains;
+    this->has_total_z_symmetry = other.has_total_z_symmetry;
+    this->symmetry_sector = other.symmetry_sector;
 
     this->allocate_memory();
 }

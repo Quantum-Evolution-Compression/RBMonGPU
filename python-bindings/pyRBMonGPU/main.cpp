@@ -127,6 +127,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<MonteCarloLoop>(m, "MonteCarloLoop")
         .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
         .def(py::init<const MonteCarloLoop&>())
+        .def("set_total_z_symmetry", &MonteCarloLoop::set_total_z_symmetry)
         .def_property_readonly("num_steps", &MonteCarloLoop::get_num_steps);
 
     py::class_<ExactSummation>(m, "ExactSummation")

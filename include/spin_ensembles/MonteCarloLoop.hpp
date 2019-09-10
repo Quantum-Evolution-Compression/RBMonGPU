@@ -2,6 +2,7 @@
 
 #include "operator/Operator.hpp"
 #include "Spins.h"
+#include "random.h"
 #include "cuda_complex.hpp"
 #include "types.h"
 
@@ -34,6 +35,9 @@ public:
     unsigned int    num_thermalization_sweeps;
     unsigned int    num_markov_chains;
 
+    bool            has_total_z_symmetry;
+    int             symmetry_sector;
+
 public:
     inline unsigned int get_num_steps() const {
         return this->num_samples;
@@ -45,7 +49,7 @@ public:
 
 #ifdef __CUDACC__
 
-    template<typename Psi_t, typename Function>
+    template<bool total_z_symmetry, typename Psi_t, typename Function>
     HDINLINE
     void kernel_foreach(const Psi_t psi, Function function) const {
         // ##################################################################################
@@ -63,7 +67,18 @@ public:
 
             if(threadIdx.x == 0) {
                 local_random_state = this->random_states[markov_index];
-                spins = Spins::random(&local_random_state);
+                if(total_z_symmetry) {
+                    spins = Spins({
+                        random_n_over_k_bitstring(
+                            psi.get_num_spins(),
+                            (this->symmetry_sector + psi.get_num_spins()) / 2,
+                            &local_random_state
+                        )
+                    });
+                }
+                else {
+                    spins = Spins::random(&local_random_state);
+                }
             }
             __syncthreads();
 
@@ -79,7 +94,19 @@ public:
             const auto markov_index = 0;
 
             std::mt19937 local_random_state = this->random_state_host[markov_index];
-            Spins spins = Spins::random(&local_random_state);
+            Spins spins;
+            if(total_z_symmetry) {
+                spins = Spins({
+                    random_n_over_k_bitstring(
+                        psi.get_num_spins(),
+                        (this->symmetry_sector + psi.get_num_spins()) / 2,
+                        &local_random_state
+                    )
+                });
+            }
+            else {
+                spins = Spins::random(&local_random_state);
+            }
 
             complex_t angle_ptr[Psi_t::get_max_angles()];
             psi.init_angles(angle_ptr, spins);
@@ -88,7 +115,7 @@ public:
 
         #endif
 
-        this->thermalize(psi, spins, this->num_thermalization_sweeps, &local_random_state, angle_ptr);
+        this->thermalize<total_z_symmetry>(psi, spins, this->num_thermalization_sweeps, &local_random_state, angle_ptr);
 
         SHARED complex_t log_psi;
         // This need not to be shared. It's just a question of speed.
@@ -101,7 +128,7 @@ public:
         for(auto mc_step_within_chain = 0u; mc_step_within_chain < num_mc_steps_per_chain; mc_step_within_chain++) {
 
             for(auto i = 0u; i < this->num_sweeps * psi.get_num_spins(); i++) {
-                this->mc_update(psi, spins, log_psi_real, &local_random_state, angle_ptr);
+                this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, &local_random_state, angle_ptr);
             }
 
             psi.log_psi_s(log_psi, spins, angle_ptr);
@@ -124,7 +151,7 @@ public:
         #endif
     }
 
-    template<typename Psi_t>
+    template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
     void thermalize(const Psi_t& psi, Spins& spins, const unsigned int num_sweeps, void* local_random_state, complex_t* angle_ptr) const {
         #ifdef __CUDA_ARCH__
@@ -136,11 +163,11 @@ public:
         psi.log_psi_s_real(log_psi_real, spins, angle_ptr);
 
         for(auto i = 0u; i < num_sweeps * psi.get_num_spins(); i++) {
-            this->mc_update(psi, spins, log_psi_real, local_random_state, angle_ptr);
+            this->mc_update<total_z_symmetry>(psi, spins, log_psi_real, local_random_state, angle_ptr);
         }
     }
 
-    template<typename Psi_t>
+    template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
     void mc_update(const Psi_t& psi, Spins& spins, double& log_psi_real, void* local_random_state, complex_t* angle_ptr) const {
         #ifdef __CUDA_ARCH__
@@ -155,6 +182,24 @@ public:
         __syncthreads();
 
         auto next_angle = psi.flip_spin_of_jth_angle(angle_ptr, threadIdx.x, position, next_spins);
+
+        if(total_z_symmetry) {
+            __syncthreads();
+
+            __shared__ int second_position;
+
+            if(threadIdx.x == 0) {
+                while(true) {
+                    second_position = position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
+                    if(next_spins[second_position] == next_spins[position]) {
+                        next_spins = next_spins.flip(second_position);
+                        break;
+                    }
+                }
+            }
+            __syncthreads();
+            next_angle = psi.flip_spin_of_jth_angle(&next_angle - threadIdx.x, threadIdx.x, second_position, next_spins);
+        }
 
         __shared__ double next_log_psi_real;
         psi.log_psi_s_real(next_log_psi_real, next_spins, &next_angle - threadIdx.x);
@@ -183,12 +228,27 @@ public:
 
         std::uniform_int_distribution<int> random_spin(0, psi.get_num_spins() - 1);
         const auto position = random_spin(*(std::mt19937*)local_random_state);
-        const Spins next_spins = spins.flip(position);
+        Spins next_spins = spins.flip(position);
 
         complex_t next_angle[Psi_t::get_max_angles()];
 
         for(auto j = 0u; j < psi.get_num_angles(); j++) {
             next_angle[j] = psi.flip_spin_of_jth_angle(angle_ptr, j, position, next_spins);
+        }
+
+        if(total_z_symmetry) {
+            int second_position;
+            while(true) {
+                const auto second_position = random_spin(*(std::mt19937*)local_random_state);
+
+                if(next_spins[second_position] == next_spins[position]) {
+                    next_spins = next_spins.flip(second_position);
+                    break;
+                }
+            }
+            for(auto j = 0u; j < psi.get_num_angles(); j++) {
+                next_angle[j] = psi.flip_spin_of_jth_angle(next_angle, j, second_position, next_spins);
+            }
         }
 
         double next_log_psi_real;
@@ -230,6 +290,11 @@ public:
     MonteCarloLoop(const MonteCarloLoop& other);
     ~MonteCarloLoop() noexcept(false);
 
+    inline void set_total_z_symmetry(const int sector) {
+        this->symmetry_sector = sector;
+        this->has_total_z_symmetry = true;
+    }
+
 #ifdef __CUDACC__
     template<typename Psi_t, typename Function>
     inline void foreach(const Psi_t& psi, const Function& function, const int blockDim=-1) const {
@@ -243,12 +308,24 @@ public:
         if(this->gpu) {
             const auto blockDim_ = blockDim == -1 ? psi.get_num_angles() : blockDim;
 
-            cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
-                [=] __device__ () {this_kernel.kernel_foreach(psi_kernel, function);}
-            );
+            if(this->has_total_z_symmetry) {
+                cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
+                    [=] __device__ () {this_kernel.kernel_foreach<true>(psi_kernel, function);}
+                );
+            }
+            else {
+                cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
+                    [=] __device__ () {this_kernel.kernel_foreach<false>(psi_kernel, function);}
+                );
+            }
         }
         else {
-            this_kernel.kernel_foreach(psi_kernel, function);
+            if(this->has_total_z_symmetry) {
+                this_kernel.kernel_foreach<true>(psi_kernel, function);
+            }
+            else {
+                this_kernel.kernel_foreach<false>(psi_kernel, function);
+            }
         }
 
         #ifdef TIMING
