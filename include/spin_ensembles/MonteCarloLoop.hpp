@@ -190,7 +190,7 @@ public:
 
             if(threadIdx.x == 0) {
                 while(true) {
-                    second_position = position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
+                    second_position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
                     if(next_spins[second_position] == next_spins[position]) {
                         next_spins = next_spins.flip(second_position);
                         break;
