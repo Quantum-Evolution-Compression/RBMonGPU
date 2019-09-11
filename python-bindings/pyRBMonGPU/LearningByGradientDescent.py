@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import pyRBMonGPU
 from pyRBMonGPU import Operator
 import gradient_descent as gd
@@ -36,6 +37,9 @@ class LearningByGradientDescent:
         sigma = 3 if self.mc else 1
         return gaussian_filter1d(distances, sigma, mode='nearest')
 
+    def smoothed(self, x):
+        return gaussian_filter1d(np.array(x[-100:]), 5, mode='nearest')
+
     @property
     def slopes(self):
         distances = self.smoothed_distance_history
@@ -55,6 +59,10 @@ class LearningByGradientDescent:
     def is_descending(self):
         graph = self.graph
         return graph[-1] - graph[0] < -0.05
+
+    def has_converged(self, x, threshold=4e-3):
+        smoothed_x = self.smoothed(x)
+        return abs(smoothed_x[0] - smoothed_x[-1]) < threshold
 
     def push_params(self, params):
         stack_size = 3
@@ -76,7 +84,7 @@ class LearningByGradientDescent:
 
         self.psi.active_params = params
         if not self.mc:
-            self.psi.normalize()
+            self.psi.normalize(self.spin_ensemble)
 
         if self.mode == modes.unitary_evolution:
             gradient, distance = self.hilbert_space_distance.gradient(
@@ -90,26 +98,29 @@ class LearningByGradientDescent:
                 self.verbose_distance_history.append((+distance, +complexity))
                 distance += complexity
 
-            if step < 100:
-                gradient -= HilbertSpaceCorrelations(self.psi).gradient
-
             self.distance_history.append(distance)
         elif self.mode == modes.groundstate:
             gradient, energy = self.expectation_value.gradient(self.psi, self.operator, self.spin_ensemble)
-            energy = energy.real
-            if step > 100 and energy < self.min_energy:
-                self.min_energy = energy
-                self.min_params = +params
+            if self.record_fluctuations:
+                delta_energy, energy = self.expectation_value.fluctuation(self.psi, self.operator, self.spin_ensemble)
+                self.delta_energy_history.append(delta_energy)
 
+            energy = energy.real
             self.energy_history.append(energy)
 
-            for excluded_state in self.excludes_states:
-                gradient -= self.hilbert_space_distance.gradient(
+            distances = []
+            for excluded_state in self.excluded_states:
+                es_gradient, distance = self.hilbert_space_distance.gradient(
                     excluded_state, self.psi, self.identity, True, self.spin_ensemble
-                )[0]
+                )
+                distances.append(distance)
 
-            if step < 250:
-                gradient -= HilbertSpaceCorrelations(self.psi).gradient
+                gradient -= 2 * max(1, min(10, math.log(distance.real))) * es_gradient
+
+            self.excluded_states_distances.append(distances)
+
+        if step < 100:
+            gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
 
         return gradient
 
@@ -170,6 +181,10 @@ class LearningByGradientDescent:
             result["distance_history"] = self.distance_history
         if hasattr(self, "energy_history"):
             result["energy_history"] = self.energy_history
+        if hasattr(self, "delta_energy_history"):
+            result["delta_energy_history"] = self.delta_energy_history
+        if hasattr(self, "excluded_states_distances"):
+            result["excluded_states_distances"] = self.excluded_states_distances
 
         return result
 
@@ -183,24 +198,28 @@ class LearningByGradientDescent:
 
         return result
 
-    def find_low_laying_state(self, psi_init, operator, excludes_states=[], eta=1e-3):
+    def find_low_laying_state(self, psi_init, operator, excluded_states=[], eta=1e-3, record_fluctuations=False, avoid_correlations=0):
         self.psi0 = psi_init
         self.psi = +psi_init
         self.identity = Operator(PauliExpression(0, 0), self.gpu)
         self.operator = Operator(operator, self.gpu)
-        self.excludes_states = excludes_states
+        self.excluded_states = excluded_states
         self.energy_history = []
-        self.min_energy = float("+inf")
+        self.delta_energy_history = []
         self.mode = modes.groundstate
+        self.record_fluctuations = record_fluctuations
+        self.excluded_states_distances = []
+        self.avoid_correlations = avoid_correlations
 
         algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
         algorithm_iter = algorithm["iter"]()
 
-        list(islice(algorithm_iter, 500))
+        steps = 200
+        list(islice(algorithm_iter, steps))
 
-        self.psi.active_params = self.min_params
-        if not self.mc:
-            self.psi.normalize()
+        while steps < 1500 and not self.has_converged(self.energy_history):
+            list(islice(algorithm_iter, 100))
+            steps += 100
 
         return self.psi
 
@@ -305,7 +324,7 @@ class LearningByGradientDescent:
             self.do_the_gradient_descent(eta)
 
         if not self.mc:
-            self.psi.normalize()
+            self.psi.normalize(self.spin_ensemble)
 
     def intelligent_optimize_for(self, psi, operator, exp=True, regularization=None, reversed_order=False):
         self.regularization = regularization
