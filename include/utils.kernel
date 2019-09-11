@@ -10,7 +10,7 @@ DINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& sum
     constexpr auto full_mask = 0xffffffff;
 
     if(threadIdx.x == 0) {
-        result = complex_t(0.0, 0.0);
+        result = complex_t(0.0f, 0.0f);
     }
     __syncthreads();
 
@@ -30,12 +30,12 @@ DINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& sum
     __syncthreads();
 }
 
-DINLINE void tree_sum(double& result, const unsigned int size, double& summand) {
+DINLINE void tree_sum(float& result, const unsigned int size, float& summand) {
     constexpr auto warp_size = 32u;
     constexpr auto full_mask = 0xffffffff;
 
     if(threadIdx.x == 0) {
-        result = 0.0;
+        result = 0.0f;
     }
     __syncthreads();
 

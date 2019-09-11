@@ -21,7 +21,7 @@ namespace rbm_on_gpu {
 
 using namespace std;
 
-using complex_t = cuda_complex::complex<double>;
+using complex_t = cuda_complex::complex<float>;
 
 void setDevice(int device);
 
@@ -184,7 +184,7 @@ void log_flush() {
     ss->str("");
 }
 
-void log_duration(std::string info, std::chrono::duration<double> duration) {
+void log_duration(std::string info, std::chrono::duration<float> duration) {
     using namespace std;
     using namespace std::chrono;
 

@@ -8,7 +8,7 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t>
-void psi_vector(complex<double>* result, const Psi_t& psi) {
+void psi_vector(complex<float>* result, const Psi_t& psi) {
     ExactSummation exact_summation(psi.N, psi.gpu);
 
     complex_t* result_ptr;
@@ -24,7 +24,7 @@ void psi_vector(complex<double>* result, const Psi_t& psi) {
             const Spins spins,
             const complex_t log_psi,
             const typename Psi_t::Angles& angles,
-            const double weight
+            const float weight
         ) {
             #ifdef __CUDA_ARCH__
             if(threadIdx.x == 0)
@@ -40,7 +40,7 @@ void psi_vector(complex<double>* result, const Psi_t& psi) {
 }
 
 
-template void psi_vector(complex<double>* result, const Psi& psi);
-template void psi_vector(complex<double>* result, const PsiDynamical& psi);
+template void psi_vector(complex<float>* result, const Psi& psi);
+template void psi_vector(complex<float>* result, const PsiDynamical& psi);
 
 } // namespace rbm_on_gpu

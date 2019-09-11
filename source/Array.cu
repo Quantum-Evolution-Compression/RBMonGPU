@@ -49,7 +49,7 @@ void Array<T>::update_device() {
 }
 
 
-template class Array<double>;
+template class Array<float>;
 template class Array<complex_t>;
 template class Array<Spins>;
 

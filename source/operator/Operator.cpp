@@ -28,7 +28,7 @@ Operator::Operator(
         )->first.size() + 1
     );
 
-    vector<std::complex<double>> coefficients;
+    vector<std::complex<float>> coefficients;
     coefficients.reserve(expr.size());
 
     vector<PauliMatrices> pauli_types(this->max_string_length * expr.size());
@@ -36,7 +36,7 @@ Operator::Operator(
 
     auto i = 0u;
     for(const auto& term : expr) {
-        coefficients.push_back(term.second);
+        coefficients.push_back(complex<float>(term.second.real(), term.second.imag()));
 
         auto j = 0u;
         for(const auto& symbol : term.first.symbols) {
@@ -61,7 +61,7 @@ Operator::Operator(
 }
 
 PauliExpression Operator::to_expr() const {
-    vector<std::complex<double>> coefficients(this->num_strings);
+    vector<std::complex<float>> coefficients(this->num_strings);
     vector<PauliMatrices> pauli_types(this->max_string_length * this->num_strings);
     vector<int> pauli_indices(this->max_string_length * this->num_strings);
 

@@ -77,7 +77,7 @@ public:
                     psi.flip_spin_of_jth_angle(j, pauli_index, result.spins, angles);
                 }
 
-                result.coefficient *= complex_t(0.0, -1.0) * spins[pauli_index];
+                result.coefficient *= complex_t(0.0f, -1.0f) * spins[pauli_index];
             }
             else if(pauli_type == PauliMatrices::SigmaZ) {
                 result.coefficient *= spins[pauli_index];
@@ -95,7 +95,7 @@ public:
         #ifdef __CUDA_ARCH__
 
         if(threadIdx.x == 0) {
-            result = complex_t(0.0, 0.0);
+            result = complex_t(0.0f, 0.0f);
         }
 
         __shared__ typename Psi_t::Angles angles_prime;
@@ -116,7 +116,7 @@ public:
 
         #else
 
-        result = complex_t(0.0, 0.0);
+        result = complex_t(0.0f, 0.0f);
         typename Psi_t::Angles angles_prime;
 
         for(auto n = 0u; n < this->num_strings; n++) {
@@ -202,7 +202,7 @@ public:
 public:
 
     Operator(
-        const std::vector<std::complex<double>>&        coefficients,
+        const std::vector<std::complex<float>>&        coefficients,
         const std::vector<std::vector<PauliMatrices>>&  pauli_types,
         const std::vector<std::vector<unsigned int>>&   pauli_indices,
         const bool                                      gpu=true
@@ -217,7 +217,7 @@ public:
 
 #ifdef __PYTHONCC__
     Operator(
-        const xt::pytensor<std::complex<double>, 1u>&   coefficients,
+        const xt::pytensor<std::complex<float>, 1u>&   coefficients,
         const xt::pytensor<int, 2u>&                    pauli_types,
         const xt::pytensor<int, 2u>&                    pauli_indices,
         const bool                                      gpu
@@ -234,7 +234,7 @@ public:
     }
 
     decltype(auto) get_coefficients_py() const {
-        xt::pytensor<complex<double>, 1u> result(array<long int, 1u>({(long int)this->num_strings}));
+        xt::pytensor<complex<float>, 1u> result(array<long int, 1u>({(long int)this->num_strings}));
 
         this->get_coefficients(result.data());
 
@@ -261,18 +261,18 @@ public:
 
 private:
     void allocate_memory_and_initialize(
-        const std::complex<double>* coefficients,
+        const std::complex<float>* coefficients,
         const PauliMatrices*        pauli_types,
         const int*                  pauli_indices,
         const bool                  pointers_on_gpu
     );
     void copy_to_host(
-        const std::complex<double>* coefficients,
+        const std::complex<float>* coefficients,
         const PauliMatrices*        pauli_types,
         const int*                  pauli_indices
     ) const;
 
-    void get_coefficients(complex<double>* coefficients) const;
+    void get_coefficients(complex<float>* coefficients) const;
     void get_pauli_types(int* pauli_types) const;
     void get_pauli_indices(int* pauli_indices) const;
 };

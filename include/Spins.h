@@ -42,7 +42,7 @@ struct Spins {
 #ifdef __PYTHONCC__
 
      decltype(auto) array(const unsigned int num_spins) const {
-        xt::pytensor<double, 1u> result(std::array<long int, 1u>({num_spins}));
+        xt::pytensor<float, 1u> result(std::array<long int, 1u>({num_spins}));
         for(auto i = 0u; i < num_spins; i++) {
             result[i] = (*this)[i];
         }
@@ -93,21 +93,21 @@ struct Spins {
         #endif
     }
 
-    HDINLINE double operator[](const int position) const {
+    HDINLINE float operator[](const int position) const {
         #if MAX_SPINS <= 64
-            return 2.0 * static_cast<double>(
+            return 2.0f * static_cast<float>(
                 static_cast<bool>(this->configuration & ((type)1 << position))
-            ) - 1.0;
+            ) - 1.0f;
         #elif MAX_SPINS <= 128
             if(position < 64) {
-                return 2.0 * static_cast<double>(
+                return 2.0f * static_cast<float>(
                     static_cast<bool>(this->configuration_first & ((type)1 << position))
-                ) - 1.0;
+                ) - 1.0f;
             }
             else {
-                return 2.0 * static_cast<double>(
+                return 2.0f * static_cast<float>(
                     static_cast<bool>(this->configuration_second & ((type)1 << (position - 64)))
-                ) - 1.0;
+                ) - 1.0f;
             }
         #endif
     }

@@ -25,7 +25,7 @@ using namespace rbm_on_gpu;
 using namespace pybind11::literals;
 
 template<unsigned int dim>
-using complex_tensor = xt::pytensor<std::complex<double>, dim>;
+using complex_tensor = xt::pytensor<std::complex<float>, dim>;
 
 // Python Module and Docstrings
 
@@ -39,7 +39,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const complex_tensor<1u>&,
             const complex_tensor<2u>&,
             const complex_tensor<1u>&,
-            const double,
+            const float,
             const bool
         >())
         .def(
@@ -68,7 +68,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("hidden_spin_weight", &PsiDynamical::Link::hidden_spin_weight);
 
     py::class_<PsiDynamical>(m, "PsiDynamical")
-        .def(py::init<vector<complex<double>>, const bool>())
+        .def(py::init<vector<complex<float>>, const bool>())
         .def("copy", &PsiDynamical::copy)
         .def("add_hidden_spin", &PsiDynamical::add_hidden_spin)
         .def(

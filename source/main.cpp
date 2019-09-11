@@ -24,12 +24,12 @@ int main(void)
 
     const auto N = 8u;
     const auto M = N;
-    const auto h_max = 1.0;
+    const auto h_max = 1.0f;
 
     std::mt19937 rng(0);
-    std::uniform_real_distribution<double> random_real(0.0, 1.0);
+    std::uniform_real_distribution<float> random_real(0.0f, 1.0f);
 
-    std::vector<std::complex<double>> coefficients;
+    std::vector<std::complex<float>> coefficients;
     std::vector<std::vector<PauliMatrices>> pauli_types;
     std::vector<std::vector<unsigned int>> pauli_indices;
 
@@ -66,7 +66,7 @@ int main(void)
 
     // DifferentiatePsi differentiate_psi(psi.get_num_params(), gpu);
 
-    // std::vector<std::complex<double>> dpsi(psi.get_num_params());
+    // std::vector<std::complex<float>> dpsi(psi.get_num_params());
 
     ExactSummation exact_summation(N, gpu);
     MonteCarloLoop monte_carlo_loop(

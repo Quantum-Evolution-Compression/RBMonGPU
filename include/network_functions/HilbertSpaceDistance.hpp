@@ -23,9 +23,9 @@ public:
 
     complex_t*  omega_avg;
     complex_t*  omega_O_k_avg;
-    double*     probability_ratio_avg;
+    float*     probability_ratio_avg;
     complex_t*  probability_ratio_O_k_avg;
-    double*     next_state_norm_avg;
+    float*     next_state_norm_avg;
 
     complex_t*      local_energies;
     unsigned int    num_local_energies;
@@ -43,8 +43,8 @@ public:
 class HilbertSpaceDistance : public kernel::HilbertSpaceDistance {
 private:
 
-    vector<complex<double>> omega_O_k_avg_host;
-    vector<complex<double>> probability_ratio_O_k_avg_host;
+    vector<complex<float>> omega_O_k_avg_host;
+    vector<complex<float>> probability_ratio_O_k_avg_host;
 
 public:
     HilbertSpaceDistance(const unsigned int O_k_length, const bool gpu);
@@ -53,20 +53,20 @@ public:
     void allocate_local_energies(const unsigned int num_local_energies);
 
     template<typename Psi_t, typename SpinEnsemble>
-    double distance(
+    float distance(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     ) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    double gradient(
-        complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
+    float gradient(
+        complex<float>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     );
 
     template<typename Psi_t, typename SpinEnsemble>
-    inline double gradient(
-        complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const quantum_expression::PauliExpression& expr, const bool is_unitary,
+    inline float gradient(
+        complex<float>* result, const Psi_t& psi, const Psi_t& psi_prime, const quantum_expression::PauliExpression& expr, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     ) {
         return this->gradient(
@@ -77,13 +77,13 @@ public:
 #ifdef __PYTHONCC__
 
     template<typename Psi_t, typename SpinEnsemble>
-    pair<xt::pytensor<complex<double>, 1u>, double> gradient_py(
+    pair<xt::pytensor<complex<float>, 1u>, float> gradient_py(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     ) {
-        xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_active_params()}));
+        xt::pytensor<complex<float>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_active_params()}));
 
-        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble);
+        const float distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble);
 
         return {grad, distance};
     }

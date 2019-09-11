@@ -8,10 +8,10 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t>
-double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
-    double* result_ptr;
-    MALLOC(result_ptr, sizeof(double), psi.gpu);
-    MEMSET(result_ptr, 0, sizeof(double), psi.gpu);
+float psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
+    float* result_ptr;
+    MALLOC(result_ptr, sizeof(float), psi.gpu);
+    MEMSET(result_ptr, 0, sizeof(float), psi.gpu);
 
     auto this_ = psi.get_kernel();
 
@@ -22,7 +22,7 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
             const Spins spins,
             const complex_t log_psi,
             const typename Psi_t::Angles& angles,
-            const double weight
+            const float weight
         ) {
             #ifdef __CUDA_ARCH__
             if(threadIdx.x == 0)
@@ -33,15 +33,15 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
         }
     );
 
-    double result;
-    MEMCPY_TO_HOST(&result, result_ptr, sizeof(double), psi.gpu);
+    float result;
+    MEMCPY_TO_HOST(&result, result_ptr, sizeof(float), psi.gpu);
     FREE(result_ptr, psi.gpu);
 
     return sqrt(result);
 }
 
 
-template double psi_norm(const Psi& psi, const ExactSummation&);
-template double psi_norm(const PsiDynamical& psi, const ExactSummation&);
+template float psi_norm(const Psi& psi, const ExactSummation&);
+template float psi_norm(const PsiDynamical& psi, const ExactSummation&);
 
 } // namespace rbm_on_gpu

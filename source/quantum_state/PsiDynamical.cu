@@ -23,7 +23,7 @@ PsiDynamical::PsiDynamical(const PsiDynamical& other)
         links(other.links),
         gpu(other.gpu)
 {
-    this->init(reinterpret_cast<complex<double>*>(other.a), other.N, other.gpu, other.prefactor);
+    this->init(reinterpret_cast<complex<float>*>(other.a), other.N, other.gpu, other.prefactor);
     this->update(true);
 }
 
@@ -32,12 +32,12 @@ PsiDynamical::~PsiDynamical() noexcept(false) {
     this->clear_hidden_spins();
 }
 
-void PsiDynamical::init(const complex<double>* a, const unsigned int N, const bool a_on_gpu, const double prefactor) {
+void PsiDynamical::init(const complex<float>* a, const unsigned int N, const bool a_on_gpu, const float prefactor) {
     this->N = N;
     this->prefactor = prefactor;
 
-    MALLOC(this->a, sizeof(complex<double>) * this->N, this->gpu);
-    MEMCPY(this->a, a, sizeof(complex<double>) * this->N, this->gpu, a_on_gpu);
+    MALLOC(this->a, sizeof(complex<float>) * this->N, this->gpu);
+    MEMCPY(this->a, a, sizeof(complex<float>) * this->N, this->gpu, a_on_gpu);
     this->b = nullptr;
     this->W = nullptr;
     this->n = nullptr;
@@ -70,19 +70,19 @@ unsigned int PsiDynamical::sizeof_W() const {
     return result;
 }
 
-void PsiDynamical::as_vector(complex<double>* result) const {
+void PsiDynamical::as_vector(complex<float>* result) const {
     psi_vector(result, *this);
 }
 
-double PsiDynamical::norm_function(const ExactSummation& exact_summation) const {
+float PsiDynamical::norm_function(const ExactSummation& exact_summation) const {
     return psi_norm(*this, exact_summation);
 }
 
-void PsiDynamical::O_k_vector(complex<double>* result, const Spins& spins) const {
+void PsiDynamical::O_k_vector(complex<float>* result, const Spins& spins) const {
     psi_O_k_vector(result, *this, spins);
 }
 
-void PsiDynamical::dense_W(complex<double>* result) const {
+void PsiDynamical::dense_W(complex<float>* result) const {
     memset(result, 0, sizeof(complex_t) * this->N * this->M);
 
     auto j = 0u;
@@ -96,7 +96,7 @@ void PsiDynamical::dense_W(complex<double>* result) const {
 }
 
 void PsiDynamical::add_hidden_spin(
-    const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight
+    const unsigned int first_spin, const clist& link_weights, const complex<float>& hidden_spin_weight
 ) {
     this->links.push_back(Link{first_spin, link_weights, hidden_spin_weight});
 }
@@ -181,7 +181,7 @@ void PsiDynamical::update(bool resize) {
     }
 }
 
-void PsiDynamical::get_active_params(complex<double>* result) const {
+void PsiDynamical::get_active_params(complex<float>* result) const {
     for(auto i = 0u; i < this->N; i++) {
         result[i] = this->spin_weights[i];
     }
@@ -196,7 +196,7 @@ void PsiDynamical::get_active_params(complex<double>* result) const {
     }
 }
 
-void PsiDynamical::set_active_params(const complex<double>* new_params) {
+void PsiDynamical::set_active_params(const complex<float>* new_params) {
     for(auto i = 0u; i < this->N; i++) {
         this->spin_weights[i] = new_params[i];
     }

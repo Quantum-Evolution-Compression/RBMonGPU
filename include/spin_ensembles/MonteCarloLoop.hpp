@@ -119,7 +119,7 @@ public:
 
         SHARED complex_t log_psi;
         // This need not to be shared. It's just a question of speed.
-        SHARED double log_psi_real;
+        SHARED float log_psi_real;
 
         psi.log_psi_s_real(log_psi_real, spins, angles);
 
@@ -139,7 +139,7 @@ public:
             const auto mc_step = mc_step_within_chain;
             #endif
 
-            function(mc_step, spins, log_psi, angles, 1.0);
+            function(mc_step, spins, log_psi, angles, 1.0f);
         }
 
         #ifdef __CUDA_ARCH__
@@ -156,7 +156,7 @@ public:
     void thermalize(const Psi_t& psi, Spins& spins, const unsigned int num_sweeps, void* local_random_state, typename Psi_t::Angles& angles) const {
         #include "cuda_kernel_defines.h"
 
-        SHARED double log_psi_real;
+        SHARED float log_psi_real;
         psi.log_psi_s_real(log_psi_real, spins, angles);
 
         for(auto i = 0u; i < num_sweeps * psi.get_num_spins(); i++) {
@@ -166,7 +166,7 @@ public:
 
     template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
-    void mc_update(const Psi_t& psi, Spins& spins, double& log_psi_real, void* local_random_state, typename Psi_t::Angles& angles) const {
+    void mc_update(const Psi_t& psi, Spins& spins, float& log_psi_real, void* local_random_state, typename Psi_t::Angles& angles) const {
         #ifdef __CUDA_ARCH__
 
         __shared__ int position;
@@ -196,15 +196,15 @@ public:
             psi.flip_spin_of_jth_angle(threadIdx.x, second_position, spins, angles);
         }
 
-        __shared__ double next_log_psi_real;
+        __shared__ float next_log_psi_real;
         psi.log_psi_s_real(next_log_psi_real, spins, angles);
 
         __shared__ bool spin_flip;
 
         if(threadIdx.x == 0) {
-            const auto ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
+            const auto ratio = exp(2.0f * (next_log_psi_real - log_psi_real));
 
-            if(ratio > 1.0 || curand_uniform((curandState_t*)local_random_state) <= ratio) {
+            if(ratio > 1.0f || curand_uniform((curandState_t*)local_random_state) <= ratio) {
                 log_psi_real = next_log_psi_real;
                 spin_flip = true;
             }
@@ -257,12 +257,12 @@ public:
             }
         }
 
-        double next_log_psi_real;
+        float next_log_psi_real;
         psi.log_psi_s_real(next_log_psi_real, spins, angles);
-        const auto ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
+        const auto ratio = exp(2.0f * (next_log_psi_real - log_psi_real));
 
-        std::uniform_real_distribution<double> random_real(0.0, 1.0);
-        if(ratio > 1.0 || random_real(*(std::mt19937*)local_random_state) <= ratio) {
+        std::uniform_real_distribution<float> random_real(0.0f, 1.0f);
+        if(ratio > 1.0f || random_real(*(std::mt19937*)local_random_state) <= ratio) {
             log_psi_real = next_log_psi_real;
         }
         else {

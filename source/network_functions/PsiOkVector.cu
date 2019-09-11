@@ -9,7 +9,7 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t>
-void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spins) {
+void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins) {
     complex_t* result_ptr;
     auto O_k_length = psi.get_num_active_params();
     auto psi_kernel = psi.get_kernel();
@@ -51,7 +51,7 @@ void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spin
 
 
 template<typename Psi_t, typename SpinEnsemble>
-void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
+void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
     const auto O_k_length = psi.get_num_active_params();
     const auto psi_kernel = psi.get_kernel();
 
@@ -70,7 +70,7 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
             const Spins spins,
             const complex_t log_psi,
             typename Psi_t::Angles& angles,
-            const double weight
+            const float weight
         ) {
             #include "cuda_kernel_defines.h"
 
@@ -101,23 +101,23 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
     FREE(result2_device, psi.gpu);
 
     for(auto k = 0u; k < O_k_length; k++) {
-        result[k] *= 1.0 / O_k_length;
-        result_std[k] *= 1.0 / O_k_length;
+        result[k] *= 1.0f / O_k_length;
+        result_std[k] *= 1.0f / O_k_length;
 
-        result_std[k] = result_std[k] - complex<double>(
+        result_std[k] = result_std[k] - complex<float>(
             result[k].real() * result[k].real(), result[k].imag() * result[k].imag()
         );
     }
 }
 
 
-template void psi_O_k_vector(complex<double>* result, const Psi& psi, const Spins& spins);
-template void psi_O_k_vector(complex<double>* result, const PsiDynamical& psi, const Spins& spins);
+template void psi_O_k_vector(complex<float>* result, const Psi& psi, const Spins& spins);
+template void psi_O_k_vector(complex<float>* result, const PsiDynamical& psi, const Spins& spins);
 
 
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const ExactSummation& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const MonteCarloLoop& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDynamical& psi, const ExactSummation& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi& psi, const ExactSummation& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi& psi, const MonteCarloLoop& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDynamical& psi, const ExactSummation& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
 
 } // namespace rbm_on_gpu

@@ -15,21 +15,21 @@ using namespace std;
 
 
 template<typename Psi_t>
-void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spins);
+void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins);
 
 template<typename Psi_t, typename SpinEnsemble>
-void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble);
+void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble);
 
 #ifdef __PYTHONCC__
 
 template<typename Psi_t, typename SpinEnsemble>
-inline pair<xt::pytensor<complex<double>, 1>, xt::pytensor<complex<double>, 1>> psi_O_k_vector_py(
+inline pair<xt::pytensor<complex<float>, 1>, xt::pytensor<complex<float>, 1>> psi_O_k_vector_py(
     const Psi_t& psi, const SpinEnsemble& spin_ensemble
 ) {
-    auto result = xt::pytensor<complex<double>, 1>(
+    auto result = xt::pytensor<complex<float>, 1>(
         std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
     );
-    auto result_std = xt::pytensor<complex<double>, 1>(
+    auto result_std = xt::pytensor<complex<float>, 1>(
         std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
     );
 

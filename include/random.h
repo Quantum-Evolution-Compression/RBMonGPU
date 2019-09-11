@@ -28,11 +28,11 @@ HDINLINE uint64_t random_uint64(void* rng_state) {
 }
 
 
-HDINLINE double random_real(void* rng_state) {
+HDINLINE float random_real(void* rng_state) {
     #ifdef __CUDA_ARCH__
         return curand_uniform(reinterpret_cast<curandState_t*>(rng_state));
     #else
-        std::uniform_real_distribution<double> uniform_real(0.0, 1.0);
+        std::uniform_real_distribution<float> uniform_real(0.0f, 1.0f);
         return uniform_real(*reinterpret_cast<std::mt19937*>(rng_state));
     #endif
 }

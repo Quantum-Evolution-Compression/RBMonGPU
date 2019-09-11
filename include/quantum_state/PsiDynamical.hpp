@@ -65,7 +65,7 @@ public:
         if(j < this->get_num_angles()) {
             const auto relative_position = (position - this->spin_offset_list[j] + this->N) % this->N;
             if(relative_position < this->string_length_list[j]) {
-                angles[j] += 2.0 * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
+                angles[j] += 2.0f * new_spins[position] * this->W[this->W_offset_list[j] + relative_position];
             }
         }
     }
@@ -78,7 +78,7 @@ public:
         MULTI(j, this->M)
         {
             if(j < this->N) {
-                function(j, complex_t(spins[j], 0.0));
+                function(j, complex_t(spins[j], 0.0f));
             }
 
             const auto tanh_angle = derivatives.tanh_angles[j];
@@ -115,12 +115,12 @@ public:
 
 class PsiDynamical : public kernel::PsiDynamical {
 public:
-    using clist = vector<complex<double>>;
+    using clist = vector<complex<float>>;
 
     struct Link {
         unsigned int    first_spin;
         clist           weights;
-        complex<double> hidden_spin_weight;
+        complex<float> hidden_spin_weight;
     };
 
     clist spin_weights;
@@ -135,7 +135,7 @@ public:
     ~PsiDynamical() noexcept(false);
 
     void add_hidden_spin(
-        const unsigned int first_spin, const clist& link_weights, const complex<double>& hidden_spin_weight
+        const unsigned int first_spin, const clist& link_weights, const complex<float>& hidden_spin_weight
     );
     void update(bool resize);
 
@@ -144,8 +144,8 @@ public:
     }
 
 #ifdef __PYTHONCC__
-    xt::pytensor<complex<double>, 1> as_vector_py() const {
-        auto result = xt::pytensor<complex<double>, 1>(
+    xt::pytensor<complex<float>, 1> as_vector_py() const {
+        auto result = xt::pytensor<complex<float>, 1>(
             std::array<long int, 1>({static_cast<long int>(pow(2, this->N))})
         );
         this->as_vector(result.data());
@@ -153,8 +153,8 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<double>, 1> O_k_vector_py(const Spins& spins) const {
-        auto result = xt::pytensor<complex<double>, 1>(
+    xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) const {
+        auto result = xt::pytensor<complex<float>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
         this->O_k_vector(result.data(), spins);
@@ -162,8 +162,8 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<double>, 1> a_py() const {
-        auto result = xt::pytensor<complex<double>, 1>(
+    xt::pytensor<complex<float>, 1> a_py() const {
+        auto result = xt::pytensor<complex<float>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->N)})
         );
 
@@ -172,12 +172,12 @@ public:
         return result;
     }
 
-    void set_a_py(const xt::pytensor<complex<double>, 1>& new_a) {
+    void set_a_py(const xt::pytensor<complex<float>, 1>& new_a) {
         memcpy(this->spin_weights.data(), new_a.data(), sizeof(complex_t) * this->N);
     }
 
-    xt::pytensor<complex<double>, 1> b_py() const {
-        auto result = xt::pytensor<complex<double>, 1>(
+    xt::pytensor<complex<float>, 1> b_py() const {
+        auto result = xt::pytensor<complex<float>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->M)})
         );
 
@@ -191,8 +191,8 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<double>, 2> dense_W_py() const {
-        auto result = xt::pytensor<complex<double>, 2>(
+    xt::pytensor<complex<float>, 2> dense_W_py() const {
+        auto result = xt::pytensor<complex<float>, 2>(
             std::array<long int, 2>(
                 {static_cast<long int>(this->N), static_cast<long int>(this->M)}
             )
@@ -202,8 +202,8 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<double>, 1> get_active_params_py() const {
-        auto result = xt::pytensor<complex<double>, 1>(
+    xt::pytensor<complex<float>, 1> get_active_params_py() const {
+        auto result = xt::pytensor<complex<float>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
         );
         this->get_active_params(result.data());
@@ -211,7 +211,7 @@ public:
         return result;
     }
 
-    void set_active_params_py(const xt::pytensor<complex<double>, 1>& new_params) {
+    void set_active_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
         this->set_active_params(new_params.data());
     }
 
@@ -221,21 +221,21 @@ public:
 
 #endif // __CUDACC__
 
-    void as_vector(complex<double>* result) const;
-    void O_k_vector(complex<double>* result, const Spins& spins) const;
-    double norm_function(const ExactSummation& exact_summation) const;
-    void dense_W(complex<double>* result) const;
+    void as_vector(complex<float>* result) const;
+    void O_k_vector(complex<float>* result, const Spins& spins) const;
+    float norm_function(const ExactSummation& exact_summation) const;
+    void dense_W(complex<float>* result) const;
 
     unsigned int get_num_params_py() const {
         return this->get_num_params();
     }
 
-    void get_active_params(complex<double>* result) const;
-    void set_active_params(const complex<double>* new_params);
+    void get_active_params(complex<float>* result) const;
+    void set_active_params(const complex<float>* new_params);
 
 private:
 
-    void init(const complex<double>* a, const unsigned int N, const bool a_on_gpu, const double prefactor=1.0);
+    void init(const complex<float>* a, const unsigned int N, const bool a_on_gpu, const float prefactor=1.0f);
     void clear_hidden_spins();
     unsigned int sizeof_W() const;
 };

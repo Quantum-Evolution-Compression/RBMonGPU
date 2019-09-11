@@ -292,12 +292,14 @@ template<> class  complex<double>;
 template<>
 class  complex<float>
 {
+public:
     float __re_;
     float __im_;
 public:
     typedef float value_type;
 
-    /*constexpr*/ CUDA_CALLABLE_MEMBER complex(float __re = 0.0f, float __im = 0.0f)
+    complex() = default;
+    /*constexpr*/ CUDA_CALLABLE_MEMBER complex(float __re, float __im)
         : __re_(__re), __im_(__im) {}
     CUDA_CALLABLE_MEMBER
     explicit /*constexpr*/ complex(const complex<double>& __c);
@@ -343,6 +345,12 @@ public:
             *this = *this / __c;
             return *this;
         }
+
+    template<class _Xp>
+    CUDA_CALLABLE_MEMBER
+    friend void atomicAdd(complex<_Xp>* address, const complex<_Xp>& value);
+
+    std::complex<float> to_std() const {return std::complex<float>(this->__re_, this->__im_);}
 };
 
 template<>
@@ -661,6 +669,7 @@ operator/(const complex<float>& __z, const complex<float>& __w)
         }
     }
     return complex<float>(__x, __y);
+
 }
 
 template<class _Tp>
@@ -867,20 +876,6 @@ conj(const complex<_Tp>& __c)
     return complex<_Tp>(__c.real(), -__c.imag());
 }
 
-CUDA_CALLABLE_MEMBER
-complex<double>
-conj(double __re)
-{
-    return complex<double>(__re);
-}
-
-CUDA_CALLABLE_MEMBER
-complex<float>
-conj(float __re)
-{
-    return complex<float>(__re);
-}
-
 // proj
 
 template<class _Tp>
@@ -892,24 +887,6 @@ proj(const complex<_Tp>& __c)
     if (isinf(__c.real()) || isinf(__c.imag()))
         __r = complex<_Tp>(INFINITY, copysign(_Tp(0), __c.imag()));
     return __r;
-}
-
-CUDA_CALLABLE_MEMBER
-complex<double>
-proj(double __re)
-{
-    if (isinf(__re))
-        __re = fabs(__re);
-    return complex<double>(__re);
-}
-
-CUDA_CALLABLE_MEMBER
-complex<float>
-proj(float __re)
-{
-    if (isinf(__re))
-        __re = fabs(__re);
-    return complex<float>(__re);
 }
 
 // polar
