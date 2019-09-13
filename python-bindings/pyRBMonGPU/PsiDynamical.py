@@ -9,7 +9,6 @@ def to_json(self):
             first_spin=link.first_spin,
             weights=link.weights,
             hidden_spin_weight=link.hidden_spin_weight,
-            hidden_spin_type=link.hidden_spin_type
         ) for link in self.links
     ]
 
@@ -39,7 +38,6 @@ def from_json(json_obj, gpu):
             link["first_spin"],
             link["weights"],
             link["hidden_spin_weight"],
-            link["hidden_spin_type"]
         )
     result.update()
     return result

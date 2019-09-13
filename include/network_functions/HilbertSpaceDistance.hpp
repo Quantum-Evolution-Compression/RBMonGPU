@@ -81,7 +81,7 @@ public:
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     ) {
-        xt::pytensor<complex<float>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_active_params()}));
+        xt::pytensor<complex<float>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_params()}));
 
         const float distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble);
 

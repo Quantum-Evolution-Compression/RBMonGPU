@@ -40,7 +40,6 @@ void PsiDynamical::init(const complex<float>* a, const unsigned int N, const boo
     MEMCPY(this->a, a, sizeof(complex<float>) * this->N, this->gpu, a_on_gpu);
     this->b = nullptr;
     this->W = nullptr;
-    this->n = nullptr;
 
     this->spin_offset_list = nullptr;
     this->W_offset_list = nullptr;
@@ -132,7 +131,7 @@ void PsiDynamical::update(bool resize) {
         param_offset_list_host.reserve(this->M);
         string_length_list_host.reserve(this->M);
 
-        this->num_active_params = N + M;
+        this->num_params = N + M;
 
         this->index_pair_list.resize(N + M);
         for(int j = 0; j < int(M); j++) {
@@ -156,7 +155,7 @@ void PsiDynamical::update(bool resize) {
 
             W_offset += link.weights.size();
             param_offset += link.weights.size();
-            this->num_active_params += link.weights.size();
+            this->num_params += link.weights.size();
 
             for(int i = link.first_spin; i < link.first_spin + link.weights.size(); i++) {
                 this->index_pair_list.push_back(make_pair(i % N, j));
@@ -167,7 +166,7 @@ void PsiDynamical::update(bool resize) {
     }
 
     if(resize) {
-        this->num_params = this->num_active_params;
+        this->num_params = this->num_params;
     }
 
     MEMCPY(this->a, this->spin_weights.data(), sizeof(complex_t) * this->N, this->gpu, false);
@@ -181,7 +180,7 @@ void PsiDynamical::update(bool resize) {
     }
 }
 
-void PsiDynamical::get_active_params(complex<float>* result) const {
+void PsiDynamical::get_params(complex<float>* result) const {
     for(auto i = 0u; i < this->N; i++) {
         result[i] = this->spin_weights[i];
     }
@@ -196,7 +195,7 @@ void PsiDynamical::get_active_params(complex<float>* result) const {
     }
 }
 
-void PsiDynamical::set_active_params(const complex<float>* new_params) {
+void PsiDynamical::set_params(const complex<float>* new_params) {
     for(auto i = 0u; i < this->N; i++) {
         this->spin_weights[i] = new_params[i];
     }

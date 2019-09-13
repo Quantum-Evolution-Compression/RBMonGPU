@@ -13,53 +13,36 @@
 namespace rbm_on_gpu {
 
 Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const float noise, const bool gpu)
-  : gpu(gpu) {
+  : a_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
     this->N = N;
     this->M = M;
     this->prefactor = 1.0f;
-
-    this->num_active_params = N + M + N * M;
-    using complex_t = std::complex<float>;
-
-    std::vector<complex_t> a_host(N);
-    std::vector<complex_t> b_host(M);
-    std::vector<complex_t> W_host(N * M);
-    std::vector<complex_t> n_host(M);
+    this->num_params = N + M + N * M;
+    this->a = this->a_array.data();
+    this->b = this->b_array.data();
+    this->W = this->W_array.data();
 
     std::mt19937 rng(seed);
     std::uniform_real_distribution<float> random_real(-1.0f, 1.0f);
 
     for(auto i = 0u; i < N; i++) {
-        a_host[i] = complex_t(0.0f, 0.0f);
+        this->a_array[i] = complex_t(0.0f, 0.0f);
     }
     for(auto j = 0u; j < M; j++) {
-        b_host[j] = complex_t(noise * random_real(rng), noise * random_real(rng));
+        this->b_array[j] = complex_t(noise * random_real(rng), noise * random_real(rng));
     }
     for(auto i = 0u; i < N; i++) {
         for(auto j = 0u; j < M; j++) {
             const auto idx = j * N + i;
-            W_host[idx] = (
+            this->W_array[idx] = (
                 (i == j % N ? complex_t(1.0f, 3.14 / 4.0f) : complex_t(0.0f, 0.0f)) +
                 complex_t(noise * random_real(rng), noise * random_real(rng))
             );
         }
     }
-    for(auto j = 0u; j < M; j++) {
-        n_host[j] = complex_t(1.0f, 0.0f);
-    }
 
-    this->allocate_memory();
-    this->update_params(a_host.data(), b_host.data(), W_host.data(), n_host.data());
-}
-
-Psi::Psi(const unsigned int N, const unsigned int M, const bool gpu)
-  : gpu(gpu) {
-    this->N = N;
-    this->M = M;
-    this->prefactor = 1.0f;
-    this->num_active_params = N + M + N * M;
-
-    this->allocate_memory();
+    this->update_kernel();
+    this->create_index_pairs();
 }
 
 Psi::Psi(
@@ -68,33 +51,61 @@ Psi::Psi(
     const std::complex<float>* a_host,
     const std::complex<float>* b_host,
     const std::complex<float>* W_host,
-    const std::complex<float>* n_host,
     const float prefactor,
     const bool gpu
-) : gpu(gpu) {
+) : a_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
+    cout << "constr" << endl;
     this->N = N;
     this->M = M;
     this->prefactor = prefactor;
-    this->num_active_params = N + M + N * M;
+    this->num_params = N + M + N * M;
 
-    this->allocate_memory();
-    this->update_params(a_host, b_host, W_host, n_host);
+    memcpy(this->a_array.host_data(), a_host, sizeof(complex_t) * N);
+    memcpy(this->b_array.host_data(), b_host, sizeof(complex_t) * M);
+    memcpy(this->W_array.host_data(), W_host, sizeof(complex_t) * N * M);
+
+    this->update_kernel();
+    this->create_index_pairs();
 }
 
-Psi::Psi(const Psi& other) : gpu(other.gpu) {
+Psi::Psi(const Psi& other)
+    :
+    a_array(other.N, other.gpu),
+    b_array(other.M, other.gpu),
+    W_array(other.N * other.M, other.gpu),
+    gpu(gpu) {
+    cout << "copy _" << other.gpu << endl;
     this->N = other.N;
     this->M = other.M;
     this->prefactor = other.prefactor;
-    this->num_active_params = other.num_active_params;
+    this->num_params = other.num_params;
 
-    this->allocate_memory();
-    this->update_params(
-        reinterpret_cast<complex<float>*>(other.a),
-        reinterpret_cast<complex<float>*>(other.b),
-        reinterpret_cast<complex<float>*>(other.W),
-        reinterpret_cast<complex<float>*>(other.n),
-        other.gpu
-    );
+    this->a_array = other.a_array;
+    this->b_array = other.b_array;
+    this->W_array = other.W_array;
+
+    cout << "copy 1" << endl;
+
+    this->update_kernel();
+    cout << "copy 2" << endl;
+    this->create_index_pairs();
+    cout << "copy 3" << endl;
+}
+
+Psi::~Psi() noexcept(false) {
+    cout << "destr" << endl;
+}
+
+void Psi::update_kernel() {
+    // Note: This does not only update the memory on the device, but also the pointer which can be host or device
+
+    this->a = this->a_array.data();
+    this->b = this->b_array.data();
+    this->W = this->W_array.data();
+
+    this->a_array.update_device();
+    this->b_array.update_device();
+    this->W_array.update_device();
 }
 
 void Psi::as_vector(complex<float>* result) const {
@@ -124,9 +135,7 @@ std::complex<float> Psi::log_psi_s_std(const Spins& spins) {
         SHARED complex_t log_psi;
         this_.log_psi_s(log_psi, spins, angles);
 
-        #ifdef __CUDA_ARCH__
-        if(threadIdx.x == 0)
-        #endif
+        SINGLE
         {
             *result = log_psi;
         }
@@ -146,31 +155,32 @@ std::complex<float> Psi::log_psi_s_std(const Spins& spins) {
     return result_host.to_std();
 }
 
-void Psi::allocate_memory() {
-    MALLOC(this->a, sizeof(complex_t) * this->N, this->gpu);
-    MALLOC(this->b, sizeof(complex_t) * this->M, this->gpu);
-    MALLOC(this->W, sizeof(complex_t) * this->N * this->M, this->gpu);
-    MALLOC(this->n, sizeof(complex_t) * this->M, this->gpu);
+void Psi::create_index_pairs() {
+    for(auto i = 0; i < this->N; i++) {
+        this->index_pair_list.push_back(make_pair(i, -1));
+    }
+    for(auto j = 0; j < this->M; j++) {
+        this->index_pair_list.push_back(make_pair(-1, j));
+    }
+    for(auto i = 0; i < this->N; i++) {
+        for(auto j = 0; j < this->M; j++) {
+            this->index_pair_list.push_back(make_pair(i, j));
+        }
+    }
 }
 
-void Psi::update_params(
-    const std::complex<float>* a,
-    const std::complex<float>* b,
-    const std::complex<float>* W,
-    const std::complex<float>* n,
-    const bool ptr_on_gpu
-) {
-    MEMCPY(this->a, a, sizeof(complex_t) * this->N, this->gpu, ptr_on_gpu);
-    MEMCPY(this->b, b, sizeof(complex_t) * this->M, this->gpu, ptr_on_gpu);
-    MEMCPY(this->W, W, sizeof(complex_t) * this->N * this->M, this->gpu, ptr_on_gpu);
-    MEMCPY(this->n, n, sizeof(complex_t) * this->M, this->gpu, ptr_on_gpu);
+void Psi::get_params(complex<float>* result) const {
+    memcpy(result, this->a_array.data(), sizeof(complex_t) * this->N);
+    memcpy(result + this->N, this->b_array.data(), sizeof(complex_t) * this->M);
+    memcpy(result + this->N + this->M, this->W_array.data(), sizeof(complex_t) * this->N * this->M);
 }
 
-Psi::~Psi() noexcept(false) {
-    FREE(this->a, this->gpu);
-    FREE(this->b, this->gpu);
-    FREE(this->W, this->gpu);
-    FREE(this->n, this->gpu);
+void Psi::set_params(const complex<float>* new_params) {
+    memcpy(this->a_array.data(), new_params, sizeof(complex_t) * this->N);
+    memcpy(this->b_array.data(), new_params + this->N, sizeof(complex_t) * this->M);
+    memcpy(this->W_array.data(), new_params + this->N + this->M, sizeof(complex_t) * this->N * this->M);
+
+    this->update_kernel();
 }
 
 } // namespace rbm_on_gpu

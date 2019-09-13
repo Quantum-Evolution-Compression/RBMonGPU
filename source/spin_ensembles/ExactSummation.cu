@@ -35,7 +35,7 @@ void ExactSummation::set_total_z_symmetry(const int sector) {
 
     this->num_spin_configurations = spins_tmp.size();
     this->allowed_spin_configurations_vec = unique_ptr<Array<Spins>>(new Array<Spins>(spins_tmp.size(), this->gpu));
-    this->allowed_spin_configurations_vec->host = spins_tmp;
+    this->allowed_spin_configurations_vec->assign(spins_tmp.begin(), spins_tmp.end());
     this->allowed_spin_configurations_vec->update_device();
     this->allowed_spin_configurations = this->allowed_spin_configurations_vec->data();
 

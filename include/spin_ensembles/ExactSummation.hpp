@@ -120,7 +120,7 @@ public:
     inline void foreach(const Psi_t& psi, const Function& function, const int blockDim=-1) const {
         auto this_kernel = this->get_kernel();
         const auto psi_kernel = psi.get_kernel();
-        if(psi.on_gpu()) {
+        if(psi.gpu) {
             const auto blockDim_ = blockDim == -1 ? psi.get_num_angles() : blockDim;
 
             cuda_kernel<<<this->num_spin_configurations, blockDim_>>>(

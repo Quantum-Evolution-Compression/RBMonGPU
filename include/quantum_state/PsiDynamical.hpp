@@ -27,8 +27,6 @@ namespace kernel {
 
 class PsiDynamical : public Psi {
 public:
-    unsigned int num_params;
-
     unsigned int* spin_offset_list;
     unsigned int* W_offset_list;
     unsigned int* param_offset_list;
@@ -95,16 +93,6 @@ public:
 
 #endif // __CUDACC__
 
-    HDINLINE
-    unsigned int get_num_params() const {
-        return this->num_params;
-    }
-
-    HDINLINE
-    unsigned int get_num_active_params() const {
-        return this->num_params;
-    }
-
     inline const PsiDynamical& get_kernel() const {
         return *this;
     }
@@ -120,7 +108,7 @@ public:
     struct Link {
         unsigned int    first_spin;
         clist           weights;
-        complex<float> hidden_spin_weight;
+        complex<float>  hidden_spin_weight;
     };
 
     clist spin_weights;
@@ -155,7 +143,7 @@ public:
 
     xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) const {
         auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
+            std::array<long int, 1>({static_cast<long int>(this->num_params)})
         );
         this->O_k_vector(result.data(), spins);
 
@@ -202,24 +190,24 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<float>, 1> get_active_params_py() const {
+    xt::pytensor<complex<float>, 1> get_params_py() const {
         auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
+            std::array<long int, 1>({static_cast<long int>(this->num_params)})
         );
-        this->get_active_params(result.data());
+        this->get_params(result.data());
 
         return result;
     }
 
-    void set_active_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
-        this->set_active_params(new_params.data());
+    void set_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
+        this->set_params(new_params.data());
     }
 
     PsiDynamical copy() const {
         return *this;
     }
 
-#endif // __CUDACC__
+#endif // __PYTHONCC__
 
     void as_vector(complex<float>* result) const;
     void O_k_vector(complex<float>* result, const Spins& spins) const;
@@ -230,8 +218,8 @@ public:
         return this->get_num_params();
     }
 
-    void get_active_params(complex<float>* result) const;
-    void set_active_params(const complex<float>* new_params);
+    void get_params(complex<float>* result) const;
+    void set_params(const complex<float>* new_params);
 
 private:
 
