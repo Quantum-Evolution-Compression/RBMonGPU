@@ -115,8 +115,8 @@ pair<float, complex<float>> ExpectationValue::fluctuation(const Psi_t& psi, cons
     E_loc_avg.update_host();
     E_loc2_avg.update_host();
 
-    const auto E_loc = E_loc_avg.host.front() * (1.0f / spin_ensemble.get_num_steps());
-    const auto E_loc2 = E_loc2_avg.host.front() * (1.0f / spin_ensemble.get_num_steps());
+    const auto E_loc = E_loc_avg.front() * (1.0f / spin_ensemble.get_num_steps());
+    const auto E_loc2 = E_loc2_avg.front() * (1.0f / spin_ensemble.get_num_steps());
 
     return {sqrt(E_loc2 - norm(E_loc)), E_loc.to_std()};
 }
@@ -125,7 +125,7 @@ template<typename Psi_t, typename SpinEnsemble>
 complex<float> ExpectationValue::gradient(
     complex<float>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
 ) const {
-    const auto O_k_length = psi.get_num_active_params();
+    const auto O_k_length = psi.get_num_params();
     const auto psi_kernel = psi.get_kernel();
     const auto op_kernel = operator_.get_kernel();
 
@@ -191,24 +191,24 @@ complex<float> ExpectationValue::gradient(
     E_loc_O_k_avg.update_host();
     E_loc_k_avg.update_host();
 
-    E_loc_avg.host.front() *= 1.0f / spin_ensemble.get_num_steps();
+    E_loc_avg.front() *= 1.0f / spin_ensemble.get_num_steps();
 
     for(auto k = 0u; k < O_k_length; k++) {
-        O_k_avg.host[k] *= 1.0f / spin_ensemble.get_num_steps();
-        E_loc_O_k_avg.host[k] *= 1.0f / spin_ensemble.get_num_steps();
-        E_loc_k_avg.host[k] *= 1.0f / spin_ensemble.get_num_steps();
+        O_k_avg[k] *= 1.0f / spin_ensemble.get_num_steps();
+        E_loc_O_k_avg[k] *= 1.0f / spin_ensemble.get_num_steps();
+        E_loc_k_avg[k] *= 1.0f / spin_ensemble.get_num_steps();
 
         result[k] = (
-            E_loc_O_k_avg.host[k] + conj(E_loc_k_avg.host[k]) - 2.0f * E_loc_avg.host.front() * conj(O_k_avg.host[k])
+            E_loc_O_k_avg[k] + conj(E_loc_k_avg[k]) - 2.0f * E_loc_avg.front() * conj(O_k_avg[k])
         ).to_std();
     }
 
-    return E_loc_avg.host.front().to_std();
+    return E_loc_avg.front().to_std();
 }
 
 template<typename Psi_t, typename SpinEnsemble>
 void ExpectationValue::fluctuation_gradient(complex<float>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const {
-    const auto O_k_length = psi.get_num_active_params();
+    const auto O_k_length = psi.get_num_params();
     const auto psi_kernel = psi.get_kernel();
     const auto op_kernel = operator_.get_kernel();
 
@@ -284,16 +284,16 @@ void ExpectationValue::fluctuation_gradient(complex<float>* result, const Psi_t&
     E_loc_O_k_avg.update_host();
     E_loc_k_avg.update_host();
 
-    const auto E_loc = E_loc_avg.host.front() * (1.0f / spin_ensemble.get_num_steps());
-    const auto E_loc2 = E_loc2_avg.host.front() * (1.0f / spin_ensemble.get_num_steps());
+    const auto E_loc = E_loc_avg.front() * (1.0f / spin_ensemble.get_num_steps());
+    const auto E_loc2 = E_loc2_avg.front() * (1.0f / spin_ensemble.get_num_steps());
 
     const auto fluctuation = sqrt(E_loc2 - norm(E_loc));
 
     for(auto k = 0u; k < O_k_length; k++) {
-        const auto E_loc_E_loc_k = E_loc_E_loc_k_avg.host[k] * (1.0f / spin_ensemble.get_num_steps());
-        const auto O_k = O_k_avg.host[k] * (1.0f / spin_ensemble.get_num_steps());
-        const auto E_loc_O_k = E_loc_O_k_avg.host[k] * (1.0f / spin_ensemble.get_num_steps());
-        const auto E_loc_k = E_loc_k_avg.host[k] * (1.0f / spin_ensemble.get_num_steps());
+        const auto E_loc_E_loc_k = E_loc_E_loc_k_avg[k] * (1.0f / spin_ensemble.get_num_steps());
+        const auto O_k = O_k_avg[k] * (1.0f / spin_ensemble.get_num_steps());
+        const auto E_loc_O_k = E_loc_O_k_avg[k] * (1.0f / spin_ensemble.get_num_steps());
+        const auto E_loc_k = E_loc_k_avg[k] * (1.0f / spin_ensemble.get_num_steps());
 
         result[k] = 1.0f / (2.0f * fluctuation) * (
             2.0f * conj(E_loc_E_loc_k - conj(E_loc) * E_loc_k) - 2.0f * (conj(E_loc) * E_loc_O_k)

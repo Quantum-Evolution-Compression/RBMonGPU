@@ -3,6 +3,7 @@
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiCache.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
+#include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
 #ifdef __CUDACC__
@@ -35,13 +36,12 @@ public:
     static constexpr unsigned int  max_N = MAX_SPINS;
     static constexpr unsigned int  max_M = MAX_HIDDEN_SPINS;
 
-    unsigned int    num_active_params;
+    unsigned int   num_params;
     float          prefactor;
 
     complex_t* a;
     complex_t* b;
     complex_t* W;
-    complex_t* n;
 
 // #ifdef __CUDACC__
     using Angles = rbm_on_gpu::PsiAngles;
@@ -202,17 +202,12 @@ public:
 
     HDINLINE
     unsigned int get_num_params() const {
-        return this->num_active_params + this->M;
-    }
-
-    HDINLINE
-    unsigned int get_num_active_params() const {
-        return this->num_active_params;
+        return this->num_params;
     }
 
     HDINLINE
     static unsigned int get_num_params(const unsigned int N, const unsigned int M) {
-        return N + M + N * M + M;
+        return N + M + N * M;
     }
 
 #ifdef __CUDACC__
@@ -252,9 +247,9 @@ public:
     HDINLINE
     void foreach_O_k(const Spins& spins, const Derivatives& derivatives, Function function) const {
         #ifdef __CUDA_ARCH__
-        for(auto k = threadIdx.x; k < this->num_active_params; k += blockDim.x)
+        for(auto k = threadIdx.x; k < this->num_params; k += blockDim.x)
         #else
-        for(auto k = 0u; k < this->num_active_params; k++)
+        for(auto k = 0u; k < this->num_params; k++)
         #endif
         {
             function(k, this->get_O_k_element(k, spins, derivatives));
@@ -274,52 +269,33 @@ public:
 class Psi : public kernel::Psi {
 public:
     bool gpu;
+    Array<complex_t> a_array;
+    Array<complex_t> b_array;
+    Array<complex_t> W_array;
+
+    vector<pair<int, int>> index_pair_list;
 
 public:
-    Psi(const unsigned int N, const unsigned int M, const bool gpu=true);
-    Psi(const unsigned int N, const unsigned int M, const int seed=0, const float noise=1e-4, const bool gpu=true);
+    Psi(const unsigned int N, const unsigned int M, const int seed, const float noise, const bool gpu);
     Psi(
         const unsigned int N,
         const unsigned int M,
         const std::complex<float>* a,
         const std::complex<float>* b,
         const std::complex<float>* W,
-        const std::complex<float>* n,
-        const float prefactor=1.0f,
-        const bool gpu=true
+        const float prefactor,
+        const bool gpu
     );
+    Psi(const Psi& other);
 
 #ifdef __PYTHONCC__
     Psi(
         const xt::pytensor<std::complex<float>, 1u>& a,
         const xt::pytensor<std::complex<float>, 1u>& b,
         const xt::pytensor<std::complex<float>, 2u>& W,
-        const xt::pytensor<std::complex<float>, 1u>& n,
-        const float prefactor=1.0f,
-        const bool gpu=true
-    ) : gpu(gpu) {
-        this->N = a.shape()[0];
-        this->M = b.shape()[0];
-        this->prefactor = prefactor;
-
-        this->num_active_params = this->N + this->M + this->N * this->M;
-
-        this->allocate_memory();
-        this->update_params(
-            a.data(), b.data(), W.data(), n.data()
-        );
-    }
-
-    void update_params(
-        const xt::pytensor<std::complex<float>, 1u>& a,
-        const xt::pytensor<std::complex<float>, 1u>& b,
-        const xt::pytensor<std::complex<float>, 2u>& W,
-        const xt::pytensor<std::complex<float>, 1u>& n
-    ) {
-        this->update_params(
-            a.data(), b.data(), W.data(), n.data()
-        );
-    }
+        const float prefactor,
+        const bool gpu
+    ) : Psi(a.shape()[0], b.shape()[0], a.data(), b.data(), W.data(), prefactor, gpu) {}
 
     xt::pytensor<complex<float>, 1> as_vector_py() const {
         auto result = xt::pytensor<complex<float>, 1>(
@@ -332,40 +308,47 @@ public:
 
     xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) const {
         auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_active_params)})
+            std::array<long int, 1>({static_cast<long int>(this->num_params)})
         );
         this->O_k_vector(result.data(), spins);
 
         return result;
     }
 
-#endif
-    Psi(const Psi& other);
-    ~Psi() noexcept(false);
-
-    inline bool on_gpu() const {
-        return this->gpu;
+    Psi copy() const {
+        return *this;
     }
 
-    void update_params(
-        const std::complex<float>* a,
-        const std::complex<float>* b,
-        const std::complex<float>* W,
-        const std::complex<float>* n,
-        const bool ptr_on_gpu=false
-    );
+    xt::pytensor<complex<float>, 1> get_params_py() const {
+        auto result = xt::pytensor<complex<float>, 1>(
+            std::array<long int, 1>({static_cast<long int>(this->num_params)})
+        );
+        this->get_params(result.data());
 
-    void as_vector(complex<float>* result) const;
-    void O_k_vector(complex<float>* result, const Spins& spins) const;
-    float norm_function(const ExactSummation& exact_summation) const;
-    std::complex<float> log_psi_s_std(const Spins& spins);
+        return result;
+    }
+
+    void set_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
+        this->set_params(new_params.data());
+    }
 
     unsigned int get_num_params_py() const {
         return this->get_num_params();
     }
 
-private:
-    void allocate_memory();
+#endif // __PYTHONCC__
+
+    void as_vector(complex<float>* result) const;
+    void O_k_vector(complex<float>* result, const Spins& spins) const;
+    float norm_function(const ExactSummation& exact_summation) const;
+    complex<float> log_psi_s_std(const Spins& spins);
+
+    void get_params(complex<float>* result) const;
+    // vector<complex_t> get_params(complex_t* result) const;
+    void set_params(const complex<float>* new_params);
+
+    void update_kernel();
+    void create_index_pairs();
 };
 
 } // namespace rbm_on_gpu

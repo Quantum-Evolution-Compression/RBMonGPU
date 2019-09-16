@@ -9,9 +9,9 @@ class L2Regularization:
         self.reference_complexity = self.complexity(psi0)
 
     def complexity(self, psi):
-        active_params = psi.active_params.real
-        active_params[abs(active_params) < 4e-3] = 0
-        return np.sum(active_params**2)
+        params = psi.params.real
+        params[abs(params) < 4e-3] = 0
+        return np.sum(params**2)
 
     def relative_complexity(self, psi):
         return self.complexity(psi) / self.reference_complexity
@@ -20,13 +20,13 @@ class L2Regularization:
         return self.lambda0 * self.gamma**step
 
     def gradient(self, step, psi):
-        active_params = psi.active_params.real
-        active_params[abs(active_params) < 4e-3] = 0
+        params = psi.params.real
+        params[abs(params) < 4e-3] = 0
 
         x = self.relative_complexity(psi) - 1
 
         return (
-            self.lambda_(step) * (1 if x > 0 else -1 / 10) * 2 * active_params
+            self.lambda_(step) * (1 if x > 0 else -1 / 10) * 2 * params
         )
 
     def cost(self, step, psi):

@@ -60,7 +60,7 @@ public:
         const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
     ) const {
         auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
+            std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
         );
 
         const auto expectation_value = this->gradient(result.data(), psi, operator_, spin_ensemble);
@@ -73,7 +73,7 @@ public:
         const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
     ) const {
         auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
+            std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
         );
 
         this->fluctuation_gradient(result.data(), psi, operator_, spin_ensemble);

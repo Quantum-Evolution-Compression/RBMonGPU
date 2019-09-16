@@ -13,6 +13,7 @@
 #include <pybind11/stl.h>
 
 #define FORCE_IMPORT_ARRAY
+#include "xtensor/xadapt.hpp"
 #include <xtensor-python/pytensor.hpp>
 
 #include <iostream>
@@ -27,6 +28,20 @@ using namespace pybind11::literals;
 template<unsigned int dim>
 using complex_tensor = xt::pytensor<std::complex<float>, dim>;
 
+template<unsigned int dim>
+using shape_t = array<long int, dim>;
+
+template<unsigned int dim>
+inline complex_tensor<dim> adapt(const vector<complex_t>& vec, shape_t<dim> shape={}) {
+    if(shape == shape_t<dim>()) {
+        shape[0] = (long int)vec.size();
+    }
+
+    complex_tensor<dim> result(shape);
+    memcpy(result.data(), vec.data(), sizeof(complex_t) * vec.size());
+    return result;
+}
+
 // Python Module and Docstrings
 
 PYBIND11_MODULE(_pyRBMonGPU, m)
@@ -38,19 +53,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const complex_tensor<1u>&,
             const complex_tensor<1u>&,
             const complex_tensor<2u>&,
-            const complex_tensor<1u>&,
             const float,
             const bool
         >())
-        .def(
-            "update_params",
-            py::overload_cast<
-                const complex_tensor<1u>&,
-                const complex_tensor<1u>&,
-                const complex_tensor<2u>&,
-                const complex_tensor<1u>&
-            >(&Psi::update_params)
-        )
+        .def("copy", &Psi::copy)
         .def_property_readonly("vector", &Psi::as_vector_py)
         .def("norm", &Psi::norm_function)
         .def("O_k_vector", &Psi::O_k_vector_py)
@@ -58,9 +64,25 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("gpu", &Psi::gpu)
         .def_readonly("N", &Psi::N)
         .def_readonly("M", &Psi::M)
-        .def_property_readonly("num_params", &Psi::get_num_params_py)
-        .def_readonly("num_active_params", &Psi::num_active_params)
-        .def_property_readonly("num_angles", &Psi::get_num_angles);
+        .def_property(
+            "a",
+            [](const Psi& psi){return adapt<1u>(psi.a_array);},
+            [](Psi& psi, const complex_tensor<1u>& input) {psi.a_array = input; psi.update_kernel();}
+        )
+        .def_property(
+            "b",
+            [](const Psi& psi){return adapt<1u>(psi.b_array);},
+            [](Psi& psi, const complex_tensor<1u>& input) {psi.b_array = input; psi.update_kernel();}
+        )
+        .def_property(
+            "W",
+            [](const Psi& psi){return adapt<2u>(psi.W_array, shape_t<2u>{psi.N, psi.M});},
+            [](Psi& psi, const complex_tensor<2u>& input) {psi.W_array = input; psi.update_kernel();}
+        )
+        .def_readonly("num_params", &Psi::num_params)
+        .def_property("params", &Psi::get_params_py, &Psi::set_params_py)
+        .def_property_readonly("num_angles", &Psi::get_num_angles)
+        .def_readonly("index_pairs", &Psi::index_pair_list);
 
     py::class_<PsiDynamical::Link>(m, "PsiDynamical_Link")
         .def_readonly("first_spin", &PsiDynamical::Link::first_spin)
@@ -83,8 +105,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("M", &PsiDynamical::M)
         .def_readonly("spin_weights", &PsiDynamical::spin_weights)
         .def_property_readonly("num_params", &PsiDynamical::get_num_params_py)
-        .def_readonly("num_active_params", &PsiDynamical::num_active_params)
-        .def_property("active_params", &PsiDynamical::get_active_params_py, &PsiDynamical::set_active_params_py)
+        .def_readonly("num_params", &PsiDynamical::num_params)
+        .def_property("params", &PsiDynamical::get_params_py, &PsiDynamical::set_params_py)
         .def_readonly("links", &PsiDynamical::links)
         .def_property("a", &PsiDynamical::a_py, &PsiDynamical::set_a_py)
         .def_property_readonly("b", &PsiDynamical::b_py)
@@ -125,7 +147,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<ExactSummation>(m, "ExactSummation")
         .def(py::init<unsigned int, bool>())
         .def("set_total_z_symmetry", &ExactSummation::set_total_z_symmetry)
-        // .def("copy", &ExactSummation::copy)
         .def_property_readonly("num_steps", &ExactSummation::get_num_steps);
 
         py::class_<ExpectationValue>(m, "ExpectationValue")

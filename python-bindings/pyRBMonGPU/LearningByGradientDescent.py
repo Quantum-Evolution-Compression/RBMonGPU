@@ -26,7 +26,7 @@ class LearningByGradientDescent:
         self.gpu = psi.gpu
         self.mc = type(spin_ensemble) is pyRBMonGPU.MonteCarloLoop
         self.spin_ensemble = spin_ensemble
-        self.num_params = psi.num_active_params
+        self.num_params = psi.num_params
         self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(self.num_params, psi.gpu)
         self.expectation_value = pyRBMonGPU.ExpectationValue(self.gpu)
         self.regularization = None
@@ -60,7 +60,9 @@ class LearningByGradientDescent:
         graph = self.graph
         return graph[-1] - graph[0] < -0.05
 
-    def has_converged(self, x, threshold=4e-3):
+    def has_converged(self, x, threshold=None):
+        threshold = threshold or (3e-3 if self.mc else 1e-3)
+
         smoothed_x = self.smoothed(x)
         return abs(smoothed_x[0] - smoothed_x[-1]) < threshold
 
@@ -68,7 +70,7 @@ class LearningByGradientDescent:
         stack_size = 3
 
         if not hasattr(self, "last_params_stack"):
-            self.last_params_stack = np.empty((stack_size, self.psi.num_active_params), dtype=complex)
+            self.last_params_stack = np.empty((stack_size, self.psi.num_params), dtype=complex)
             self.last_params_idx = 0
 
         self.last_params_stack[self.last_params_idx] = params
@@ -82,7 +84,7 @@ class LearningByGradientDescent:
         # if self.mc:
         #     self.push_params(params)
 
-        self.psi.active_params = params
+        self.psi.params = params
         if not self.mc:
             self.psi.normalize(self.spin_ensemble)
 
@@ -100,10 +102,13 @@ class LearningByGradientDescent:
 
             self.distance_history.append(distance)
         elif self.mode == modes.groundstate:
-            gradient, energy = self.expectation_value.gradient(self.psi, self.operator, self.spin_ensemble)
-            if self.record_fluctuations:
-                delta_energy, energy = self.expectation_value.fluctuation(self.psi, self.operator, self.spin_ensemble)
-                self.delta_energy_history.append(delta_energy)
+            if self.imaginary_time_evolution:
+                gradient, distance = self.hilbert_space_distance.gradient(self.psi, self.psi, self.opt_operator, True, self.spin_ensemble)
+            else:
+                gradient, energy = self.expectation_value.gradient(self.psi, self.operator, self.spin_ensemble)
+
+            delta_energy, energy = self.expectation_value.fluctuation(self.psi, self.operator, self.spin_ensemble)
+            self.delta_energy_history.append(delta_energy)
 
             energy = energy.real
             self.energy_history.append(energy)
@@ -115,7 +120,7 @@ class LearningByGradientDescent:
                 )
                 distances.append(distance)
 
-                gradient -= 2 * max(1, min(10, math.log(distance.real))) * es_gradient
+                gradient -= self.level_repulsion * max(1, min(10, math.log(distance.real))) * es_gradient
 
             self.excluded_states_distances.append(distances)
 
@@ -129,7 +134,7 @@ class LearningByGradientDescent:
         epsilon = 0.1
         beta1 = 0.9
         beta2 = 0.99
-        psi0_params = self.psi0.active_params
+        psi0_params = self.psi0.params
 
         return [
             {
@@ -198,18 +203,23 @@ class LearningByGradientDescent:
 
         return result
 
-    def find_low_laying_state(self, psi_init, operator, excluded_states=[], eta=1e-3, record_fluctuations=False, avoid_correlations=0):
+    def find_low_laying_state(
+        self, psi_init, operator, excluded_states=[], eta=1e-4, avoid_correlations=0,
+        level_repulsion=1, imaginary_time_evolution=True, max_steps=1500
+    ):
         self.psi0 = psi_init
         self.psi = +psi_init
         self.identity = Operator(PauliExpression(0, 0), self.gpu)
         self.operator = Operator(operator, self.gpu)
+        self.opt_operator = Operator(1 - 0.1 * operator, self.gpu)
         self.excluded_states = excluded_states
         self.energy_history = []
         self.delta_energy_history = []
         self.mode = modes.groundstate
-        self.record_fluctuations = record_fluctuations
+        self.imaginary_time_evolution = imaginary_time_evolution
         self.excluded_states_distances = []
         self.avoid_correlations = avoid_correlations
+        self.level_repulsion = level_repulsion
 
         algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
         algorithm_iter = algorithm["iter"]()
@@ -217,7 +227,7 @@ class LearningByGradientDescent:
         steps = 200
         list(islice(algorithm_iter, steps))
 
-        while steps < 1500 and not self.has_converged(self.energy_history):
+        while steps < max_steps and not self.has_converged(self.energy_history):
             list(islice(algorithm_iter, 100))
             steps += 100
 
@@ -249,7 +259,7 @@ class LearningByGradientDescent:
             if (
                 initial_distance > 2e-4 and self.smoothed_distance_history[-1] / initial_distance > 0.1
             ):
-                params_at_mark_A = self.psi.active_params
+                params_at_mark_A = self.psi.params
                 self.gradient_prefactor = 1 / 2 if self.is_highly_fluctuating else 2
                 list(islice(algorithm_iter, 300))
                 num_steps += 300
@@ -258,10 +268,10 @@ class LearningByGradientDescent:
                     num_steps += 200
 
                 if self.smoothed_distance_history[-1] / initial_distance > 0.1:
-                    self.psi.active_params = params_at_mark_A
+                    self.psi.params = params_at_mark_A
 
             # if self.smoothed_distance_history[-1] >= initial_distance:
-            #     self.save_gd_report(algorithm, self.psi0.active_params, eta)
+            #     self.save_gd_report(algorithm, self.psi0.params, eta)
 
             print(self.smoothed_distance_history[-1] / initial_distance)
 
@@ -269,7 +279,7 @@ class LearningByGradientDescent:
             # final_distance = self.smoothed_distance_history[-1]
 
             # final_distances.append(final_distance)
-            # final_params.append(self.last_params_avg if self.mc else self.psi.active_params)
+            # final_params.append(self.last_params_avg if self.mc else self.psi.params)
 
             # if print_result:
             #     print(algorithm["name"], final_distance)
@@ -279,17 +289,17 @@ class LearningByGradientDescent:
             #     (initial_distance <= 2e-4 and final_distance < initial_distance)
             # ):
             #     best_algorithm_idx = min(range(len(final_params)), key=lambda i: final_distances[i])
-            #     self.psi.active_params = final_params[best_algorithm_idx]
+            #     self.psi.params = final_params[best_algorithm_idx]
             #     return
 
-            # self.save_gd_report(algorithm, self.psi0.active_params, eta)
+            # self.save_gd_report(algorithm, self.psi0.params, eta)
 
             # print(f"[{algorithm['name']}] gradient descent did not converge in {num_steps} steps")
             # print(algorithm["name"], final_distance)
             # print_result = True
 
         print("All gradient descent algorithms failed")
-        self.psi.active_params = self.psi0.active_params
+        self.psi.params = self.psi0.params
         raise DidNotConverge()
 
     def optimize_for(self, psi, operator, is_unitary=False, regularization=None, eta=None):

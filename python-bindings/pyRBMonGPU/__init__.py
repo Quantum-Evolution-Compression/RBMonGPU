@@ -1,5 +1,4 @@
 from ._pyRBMonGPU import (
-    Psi,
     Operator,
     Spins,
     MonteCarloLoop,
@@ -9,13 +8,14 @@ from ._pyRBMonGPU import (
     setDevice
 )
 
+from .Psi import Psi
 from .PsiDynamical import PsiDynamical
 
-from .fresh_neural_network import (
+from .new_neural_network import (
     new_neural_network,
     add_hidden_spin,
     add_hidden_layer,
-    fresh_neural_network
+    new_static_neural_network
 )
 
 from .LearningByGradientDescent import LearningByGradientDescent

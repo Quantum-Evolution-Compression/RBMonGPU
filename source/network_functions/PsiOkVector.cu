@@ -11,7 +11,7 @@ namespace rbm_on_gpu {
 template<typename Psi_t>
 void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins) {
     complex_t* result_ptr;
-    auto O_k_length = psi.get_num_active_params();
+    auto O_k_length = psi.get_num_params();
     auto psi_kernel = psi.get_kernel();
 
     MALLOC(result_ptr, sizeof(complex_t) * O_k_length, psi.gpu);
@@ -52,7 +52,7 @@ void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins
 
 template<typename Psi_t, typename SpinEnsemble>
 void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
-    const auto O_k_length = psi.get_num_active_params();
+    const auto O_k_length = psi.get_num_params();
     const auto psi_kernel = psi.get_kernel();
 
     complex_t* result_device;

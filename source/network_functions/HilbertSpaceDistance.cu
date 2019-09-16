@@ -17,7 +17,7 @@ void kernel::HilbertSpaceDistance::compute_averages(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) const {
-    const auto O_k_length = psi_prime.get_num_active_params();
+    const auto O_k_length = psi_prime.get_num_params();
 
     MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
     MEMSET(this->omega_O_k_avg, 0, sizeof(complex_t) * O_k_length, this->gpu)
@@ -169,7 +169,7 @@ float HilbertSpaceDistance::gradient(
 
     complex<float> omega_avg_host;
     float probability_ratio_avg_host;
-    const auto O_k_length = psi_prime.get_num_active_params();
+    const auto O_k_length = psi_prime.get_num_params();
     float next_state_norm_avg_host;
 
     MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);

@@ -27,10 +27,10 @@ inline pair<xt::pytensor<complex<float>, 1>, xt::pytensor<complex<float>, 1>> ps
     const Psi_t& psi, const SpinEnsemble& spin_ensemble
 ) {
     auto result = xt::pytensor<complex<float>, 1>(
-        std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
+        std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
     );
     auto result_std = xt::pytensor<complex<float>, 1>(
-        std::array<long int, 1>({static_cast<long int>(psi.get_num_active_params())})
+        std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
     );
 
     psi_O_k_vector(result.data(), result_std.data(), psi, spin_ensemble);
