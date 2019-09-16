@@ -85,6 +85,11 @@ struct Array : public vector<T>, public kernel::Array<T> {
         this->update_device();
         return *this;
     }
+
+    template<long unsigned int dim>
+    inline Array<T>(const xt::pytensor<std::complex<float>, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
+        (*this) = python_vec;
+    }
 #endif // __PYTHONCC__
 };
 

@@ -46,32 +46,6 @@ Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const float
     this->create_index_pairs();
 }
 
-Psi::Psi(
-    const unsigned int N,
-    const unsigned int M,
-    const std::complex<float>* a_host,
-    const std::complex<float>* b_host,
-    const std::complex<float>* W_host,
-    const float prefactor,
-    const bool gpu
-) : a_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
-    this->N = N;
-    this->M = M;
-    this->prefactor = prefactor;
-    this->num_params = N + M + N * M;
-
-    memcpy(this->a_array.host_data(), a_host, sizeof(complex_t) * N);
-    memcpy(this->b_array.host_data(), b_host, sizeof(complex_t) * M);
-    memcpy(this->W_array.host_data(), W_host, sizeof(complex_t) * N * M);
-
-    this->a_array.update_device();
-    this->b_array.update_device();
-    this->W_array.update_device();
-
-    this->update_kernel();
-    this->create_index_pairs();
-}
-
 Psi::Psi(const Psi& other)
     :
     a_array(other.a_array),

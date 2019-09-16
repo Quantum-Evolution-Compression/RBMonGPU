@@ -268,34 +268,33 @@ public:
 
 class Psi : public kernel::Psi {
 public:
-    bool gpu;
     Array<complex_t> a_array;
     Array<complex_t> b_array;
     Array<complex_t> W_array;
+    bool gpu;
 
     vector<pair<int, int>> index_pair_list;
 
 public:
     Psi(const unsigned int N, const unsigned int M, const int seed, const float noise, const bool gpu);
-    Psi(
-        const unsigned int N,
-        const unsigned int M,
-        const std::complex<float>* a,
-        const std::complex<float>* b,
-        const std::complex<float>* W,
-        const float prefactor,
-        const bool gpu
-    );
     Psi(const Psi& other);
 
 #ifdef __PYTHONCC__
-    Psi(
+    inline Psi(
         const xt::pytensor<std::complex<float>, 1u>& a,
         const xt::pytensor<std::complex<float>, 1u>& b,
         const xt::pytensor<std::complex<float>, 2u>& W,
         const float prefactor,
         const bool gpu
-    ) : Psi(a.shape()[0], b.shape()[0], a.data(), b.data(), W.data(), prefactor, gpu) {}
+    ) : a_array(a, gpu), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
+        this->N = a.shape()[0];
+        this->M = b.shape()[0];
+        this->prefactor = prefactor;
+        this->num_params = N + M + N * M;
+
+        this->update_kernel();
+        this->create_index_pairs();
+    }
 
     xt::pytensor<complex<float>, 1> as_vector_py() const {
         auto result = xt::pytensor<complex<float>, 1>(
