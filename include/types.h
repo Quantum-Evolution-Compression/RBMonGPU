@@ -15,6 +15,7 @@
 #include <sstream>
 #include <fstream>
 #include <cstring>
+#include <array>
 
 
 namespace rbm_on_gpu {
@@ -22,6 +23,8 @@ namespace rbm_on_gpu {
 using namespace std;
 
 using complex_t = cuda_complex::complex<float>;
+template<unsigned int dim>
+using shape_t = array<long int, dim>;
 
 void setDevice(int device);
 

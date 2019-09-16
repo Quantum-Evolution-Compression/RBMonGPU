@@ -28,20 +28,6 @@ using namespace pybind11::literals;
 template<unsigned int dim>
 using complex_tensor = xt::pytensor<std::complex<float>, dim>;
 
-template<unsigned int dim>
-using shape_t = array<long int, dim>;
-
-template<unsigned int dim>
-inline complex_tensor<dim> adapt(const vector<complex_t>& vec, shape_t<dim> shape={}) {
-    if(shape == shape_t<dim>()) {
-        shape[0] = (long int)vec.size();
-    }
-
-    complex_tensor<dim> result(shape);
-    memcpy(result.data(), vec.data(), sizeof(complex_t) * vec.size());
-    return result;
-}
-
 // Python Module and Docstrings
 
 PYBIND11_MODULE(_pyRBMonGPU, m)
@@ -66,17 +52,17 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("M", &Psi::M)
         .def_property(
             "a",
-            [](const Psi& psi){return adapt<1u>(psi.a_array);},
+            [](const Psi& psi){return psi.a_array.to_pytensor<1u>();},
             [](Psi& psi, const complex_tensor<1u>& input) {psi.a_array = input; psi.update_kernel();}
         )
         .def_property(
             "b",
-            [](const Psi& psi){return adapt<1u>(psi.b_array);},
+            [](const Psi& psi){return psi.b_array.to_pytensor<1u>();},
             [](Psi& psi, const complex_tensor<1u>& input) {psi.b_array = input; psi.update_kernel();}
         )
         .def_property(
             "W",
-            [](const Psi& psi){return adapt<2u>(psi.W_array, shape_t<2u>{psi.N, psi.M});},
+            [](const Psi& psi){return psi.a_array.to_pytensor<2u>(shape_t<2u>{psi.N, psi.M});},
             [](Psi& psi, const complex_tensor<2u>& input) {psi.W_array = input; psi.update_kernel();}
         )
         .def_readonly("num_params", &Psi::num_params)

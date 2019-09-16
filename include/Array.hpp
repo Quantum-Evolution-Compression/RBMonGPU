@@ -90,6 +90,19 @@ struct Array : public vector<T>, public kernel::Array<T> {
     inline Array<T>(const xt::pytensor<std::complex<float>, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
         (*this) = python_vec;
     }
+
+    template<unsigned int dim>
+    inline xt::pytensor<std::complex<float>, dim> to_pytensor(shape_t<dim> shape={}) const {
+        static_assert(is_same<T, complex_t>::value);
+
+        if(shape == shape_t<dim>()) {
+            shape[0] = (long int)this->size();
+        }
+
+        xt::pytensor<std::complex<float>, dim> result(shape);
+        memcpy(result.data(), this->host_data(), sizeof(complex_t) * this->size());
+        return result;
+    }
 #endif // __PYTHONCC__
 };
 
