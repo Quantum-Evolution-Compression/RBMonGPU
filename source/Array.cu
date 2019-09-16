@@ -9,9 +9,18 @@ namespace rbm_on_gpu {
 
 template<typename T>
 Array<T>::Array(const size_t& size, const bool gpu) : vector<T>(size), gpu(gpu) {
-    cout << "Array constr " << gpu << endl;
     if(gpu) {
         MALLOC(this->device, sizeof(T) * size, true);
+    }
+}
+
+template<typename T>
+Array<T>::Array(const Array<T>& other)
+    : vector<T>(other), gpu(other.gpu)
+{
+    if(gpu) {
+        MALLOC(this->device, sizeof(T) * this->size(), true);
+        MEMCPY(this->device, other.device, sizeof(T) * this->size(), true, true);
     }
 }
 

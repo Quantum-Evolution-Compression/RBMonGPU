@@ -287,7 +287,6 @@ public:
         const bool gpu
     );
     Psi(const Psi& other);
-    ~Psi() noexcept(false);
 
 #ifdef __PYTHONCC__
     Psi(

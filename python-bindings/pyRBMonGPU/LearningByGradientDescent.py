@@ -120,7 +120,7 @@ class LearningByGradientDescent:
                 )
                 distances.append(distance)
 
-                gradient -= self.repulsion * max(1, min(10, math.log(distance.real))) * es_gradient
+                gradient -= self.level_repulsion * max(1, min(10, math.log(distance.real))) * es_gradient
 
             self.excluded_states_distances.append(distances)
 
@@ -205,7 +205,7 @@ class LearningByGradientDescent:
 
     def find_low_laying_state(
         self, psi_init, operator, excluded_states=[], eta=1e-4, avoid_correlations=0,
-        repulsion=1, imaginary_time_evolution=True, max_steps=1500
+        level_repulsion=1, imaginary_time_evolution=True, max_steps=1500
     ):
         self.psi0 = psi_init
         self.psi = +psi_init
@@ -219,7 +219,7 @@ class LearningByGradientDescent:
         self.imaginary_time_evolution = imaginary_time_evolution
         self.excluded_states_distances = []
         self.avoid_correlations = avoid_correlations
-        self.repulsion = repulsion
+        self.level_repulsion = level_repulsion
 
         algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
         algorithm_iter = algorithm["iter"]()

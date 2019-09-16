@@ -38,6 +38,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
     bool gpu;
 
     Array(const size_t& size, const bool gpu);
+    Array(const Array<T>& other);
     ~Array() noexcept(false);
 
     inline T* data() {
@@ -68,6 +69,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
 
     inline Array& operator=(const Array& other) {
         (vector<T>)(*this) = other;
+        this->update_device();
         return *this;
     }
 
@@ -80,6 +82,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
     inline Array<T>& operator=(const xt::pytensor<std::complex<float>, dim>& python_vec) {
         static_assert(is_same<T, complex_t>::value);
         memcpy(this->host_data(), python_vec.data(), sizeof(std::complex<float>) * this->size());
+        this->update_device();
         return *this;
     }
 #endif // __PYTHONCC__
