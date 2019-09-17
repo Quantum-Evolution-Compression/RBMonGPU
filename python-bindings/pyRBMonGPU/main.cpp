@@ -62,7 +62,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         )
         .def_property(
             "W",
-            [](const Psi& psi){return psi.a_array.to_pytensor<2u>(shape_t<2u>{psi.N, psi.M});},
+            [](const Psi& psi){return psi.W_array.to_pytensor<2u>(shape_t<2u>{psi.N, psi.M});},
             [](Psi& psi, const complex_tensor<2u>& input) {psi.W_array = input; psi.update_kernel();}
         )
         .def_readonly("num_params", &Psi::num_params)

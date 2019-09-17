@@ -343,7 +343,6 @@ public:
     complex<float> log_psi_s_std(const Spins& spins);
 
     void get_params(complex<float>* result) const;
-    // vector<complex_t> get_params(complex_t* result) const;
     void set_params(const complex<float>* new_params);
 
     void update_kernel();

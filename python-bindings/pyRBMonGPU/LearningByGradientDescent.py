@@ -103,7 +103,9 @@ class LearningByGradientDescent:
             self.distance_history.append(distance)
         elif self.mode == modes.groundstate:
             if self.imaginary_time_evolution:
-                gradient, distance = self.hilbert_space_distance.gradient(self.psi, self.psi, self.opt_operator, True, self.spin_ensemble)
+                gradient, distance = self.hilbert_space_distance.gradient(
+                    self.psi, self.psi, self.opt_operator, True, self.spin_ensemble
+                )
             else:
                 gradient, energy = self.expectation_value.gradient(self.psi, self.operator, self.spin_ensemble)
 
@@ -124,8 +126,8 @@ class LearningByGradientDescent:
 
             self.excluded_states_distances.append(distances)
 
-        if step < 100:
-            gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
+        # if step < 100:
+        #     gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
 
         return gradient
 
@@ -205,7 +207,7 @@ class LearningByGradientDescent:
 
     def find_low_laying_state(
         self, psi_init, operator, excluded_states=[], eta=1e-4, avoid_correlations=0,
-        level_repulsion=1, imaginary_time_evolution=True, max_steps=1500
+        level_repulsion=1, imaginary_time_evolution=True, min_steps=200, max_steps=1500
     ):
         self.psi0 = psi_init
         self.psi = +psi_init
@@ -224,8 +226,8 @@ class LearningByGradientDescent:
         algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
         algorithm_iter = algorithm["iter"]()
 
-        steps = 200
-        list(islice(algorithm_iter, steps))
+        steps = min_steps
+        list(islice(algorithm_iter, min_steps))
 
         while steps < max_steps and not self.has_converged(self.energy_history):
             list(islice(algorithm_iter, 100))
