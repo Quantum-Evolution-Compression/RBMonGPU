@@ -245,10 +245,17 @@ public:
 
     template<typename Function>
     HDINLINE
-    void foreach_O_k(const Spins& spins, const Derivatives& derivatives, Function function) const {
+    void foreach_O_k(const Spins& spins, const Angles& angles, Function function) const {
         #ifdef __CUDA_ARCH__
+        __shared__ Derivatives derivatives;
+        derivatives.init(*this, angles);
+        __syncthreads();
+
         for(auto k = threadIdx.x; k < this->num_params; k += blockDim.x)
         #else
+        Derivatives derivatives;
+        derivatives.init(*this, angles);
+
         for(auto k = 0u; k < this->num_params; k++)
         #endif
         {
@@ -256,6 +263,7 @@ public:
         }
     }
 
+    // TODO: change to Psi&
     Psi get_kernel() const {
         return *this;
     }

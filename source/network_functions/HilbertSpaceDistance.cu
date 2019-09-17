@@ -78,14 +78,9 @@ void kernel::HilbertSpaceDistance::compute_averages(
             }
 
             if(compute_gradient) {
-                SHARED typename Psi_t::Derivatives psi_derivatives;
-                psi_derivatives.init(psi_prime_kernel, angles_prime);
-
-                SYNC;
-
                 psi_prime_kernel.foreach_O_k(
                     spins,
-                    psi_derivatives,
+                    angles_prime,
                     [&](const unsigned int k, const complex_t& O_k_element) {
                         generic_atomicAdd(&this_.omega_O_k_avg[k], weight * omega * conj(O_k_element));
                         generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * 2.0f * conj(O_k_element));

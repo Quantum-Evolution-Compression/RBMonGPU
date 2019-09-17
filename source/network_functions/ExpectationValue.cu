@@ -158,10 +158,6 @@ complex<float> ExpectationValue::gradient(
             SHARED complex_t local_energy;
             op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED typename Psi_t::Derivatives psi_derivatives;
-            psi_derivatives.init(psi_kernel, angles);
-
-            SYNC;
             SINGLE
             {
                 generic_atomicAdd(E_loc_ptr, weight * local_energy);
@@ -169,7 +165,7 @@ complex<float> ExpectationValue::gradient(
 
             psi_kernel.foreach_O_k(
                 spins,
-                psi_derivatives,
+                angles,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&O_k_ptr[k], weight * O_k_element);
                     generic_atomicAdd(&E_loc_O_k_ptr[k], weight * local_energy * conj(O_k_element));
@@ -247,10 +243,6 @@ void ExpectationValue::fluctuation_gradient(complex<float>* result, const Psi_t&
             SHARED complex_t local_energy;
             op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED typename Psi_t::Derivatives psi_derivatives;
-            psi_derivatives.init(psi_kernel, angles);
-
-            SYNC;
             SINGLE
             {
                 generic_atomicAdd(E_loc_ptr, weight * local_energy);
@@ -259,7 +251,7 @@ void ExpectationValue::fluctuation_gradient(complex<float>* result, const Psi_t&
 
             psi_kernel.foreach_O_k(
                 spins,
-                psi_derivatives,
+                angles,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&O_k_ptr[k], weight * O_k_element);
                     generic_atomicAdd(&E_loc_O_k_ptr[k], weight * local_energy * conj(O_k_element));

@@ -22,16 +22,9 @@ void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins
         SHARED typename Psi_t::Angles angles;
         angles.init(psi_kernel, spins);
 
-        SHARED typename Psi_t::Derivatives psi_derivatives;
-        psi_derivatives.init(psi_kernel, angles);
-
-        #ifdef __CUDA_ARCH__
-        __syncthreads();
-        #endif
-
         psi_kernel.foreach_O_k(
             spins,
-            psi_derivatives,
+            angles,
             [&](const unsigned int k, const complex_t& O_k_element) {
                 result_ptr[k] = O_k_element;
             }
@@ -72,18 +65,9 @@ void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Ps
             typename Psi_t::Angles& angles,
             const float weight
         ) {
-            #include "cuda_kernel_defines.h"
-
-            SHARED typename Psi_t::Derivatives psi_derivatives;
-            psi_derivatives.init(psi_kernel, angles);
-
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
-
             psi_kernel.foreach_O_k(
                 spins,
-                psi_derivatives,
+                angles,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     generic_atomicAdd(&result_device[k], weight * O_k_element);
                     const auto O_k_element2 = complex_t(

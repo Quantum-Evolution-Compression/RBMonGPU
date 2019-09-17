@@ -70,8 +70,11 @@ public:
 
     template<typename Function>
     HDINLINE
-    void foreach_O_k(const Spins& spins, const Derivatives& derivatives, Function function) const {
+    void foreach_O_k(const Spins& spins, const Angles& angles, Function function) const {
         #include "cuda_kernel_defines.h"
+
+        SHARED Derivatives derivatives;
+        derivatives.init(*this, angles);
 
         MULTI(j, this->M)
         {

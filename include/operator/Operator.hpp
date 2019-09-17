@@ -146,15 +146,6 @@ public:
         SHARED typename Psi_t::Angles angles_primes;
 
         for(auto n = 0u; n < this->num_strings; n++) {
-            // #ifdef __CUDA_ARCH__
-            // const auto j = threadIdx.x;
-            // if(j < psi.get_num_angles())
-            // #else
-            // for(auto j = 0u; j < psi.get_num_angles(); j++)
-            // #endif
-            // {
-            //     new_angle[j] = angle_ptr[j];
-            // }
             angles_primes.init(psi, angles);
 
             const auto matrix_element = this->nth_matrix_element(
@@ -170,14 +161,9 @@ public:
                 E_s_prime = matrix_element.coefficient * exp(log_psi_prime - log_psi);
             }
 
-            SHARED typename Psi_t::Derivatives derivatives;
-            derivatives.init(psi, angles_primes);
-
-            SYNC;
-
             psi.foreach_O_k(
                 matrix_element.spins,
-                derivatives,
+                angles_primes,
                 [&](const unsigned int k, const complex_t& O_k_element) {
                     function(k, E_s_prime * O_k_element);
                 }
