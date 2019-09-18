@@ -35,7 +35,7 @@ HDINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& su
 
     result += summand;
 
-    #endif;
+    #endif
 }
 
 HDINLINE void tree_sum(float& result, const unsigned int size, float& summand) {

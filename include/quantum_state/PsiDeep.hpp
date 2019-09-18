@@ -1,7 +1,7 @@
 #pragma once
 
 #include "quantum_state/psi_functions.hpp"
-#include "quantum_state/PsiDeepDeepCache.hpp"
+#include "quantum_state/PsiDeepCache.hpp"
 #include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -11,6 +11,7 @@
 #include "cuda_complex.hpp"
 
 #include <vector>
+#include <list>
 #include <complex>
 #include <memory>
 #include <cassert>
@@ -32,8 +33,8 @@ class PsiDeep {
 public:
     using Angles = rbm_on_gpu::PsiDeepAngles;
 
-    constexpr unsigned int max_layers = 5u;
-    constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
+    static constexpr unsigned int max_layers = 5u;
+    static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
 
     struct Layer {
         unsigned int  size;                 // number of units
@@ -65,10 +66,17 @@ public:
 #ifdef __CUDACC__
 
     HDINLINE
-    void forward_pass(const Spins& spins, complex_t* activations_out, complex_t* deep_angles) {
+    void forward_pass(const Spins& spins, complex_t* activations_out, complex_t* deep_angles) const {
         #include "cuda_kernel_defines.h"
 
-        SHARED complex_t activations_in[Angles::max_width];
+        SHARED complex_t activations_memory[Angles::max_width];
+        SHARED complex_t* activations_in;
+
+        SINGLE {
+            activations_in = activations_memory;
+        }
+        SYNC;
+
         MULTI(i, this->get_num_spins()) {
             if(this->num_layers % 2u == 1u) {
                 activations_in[i] = spins[i];
@@ -112,35 +120,59 @@ public:
     }
 
     HDINLINE
-    void log_psi_s(complex_t& result, const Spins& spins, const Angles& cache) const {
+    void log_psi_s(complex_t& result, const Spins& spins, Angles& cache) const {
         // CAUTION: 'result' has to be a shared variable.
 
         this->forward_pass(spins, cache.activations, nullptr);
         const auto final_layer_size = this->layers[this->num_layers - 1u].size;
-        MULTI(j, max(this->N, final_layer_size)) {
-            auto summand = (
-                (j < this->N ? this->a[j] * spins[j] : complex_t(0.0f, 0.0f)) +
-                (j < final_layer_size ? cache.activations[j] : complex_t(0.0f, 0.0f))
-            );
 
-            tree_sum(result, max(this->N, final_layer_size), summand);
+        #ifdef __CUDA_ARCH__
+
+        auto summand = (
+            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0f, 0.0f)) +
+            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0f, 0.0f))
+        );
+        tree_sum(result, max(this->N, final_layer_size), summand);
+
+        #else
+
+        result = complex_t(0.0f, 0.0f);
+        for(auto i = 0u; i < this->N; i++) {
+            result += this->a[i] * spins[i];
         }
+        for(auto j = 0u; j < final_layer_size; j++) {
+            result += cache.activations[j];
+        }
+
+        #endif
     }
 
     HDINLINE
-    void log_psi_s_real(float& result, const Spins& spins, const Angles& cache) const {
+    void log_psi_s_real(float& result, const Spins& spins, Angles& cache) const {
         // CAUTION: 'result' has to be a shared variable.
 
         this->forward_pass(spins, cache.activations, nullptr);
         const auto final_layer_size = this->layers[this->num_layers - 1u].size;
-        MULTI(j, max(this->N, final_layer_size)) {
-            auto summand = float(
-                (j < this->N ? this->a[j] * spins[j] : float(0.0f)) +
-                (j < final_layer_size ? cache.activations[j] : float(0.0f))
-            );
 
-            tree_sum(result, max(this->N, final_layer_size), summand);
+        #ifdef __CUDA_ARCH__
+
+        auto summand = (
+            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0f) +
+            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0f)
+        );
+        tree_sum(result, max(this->N, final_layer_size), summand);
+
+        #else
+
+        result = 0.0f;
+        for(auto i = 0u; i < this->N; i++) {
+            result += this->a[i].real() * spins[i];
         }
+        for(auto j = 0u; j < final_layer_size; j++) {
+            result += cache.activations[j].real();
+        }
+
+        #endif
     }
 
     HDINLINE void flip_spin_of_jth_angle(
@@ -149,7 +181,7 @@ public:
     }
 
     HDINLINE
-    complex_t psi_s(const Spins& spins, const Angles& cache) const {
+    complex_t psi_s(const Spins& spins, Angles& cache) const {
         #include "cuda_kernel_defines.h"
 
         SHARED complex_t log_psi;
@@ -160,7 +192,7 @@ public:
 
     template<typename Function>
     HDINLINE
-    void foreach_O_k(const Spins& spins, const Angles& cache, Function function) const {
+    void foreach_O_k(const Spins& spins, Angles& cache, Function function) const {
         #include "cuda_kernel_defines.h"
 
         MULTI(i, this->N) {
@@ -170,7 +202,7 @@ public:
         SHARED complex_t deep_angles[this->max_deep_angles];
         this->forward_pass(spins, cache.activations, deep_angles);
 
-        for(int layer_idx = this->num_layers - 1; layer_idx >= 0; layer_idx--) {
+        for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
 
             // calculate the unit-activations of the layer.
@@ -186,7 +218,7 @@ public:
                 #ifdef __CUDA_ARCH__
                 complex_t unit_activation(0.0f, 0.0f);
                 #else
-                complex_t unit_activation[max_width];
+                complex_t unit_activation[Angles::max_width];
                 #endif
 
                 SYNC;
@@ -213,7 +245,7 @@ public:
                     unit_activation[i] *=
                     #endif
                     (
-                        my_tanh(deep_angles[layer.begin_angles + i]);
+                        my_tanh(deep_angles[layer.begin_angles + i])
                     );
                 }
                 SYNC;
@@ -230,17 +262,22 @@ public:
                 function(layer.begin_params + j, cache.activations[j]);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+                    const auto lhs_unit_idx = (
+                        (layer.lhs_connection(j) + i) % (
+                            layer_idx == 0u ?
+                            this->N :
+                            this->layers[layer_idx - 1].size
+                        )
+                    );
                     // TODO: check if shared memory solution is faster
                     function(
                         layer.begin_params + layer.size + i * layer.size + j,
                         cache.activations[j] * (
                             layer_idx == 0 ?
-                            spins[i] :
+                            complex_t(spins[lhs_unit_idx], 0.0f) :
                             my_logcosh(
                                 deep_angles[
-                                    (this->layers[layer_idx - 1].begin_angles + i) % (
-                                        this->layers[layer_idx - 1].size
-                                    )
+                                    this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
                                 ]
                             )
                         )
@@ -288,19 +325,22 @@ public:
         Array<complex_t>    bases;
         Array<unsigned int> rhs_connections;
     };
-    vector<Layer> layers;
+    list<Layer> layers;
     bool gpu;
 
     // vector<pair<int, int>> index_pair_list;
 
 public:
     PsiDeep(const PsiDeep& other);
+    inline ~PsiDeep() noexcept(false) {
+        cout << "PsiDeep destr" << endl;
+    }
 
 #ifdef __PYTHONCC__
     inline PsiDeep(
         const xt::pytensor<std::complex<float>, 1u>& a,
-        const vector<xt::pytensor<std::complex<float>, 2u>>& lhs_weights_list,
         const vector<xt::pytensor<std::complex<float>, 1u>> bases_list,
+        const vector<xt::pytensor<std::complex<float>, 2u>>& lhs_weights_list,
         const float prefactor,
         const bool gpu
     ) : a_array(a, gpu), gpu(gpu) {
@@ -311,7 +351,7 @@ public:
         Array<complex_t> rhs_weights_array(0, false);
         Array<unsigned int> rhs_connections_array(0, false);
 
-        for(auto layer_idx = this->num_layers - 1; layer_idx >= 0; layer_idx--) {
+        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const auto& lhs_weights = lhs_weights_list[layer_idx];
             const auto& bases = bases_list[layer_idx];
 
@@ -328,7 +368,7 @@ public:
                 lhs_weights_array
             );
 
-            this->layers.push_back({
+            this->layers.push_front({
                 size,
                 lhs_connectivity,
                 move(lhs_weights_array),
@@ -342,6 +382,25 @@ public:
         }
 
         this->init_kernel();
+
+        cout << "N: " << this->N << endl;
+        cout << "num_layers: " << this->num_layers << endl;
+        cout << "num_params: " << this->num_params << endl;
+        cout << "prefactor: " << this->prefactor << endl;
+        cout << endl;
+
+        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            const auto& layer = kernel::PsiDeep::layers[layer_idx];
+
+            cout << "Layer: " << layer_idx << endl;
+            cout << "size: " << layer.size << endl;
+            cout << "lhs_connectivity: " << layer.lhs_connectivity << endl;
+            cout << "rhs_connectivity: " << layer.rhs_connectivity << endl;
+            cout << "delta: " << layer.delta << endl;
+            cout << "begin_params: " << layer.begin_params << endl;
+            cout << "begin_angles: " << layer.begin_angles << endl;
+            cout << endl;
+        }
     }
 
     PsiDeep copy() const {
@@ -367,7 +426,7 @@ public:
 
 #endif // __PYTHONCC__
 
-    float norm_function(const ExactSummation& exact_summation) const;
+    // float norm_function(const ExactSummation& exact_summation) const;
 
     void get_params(complex<float>* result) const;
     void set_params(const complex<float>* new_params);
@@ -375,6 +434,7 @@ public:
     void init_kernel();
     void update_kernel();
 
+private:
     pair<Array<complex_t>, Array<unsigned int>> compile_rhs_weights_and_connections(
         const unsigned int prev_size,
         const unsigned int size,

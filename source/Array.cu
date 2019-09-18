@@ -24,7 +24,7 @@ Array<T>::Array(const Array<T>& other)
     }
 }
 
-Array<complex_t>
+template<typename T>
 Array<T>::Array(Array<T>&& other)
     : vector<T>(other), gpu(other.gpu)
 {
@@ -85,6 +85,7 @@ void Array<T>::update_device() {
 }
 
 
+template class Array<unsigned int>;
 template class Array<float>;
 template class Array<complex_t>;
 template class Array<Spins>;

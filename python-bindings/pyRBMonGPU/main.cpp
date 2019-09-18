@@ -1,6 +1,7 @@
 #define __PYTHONCC__
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDynamical.hpp"
+#include "quantum_state/PsiDeep.hpp"
 #include "operator/Operator.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
@@ -99,6 +100,20 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("W", &PsiDynamical::dense_W_py)
         .def_property_readonly("num_angles", &PsiDynamical::get_num_angles)
         .def_readonly("index_pairs", &PsiDynamical::index_pair_list);
+
+    py::class_<PsiDeep>(m, "PsiDeep")
+        .def(py::init<
+            const complex_tensor<1u>&,
+            const vector<complex_tensor<1u>>&,
+            const vector<complex_tensor<2u>>&,
+            const float,
+            const bool
+        >())
+        .def("copy", &PsiDeep::copy)
+        .def_readwrite("prefactor", &PsiDeep::prefactor)
+        .def_readonly("gpu", &PsiDeep::gpu)
+        .def_readonly("N", &PsiDeep::N)
+        .def_readonly("num_params", &PsiDeep::num_params);
 
     py::class_<Operator>(m, "Operator")
         .def(py::init<

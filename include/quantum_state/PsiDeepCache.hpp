@@ -1,12 +1,15 @@
 #pragma once
 
+#include "Spins.h"
+#include "types.h"
+
 
 namespace rbm_on_gpu {
 
 // #ifdef __CUDACC__
 
 struct PsiDeepAngles {
-    constexpr unsigned int max_width = MAX_SPINS;
+    static constexpr unsigned int max_width = MAX_SPINS;
 
     complex_t activations[max_width];
 

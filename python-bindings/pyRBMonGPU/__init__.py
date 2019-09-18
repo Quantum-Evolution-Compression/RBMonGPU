@@ -5,7 +5,8 @@ from ._pyRBMonGPU import (
     ExactSummation,
     ExpectationValue,
     HilbertSpaceDistance,
-    setDevice
+    setDevice,
+    PsiDeep
 )
 
 from .Psi import Psi
