@@ -41,14 +41,15 @@ Array<T>::~Array() noexcept(false) {
 
 template<typename T>
 Array<T>& Array<T>::operator=(const Array& other) {
-    (vector<T>)(*this) = other;
+    std::vector<T>::operator=(other);
+    this->gpu = other.gpu;
     this->update_device();
     return *this;
 }
 
 template<typename T>
 Array<T>& Array<T>::operator=(Array&& other) {
-    (vector<T>)(*this) = other;
+    std::vector<T>::operator=(other);
     if(this->gpu) {
         FREE(this->device, true);
     }

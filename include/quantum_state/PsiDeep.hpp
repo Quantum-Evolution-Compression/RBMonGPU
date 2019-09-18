@@ -1,5 +1,9 @@
 #pragma once
 
+#include "spin_ensembles/ExactSummation.hpp"
+#include "network_functions/PsiNorm.hpp"
+#include "network_functions/PsiVector.hpp"
+#include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiDeepCache.hpp"
 #include "Array.hpp"
@@ -16,6 +20,7 @@
 #include <memory>
 #include <cassert>
 #include <utility>
+#include <algorithm>
 
 #ifdef __PYTHONCC__
     #define FORCE_IMPORT_ARRAY
@@ -57,6 +62,7 @@ public:
     complex_t*     a;
     Layer          layers[max_layers];
     unsigned int   num_layers;
+    unsigned int   width;                   // size of largest layer
 
     unsigned int   num_params;
     float          prefactor;
@@ -199,7 +205,7 @@ public:
             function(i, complex_t(spins[i], 0.0f));
         }
 
-        SHARED complex_t deep_angles[this->max_deep_angles];
+        SHARED complex_t deep_angles[max_deep_angles];
         this->forward_pass(spins, cache.activations, deep_angles);
 
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
@@ -249,11 +255,11 @@ public:
                     );
                 }
                 SYNC;
-                MULTI(i, layer.size) {
+                MULTI(j, layer.size) {
                     #ifdef __CUDA_ARCH__
-                    cache.activations[i] = unit_activation;
+                    cache.activations[j] = unit_activation;
                     #else
-                    cache.activations[i] = unit_activation[i];
+                    cache.activations[j] = unit_activation[j];
                     #endif
                 }
             }
@@ -308,6 +314,16 @@ public:
         return this->num_params;
     }
 
+    HDINLINE
+    unsigned int get_width() const {
+        return this->width;
+    }
+
+    HDINLINE
+    unsigned int get_num_angles() const {
+        return this->layers[0].size;
+    }
+
 };
 
 } // namespace kernel
@@ -332,9 +348,6 @@ public:
 
 public:
     PsiDeep(const PsiDeep& other);
-    inline ~PsiDeep() noexcept(false) {
-        cout << "PsiDeep destr" << endl;
-    }
 
 #ifdef __PYTHONCC__
     inline PsiDeep(
@@ -347,6 +360,7 @@ public:
         this->N = a.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
+        this->width = 0u;
 
         Array<complex_t> rhs_weights_array(0, false);
         Array<unsigned int> rhs_connections_array(0, false);
@@ -357,6 +371,10 @@ public:
 
             const unsigned int size = bases.size();
             const unsigned int lhs_connectivity = lhs_weights.shape()[0];
+
+            if(size > this->width) {
+                this->width = size;
+            }
 
             Array<complex_t> lhs_weights_array(lhs_weights, gpu);
             Array<complex_t> bases_array(bases, gpu);
@@ -390,15 +408,20 @@ public:
         cout << endl;
 
         for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-            const auto& layer = kernel::PsiDeep::layers[layer_idx];
+            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+            const auto& layer = *next(this->layers.begin(), layer_idx);
 
             cout << "Layer: " << layer_idx << endl;
-            cout << "size: " << layer.size << endl;
-            cout << "lhs_connectivity: " << layer.lhs_connectivity << endl;
-            cout << "rhs_connectivity: " << layer.rhs_connectivity << endl;
-            cout << "delta: " << layer.delta << endl;
-            cout << "begin_params: " << layer.begin_params << endl;
-            cout << "begin_angles: " << layer.begin_angles << endl;
+            cout << "size: " << kernel_layer.size << endl;
+            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+            cout << "delta: " << kernel_layer.delta << endl;
+            cout << "begin_params: " << kernel_layer.begin_params << endl;
+            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+            cout << "bases.size: " << layer.bases.size() << endl;
+            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
             cout << endl;
         }
     }
@@ -424,9 +447,18 @@ public:
         return this->get_num_params();
     }
 
+    xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) {
+        return psi_O_k_vector_py(*this, spins);
+    }
+
 #endif // __PYTHONCC__
 
-    // float norm_function(const ExactSummation& exact_summation) const;
+    inline Array<complex_t> as_vector() const {
+        return psi_vector(*this);
+    }
+    inline float norm(const ExactSummation& exact_summation) const {
+        return psi_norm(*this, exact_summation);
+    }
 
     void get_params(complex<float>* result) const;
     void set_params(const complex<float>* new_params);

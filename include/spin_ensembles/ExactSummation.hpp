@@ -121,7 +121,7 @@ public:
         auto this_kernel = this->get_kernel();
         const auto psi_kernel = psi.get_kernel();
         if(psi.gpu) {
-            const auto blockDim_ = blockDim == -1 ? psi.get_num_angles() : blockDim;
+            const auto blockDim_ = blockDim == -1 ? psi.get_width() : blockDim;
 
             cuda_kernel<<<this->num_spin_configurations, blockDim_>>>(
                 [=] __device__ () {this_kernel.kernel_foreach(psi_kernel, function);}

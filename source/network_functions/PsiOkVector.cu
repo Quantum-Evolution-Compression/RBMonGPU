@@ -1,6 +1,7 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDynamical.hpp"
+#include "quantum_state/PsiDeep.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "types.h"
@@ -32,7 +33,7 @@ void psi_O_k_vector(complex<float>* result, const Psi_t& psi, const Spins& spins
     };
 
     if(psi.gpu) {
-        cuda_kernel<<<1, psi.get_num_angles()>>>(functor);
+        cuda_kernel<<<1, psi.get_width()>>>(functor);
     }
     else {
         functor();
@@ -97,11 +98,14 @@ void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Ps
 
 template void psi_O_k_vector(complex<float>* result, const Psi& psi, const Spins& spins);
 template void psi_O_k_vector(complex<float>* result, const PsiDynamical& psi, const Spins& spins);
+template void psi_O_k_vector(complex<float>* result, const PsiDeep& psi, const Spins& spins);
 
 
 template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi& psi, const ExactSummation& spin_ensemble);
 template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Psi& psi, const MonteCarloLoop& spin_ensemble);
 template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDynamical& psi, const ExactSummation& spin_ensemble);
 template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDeep& psi, const ExactSummation& spin_ensemble);
+template void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
 
 } // namespace rbm_on_gpu

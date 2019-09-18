@@ -19,6 +19,7 @@ PsiDeep::PsiDeep(const PsiDeep& other)
     this->N = other.N;
     this->prefactor = other.prefactor;
     this->num_layers = other.num_layers;
+    this->width = other.width;
 
     this->init_kernel();
 }

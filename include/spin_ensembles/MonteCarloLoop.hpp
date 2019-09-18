@@ -323,7 +323,7 @@ public:
         #endif
 
         if(this->gpu) {
-            const auto blockDim_ = blockDim == -1 ? psi.get_num_angles() : blockDim;
+            const auto blockDim_ = blockDim == -1 ? psi.get_width() : blockDim;
 
             if(this->has_total_z_symmetry) {
                 cuda_kernel<<<this->num_markov_chains, blockDim_>>>(

@@ -1,4 +1,4 @@
-from pyRBMonGPU import PsiDynamical, Psi
+from pyRBMonGPU import PsiDynamical, Psi, PsiDeep
 import numpy as np
 import math
 
@@ -57,3 +57,23 @@ def new_static_neural_network(
         W[:, alpha * N:(alpha + 1) * N] += initial_value * np.diag(np.ones(N))
 
     return Psi(a, b, W, 1, gpu)
+
+
+def new_deep_neural_network(
+    N,
+    M,
+    C,
+    initial_value=(0.2 + 1j * math.pi / 10),
+    a_noise=1e-5,
+    layer_noise=5e-2,
+    gpu=False
+):
+    a = a_noise * complex_noise(N)
+    b = [layer_noise * complex_noise(m) for m in M]
+    W = []
+    for c, m in zip(C, M):
+        w = layer_noise * complex_noise((c, m))
+        w[c // 2, :] = initial_value
+        W.append(w)
+
+    return PsiDeep(a, b, W, 1.0, gpu)

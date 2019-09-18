@@ -22,20 +22,17 @@ void psi_O_k_vector(complex<float>* result, complex<float>* result_std, const Ps
 
 #ifdef __PYTHONCC__
 
-template<typename Psi_t, typename SpinEnsemble>
-inline pair<xt::pytensor<complex<float>, 1>, xt::pytensor<complex<float>, 1>> psi_O_k_vector_py(
-    const Psi_t& psi, const SpinEnsemble& spin_ensemble
+template<typename Psi_t>
+inline xt::pytensor<complex<float>, 1> psi_O_k_vector_py(
+    const Psi_t& psi, const Spins& spins
 ) {
     auto result = xt::pytensor<complex<float>, 1>(
         std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
     );
-    auto result_std = xt::pytensor<complex<float>, 1>(
-        std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
-    );
 
-    psi_O_k_vector(result.data(), result_std.data(), psi, spin_ensemble);
+    psi_O_k_vector(result.data(), psi, spins);
 
-    return {result, result_std};
+    return result;
 }
 
 #endif

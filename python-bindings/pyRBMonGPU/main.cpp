@@ -113,7 +113,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readwrite("prefactor", &PsiDeep::prefactor)
         .def_readonly("gpu", &PsiDeep::gpu)
         .def_readonly("N", &PsiDeep::N)
-        .def_readonly("num_params", &PsiDeep::num_params);
+        .def_readonly("num_params", &PsiDeep::num_params)
+        .def_property_readonly("vector", [](const PsiDeep& psi) {return psi.as_vector().to_pytensor<1u>();})
+        .def("norm", &PsiDeep::norm)
+        .def("O_k_vector", &PsiDeep::O_k_vector_py);
 
     py::class_<Operator>(m, "Operator")
         .def(py::init<
@@ -187,11 +190,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
-
-    m.def("psi_O_k_vector", psi_O_k_vector_py<Psi, ExactSummation>);
-    m.def("psi_O_k_vector", psi_O_k_vector_py<Psi, MonteCarloLoop>);
-    m.def("psi_O_k_vector", psi_O_k_vector_py<PsiDynamical, ExactSummation>);
-    m.def("psi_O_k_vector", psi_O_k_vector_py<PsiDynamical, MonteCarloLoop>);
 
     m.def("setDevice", setDevice);
 }

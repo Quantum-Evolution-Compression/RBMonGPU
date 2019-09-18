@@ -186,6 +186,11 @@ public:
     }
 
     HDINLINE
+    unsigned int get_width() const {
+        return this->M;
+    }
+
+    HDINLINE
     static constexpr unsigned int get_max_spins() {
         return max_N;
     }
