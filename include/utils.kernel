@@ -5,7 +5,9 @@
 namespace rbm_on_gpu {
 
 
-DINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& summand) {
+HDINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& summand) {
+    #ifdef __CUDA_ARCH__
+
     constexpr auto warp_size = 32u;
     constexpr auto full_mask = 0xffffffff;
 
@@ -28,9 +30,17 @@ DINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& sum
     }
 
     __syncthreads();
+
+    #else
+
+    result += summand;
+
+    #endif;
 }
 
-DINLINE void tree_sum(float& result, const unsigned int size, float& summand) {
+HDINLINE void tree_sum(float& result, const unsigned int size, float& summand) {
+    #ifdef __CUDA_ARCH__
+
     constexpr auto warp_size = 32u;
     constexpr auto full_mask = 0xffffffff;
 
@@ -52,6 +62,12 @@ DINLINE void tree_sum(float& result, const unsigned int size, float& summand) {
     }
 
     __syncthreads();
+
+    #else
+
+    result += summand;
+
+    #endif
 }
 
 } // namespace rbm_on_gpu

@@ -263,7 +263,6 @@ public:
         }
     }
 
-    // TODO: change to Psi&
     Psi get_kernel() const {
         return *this;
     }

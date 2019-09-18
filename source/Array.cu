@@ -24,11 +24,42 @@ Array<T>::Array(const Array<T>& other)
     }
 }
 
+Array<complex_t>
+Array<T>::Array(Array<T>&& other)
+    : vector<T>(other), gpu(other.gpu)
+{
+    this->device = other.device;
+    other.device = nullptr;
+}
+
 template<typename T>
 Array<T>::~Array() noexcept(false) {
     if(this->gpu) {
         FREE(this->device, true);
     }
+}
+
+template<typename T>
+Array<T>& Array<T>::operator=(const Array& other) {
+    (vector<T>)(*this) = other;
+    this->update_device();
+    return *this;
+}
+
+template<typename T>
+Array<T>& Array<T>::operator=(Array&& other) {
+    (vector<T>)(*this) = other;
+    if(this->gpu) {
+        FREE(this->device, true);
+    }
+    this->gpu = other.gpu;
+    if(this->gpu) {
+        this->device = other.device;
+        other.device = nullptr;
+    }
+
+    this->update_device();
+    return *this;
 }
 
 template<typename T>

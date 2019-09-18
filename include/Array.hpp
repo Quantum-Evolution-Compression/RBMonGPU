@@ -39,6 +39,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
 
     Array(const size_t& size, const bool gpu);
     Array(const Array<T>& other);
+    Array(Array<T>&& other);
     ~Array() noexcept(false);
 
     inline T* data() {
@@ -67,11 +68,8 @@ struct Array : public vector<T>, public kernel::Array<T> {
         return vector<T>::data();
     }
 
-    inline Array& operator=(const Array& other) {
-        (vector<T>)(*this) = other;
-        this->update_device();
-        return *this;
-    }
+    Array<T>& operator=(const Array<T>& other);
+    Array<T>& operator=(Array<T>&& other);
 
     void clear();
     void update_host();
