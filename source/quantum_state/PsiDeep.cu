@@ -5,6 +5,7 @@
 #include <random>
 #include <cstring>
 #include <algorithm>
+#include <iterator>
 
 
 namespace rbm_on_gpu {
@@ -56,9 +57,11 @@ void PsiDeep::init_kernel() {
             next_layer->size * next_layer->lhs_connectivity / layer.size :
             0u
         );
-        layer.delta = min(
-            layer.lhs_connectivity, prev_size - layer.lhs_connectivity
-        ) % prev_size;
+        layer.delta = (
+            layer.size > prev_size ?
+            1u :
+            prev_size / layer.size
+        );
     }
 
     this->update_kernel();
@@ -87,8 +90,10 @@ pair<Array<complex_t>, Array<unsigned int>> PsiDeep::compile_rhs_weights_and_con
     const Array<complex_t>& lhs_weights
 ) {
     const auto rhs_connectivity = size * lhs_connectivity / prev_size;
-    const auto delta = min(
-        lhs_connectivity, prev_size - lhs_connectivity
+    const auto delta = (
+        size > prev_size ?
+        1u :
+        prev_size / size
     );
 
     Array<complex_t> rhs_weights(prev_size * rhs_connectivity, this->gpu);
@@ -113,6 +118,56 @@ pair<Array<complex_t>, Array<unsigned int>> PsiDeep::compile_rhs_weights_and_con
     rhs_connections.update_device();
 
     return {move(rhs_weights), move(rhs_connections)};
+}
+
+
+Array<complex_t> PsiDeep::get_params() const {
+    Array<complex_t> result(this->num_params, false);
+
+    auto it = result.begin();
+    copy(this->a_array.begin(), this->a_array.end(), it);
+    it += this->N;
+
+    for(const auto& layer : this->layers) {
+        copy(layer.bases.begin(), layer.bases.end(), it);
+        it += layer.bases.size();
+        copy(layer.lhs_weights.begin(), layer.lhs_weights.end(), it);
+        it += layer.lhs_weights.size();
+    }
+
+    return result;
+}
+
+
+void PsiDeep::set_params(const Array<complex_t>& new_params) {
+    auto it = new_params.begin();
+
+    copy(it, it + this->N, this->a_array.begin());
+    this->a_array.update_device();
+    it += this->N;
+
+    for(auto layer_it = this->layers.begin(); layer_it != this->layers.end(); layer_it++) {
+        auto& layer = *layer_it;
+
+        copy(it, it + layer.bases.size(), layer.bases.begin());
+        layer.bases.update_device();
+        it += layer.size;
+
+        copy(it, it + layer.lhs_weights.size(), layer.lhs_weights.begin());
+        layer.lhs_weights.update_device();
+        it += layer.lhs_weights.size();
+
+        if(layer_it != this->layers.begin()) {
+            prev(layer_it)->rhs_weights = this->compile_rhs_weights_and_connections(
+                prev(layer_it)->size,
+                layer.size,
+                layer.lhs_connectivity,
+                layer.lhs_weights
+            ).first;
+        }
+    }
+
+    this->update_kernel();
 }
 
 } // namespace rbm_on_gpu

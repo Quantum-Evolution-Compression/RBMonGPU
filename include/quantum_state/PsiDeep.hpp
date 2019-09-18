@@ -401,50 +401,33 @@ public:
 
         this->init_kernel();
 
-        cout << "N: " << this->N << endl;
-        cout << "num_layers: " << this->num_layers << endl;
-        cout << "num_params: " << this->num_params << endl;
-        cout << "prefactor: " << this->prefactor << endl;
-        cout << endl;
+        // cout << "N: " << this->N << endl;
+        // cout << "num_layers: " << this->num_layers << endl;
+        // cout << "num_params: " << this->num_params << endl;
+        // cout << "prefactor: " << this->prefactor << endl;
+        // cout << endl;
 
-        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
-            const auto& layer = *next(this->layers.begin(), layer_idx);
+        // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        //     const auto& layer = *next(this->layers.begin(), layer_idx);
 
-            cout << "Layer: " << layer_idx << endl;
-            cout << "size: " << kernel_layer.size << endl;
-            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
-            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-            cout << "delta: " << kernel_layer.delta << endl;
-            cout << "begin_params: " << kernel_layer.begin_params << endl;
-            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
-            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
-            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-            cout << "bases.size: " << layer.bases.size() << endl;
-            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
-            cout << endl;
-        }
+        //     cout << "Layer: " << layer_idx << endl;
+        //     cout << "size: " << kernel_layer.size << endl;
+        //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+        //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+        //     cout << "delta: " << kernel_layer.delta << endl;
+        //     cout << "begin_params: " << kernel_layer.begin_params << endl;
+        //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+        //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+        //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+        //     cout << "bases.size: " << layer.bases.size() << endl;
+        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+        //     cout << endl;
+        // }
     }
 
     PsiDeep copy() const {
         return *this;
-    }
-
-    xt::pytensor<complex<float>, 1> get_params_py() const {
-        auto result = xt::pytensor<complex<float>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_params)})
-        );
-        this->get_params(result.data());
-
-        return result;
-    }
-
-    void set_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
-        this->set_params(new_params.data());
-    }
-
-    unsigned int get_num_params_py() const {
-        return this->get_num_params();
     }
 
     xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) {
@@ -460,8 +443,8 @@ public:
         return psi_norm(*this, exact_summation);
     }
 
-    void get_params(complex<float>* result) const;
-    void set_params(const complex<float>* new_params);
+    Array<complex_t> get_params() const;
+    void set_params(const Array<complex_t>& new_params);
 
     void init_kernel();
     void update_kernel();
