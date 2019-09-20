@@ -72,39 +72,25 @@ public:
 #ifdef __CUDACC__
 
     HDINLINE
-    void forward_pass(const Spins& spins, complex_t* activations_out, complex_t* deep_angles) const {
+    void forward_pass(
+        const Spins& spins,
+        complex_t* activations_in, /* after this functions has finished, this holds the *output*-activations of the last layer */
+        complex_t* deep_angles) const
+    {
         #include "cuda_kernel_defines.h"
 
-        SHARED complex_t activations_memory[Angles::max_width];
-        SHARED complex_t* activations_in;
-
-        SINGLE {
-            activations_in = activations_memory;
-        }
-        SYNC;
+        SHARED complex_t activations_out[Angles::max_width];
 
         MULTI(i, this->get_num_spins()) {
-            if(this->num_layers % 2u == 1u) {
-                activations_in[i] = spins[i];
-            } else {
-                activations_out[i] = spins[i];
-            }
+            activations_in[i] = spins[i];
         }
-        SYNC;
 
         for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
-            if((layer_idx > 0u) || (this->num_layers % 2u == 0u)) {
-                SYNC;
-                SINGLE {
-                    complex_t* tmp = activations_out;
-                    activations_out = activations_in;
-                    activations_in = tmp;
-                }
-                SYNC;
-            }
+            SYNC;
             const Layer& layer = this->layers[layer_idx];
             MULTI(j, layer.size) {
                 activations_out[j] = complex_t(0.0f, 0.0f);
+
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     activations_out[j] += (
                         layer.lhs_weights[i * layer.size + j] *
@@ -117,10 +103,15 @@ public:
                         ]
                     );
                 }
+                activations_out[j] += layer.bases[j];
+
                 if(deep_angles != nullptr) {
                     deep_angles[layer.begin_angles + j] = activations_out[j];
                 }
-                activations_out[j] = my_logcosh(activations_out[j]);
+            }
+            SYNC;
+            MULTI(k, layer.size) {
+                activations_in[k] = my_logcosh(activations_out[k]);
             }
         }
     }
@@ -134,11 +125,15 @@ public:
 
         #ifdef __CUDA_ARCH__
 
+        SYNC; // maybe obsolete
+
         auto summand = (
             (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0f, 0.0f)) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0f, 0.0f))
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
+
+        SYNC; // maybe obsolete
 
         #else
 
@@ -162,11 +157,15 @@ public:
 
         #ifdef __CUDA_ARCH__
 
+        SYNC; // maybe obsolete
+
         auto summand = (
             (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0f) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0f)
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
+
+        SYNC; // maybe obsolete
 
         #else
 
@@ -201,6 +200,8 @@ public:
     void foreach_O_k(const Spins& spins, Angles& cache, Function function) const {
         #include "cuda_kernel_defines.h"
 
+        SYNC; // maybe obsolete
+
         MULTI(i, this->N) {
             function(i, complex_t(spins[i], 0.0f));
         }
@@ -208,7 +209,10 @@ public:
         SHARED complex_t deep_angles[max_deep_angles];
         this->forward_pass(spins, cache.activations, deep_angles);
 
+        SYNC; // maybe obsolete
+
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            SYNC; // maybe obsolete
             const Layer& layer = this->layers[layer_idx];
 
             // calculate the unit-activations of the layer.
@@ -263,11 +267,12 @@ public:
                     #endif
                 }
             }
-
+            SYNC; // maybe obsolete
             MULTI(j, layer.size) {
                 function(layer.begin_params + j, cache.activations[j]);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+                    SYNC; // maybe obsolete
                     const auto lhs_unit_idx = (
                         (layer.lhs_connection(j) + i) % (
                             layer_idx == 0u ?
@@ -360,7 +365,7 @@ public:
         this->N = a.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
-        this->width = 0u;
+        this->width = this->N;
 
         Array<complex_t> rhs_weights_array(0, false);
         Array<unsigned int> rhs_connections_array(0, false);
@@ -401,29 +406,30 @@ public:
 
         this->init_kernel();
 
-        // cout << "N: " << this->N << endl;
-        // cout << "num_layers: " << this->num_layers << endl;
-        // cout << "num_params: " << this->num_params << endl;
-        // cout << "prefactor: " << this->prefactor << endl;
-        // cout << endl;
+        cout << "N: " << this->N << endl;
+        cout << "num_layers: " << this->num_layers << endl;
+        cout << "width: " << this->width << endl;
+        cout << "num_params: " << this->num_params << endl;
+        cout << "prefactor: " << this->prefactor << endl;
+        cout << endl;
 
-        // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
-        //     const auto& layer = *next(this->layers.begin(), layer_idx);
+        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+            const auto& layer = *next(this->layers.begin(), layer_idx);
 
-        //     cout << "Layer: " << layer_idx << endl;
-        //     cout << "size: " << kernel_layer.size << endl;
-        //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
-        //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-        //     cout << "delta: " << kernel_layer.delta << endl;
-        //     cout << "begin_params: " << kernel_layer.begin_params << endl;
-        //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
-        //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
-        //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-        //     cout << "bases.size: " << layer.bases.size() << endl;
-        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
-        //     cout << endl;
-        // }
+            cout << "Layer: " << layer_idx << endl;
+            cout << "size: " << kernel_layer.size << endl;
+            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+            cout << "delta: " << kernel_layer.delta << endl;
+            cout << "begin_params: " << kernel_layer.begin_params << endl;
+            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+            cout << "bases.size: " << layer.bases.size() << endl;
+            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+            cout << endl;
+        }
     }
 
     PsiDeep copy() const {
@@ -432,6 +438,28 @@ public:
 
     xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) {
         return psi_O_k_vector_py(*this, spins);
+    }
+
+    inline vector<xt::pytensor<complex<float>, 1>> get_b() const {
+        vector<xt::pytensor<complex<float>, 1>> result;
+
+        for(const auto& layer : this->layers) {
+            result.push_back(layer.bases.to_pytensor<1u>());
+        }
+
+        return result;
+    }
+
+    inline vector<xt::pytensor<complex<float>, 2>> get_W() const {
+        vector<xt::pytensor<complex<float>, 2>> result;
+
+        for(const auto& layer : this->layers) {
+            result.push_back(layer.lhs_weights.to_pytensor<2u>(shape_t<2u>{
+                (long int)layer.lhs_connectivity, (long int)layer.size
+            }));
+        }
+
+        return result;
     }
 
 #endif // __PYTHONCC__

@@ -103,7 +103,7 @@ pair<Array<complex_t>, Array<unsigned int>> PsiDeep::compile_rhs_weights_and_con
     lhs_num_connections.assign(prev_size, 0u);
 
     for(auto j = 0u; j < size; j++) {
-        for(auto i = 0u; i < rhs_connectivity; i++) {
+        for(auto i = 0u; i < lhs_connectivity; i++) {
             const auto lhs_idx = (delta * j + i) % prev_size;
 
             rhs_weights[lhs_idx * rhs_connectivity + lhs_num_connections[lhs_idx]] = lhs_weights[

@@ -8,7 +8,7 @@ namespace rbm_on_gpu {
 HDINLINE
 complex_t my_logcosh(const complex_t z) {
     // return sqrt(0.30102999566 + z*z);
-    return sqrt(1.0f + z*z);
+    return sqrt(1.0f + z*z) - 1.0f;
     // return log(2.0f * cosh(z));
     // return log(2.0f + 2.0f * z*z);
     // return 2.0f + 2.0f * z*z;

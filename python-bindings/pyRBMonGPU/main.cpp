@@ -119,6 +119,9 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             [](const PsiDeep& psi) {return psi.get_params().to_pytensor<1u>();},
             [](PsiDeep& psi, const complex_tensor<1u>& new_params) {psi.set_params(Array<complex_t>(new_params, false));}
         )
+        .def_property_readonly("a", [](const PsiDeep& psi) {return psi.a_array.to_pytensor<1u>();})
+        .def_property_readonly("b", &PsiDeep::get_b)
+        .def_property_readonly("W", &PsiDeep::get_W)
         .def_property_readonly("vector", [](const PsiDeep& psi) {return psi.as_vector().to_pytensor<1u>();})
         .def("norm", &PsiDeep::norm)
         .def("O_k_vector", &PsiDeep::O_k_vector_py);
@@ -157,8 +160,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def(py::init<unsigned int, bool>())
         .def("set_total_z_symmetry", &ExactSummation::set_total_z_symmetry)
         .def_property_readonly("num_steps", &ExactSummation::get_num_steps);
-
-        py::class_<ExpectationValue>(m, "ExpectationValue")
+/*
+    py::class_<ExpectationValue>(m, "ExpectationValue")
         .def(py::init<bool>())
         .def("__call__", &ExpectationValue::__call__<Psi, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__vector<Psi, ExactSummation>)
@@ -203,10 +206,14 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &HilbertSpaceDistance::distance<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
-
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
+*/
     m.def("setDevice", setDevice);
 }

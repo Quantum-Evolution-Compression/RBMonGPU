@@ -64,12 +64,12 @@ def new_deep_neural_network(
     M,
     C,
     initial_value=(0.01 + 1j * math.pi / 4),
-    noise=1e-5,
+    noise=1e-3,
     layer_noise=1e-2,
     gpu=False
 ):
     a = noise * complex_noise(N)
-    b = [layer_noise * complex_noise(m) for m in M]
+    b = [noise * complex_noise(m) for m in M]
 
     w = noise * complex_noise((C[0], M[0]))
     w[C[0] // 2, :] = initial_value
@@ -78,5 +78,9 @@ def new_deep_neural_network(
     for c, m in list(zip(C, M))[1:]:
         w = 1 + layer_noise * complex_noise((c, m))
         W.append(w)
+
+    print(a)
+    print(b)
+    print(W)
 
     return PsiDeep(a, b, W, 1.0, gpu)
