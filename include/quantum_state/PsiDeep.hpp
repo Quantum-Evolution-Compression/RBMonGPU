@@ -125,15 +125,11 @@ public:
 
         #ifdef __CUDA_ARCH__
 
-        SYNC; // maybe obsolete
-
         auto summand = (
             (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0f, 0.0f)) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0f, 0.0f))
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
-
-        SYNC; // maybe obsolete
 
         #else
 
@@ -157,15 +153,11 @@ public:
 
         #ifdef __CUDA_ARCH__
 
-        SYNC; // maybe obsolete
-
         auto summand = (
             (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0f) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0f)
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
-
-        SYNC; // maybe obsolete
 
         #else
 
@@ -200,8 +192,6 @@ public:
     void foreach_O_k(const Spins& spins, Angles& cache, Function function) const {
         #include "cuda_kernel_defines.h"
 
-        SYNC; // maybe obsolete
-
         MULTI(i, this->N) {
             function(i, complex_t(spins[i], 0.0f));
         }
@@ -209,10 +199,7 @@ public:
         SHARED complex_t deep_angles[max_deep_angles];
         this->forward_pass(spins, cache.activations, deep_angles);
 
-        SYNC; // maybe obsolete
-
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-            SYNC; // maybe obsolete
             const Layer& layer = this->layers[layer_idx];
 
             // calculate the unit-activations of the layer.
@@ -267,12 +254,10 @@ public:
                     #endif
                 }
             }
-            SYNC; // maybe obsolete
             MULTI(j, layer.size) {
                 function(layer.begin_params + j, cache.activations[j]);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
-                    SYNC; // maybe obsolete
                     const auto lhs_unit_idx = (
                         (layer.lhs_connection(j) + i) % (
                             layer_idx == 0u ?
@@ -283,6 +268,7 @@ public:
                     // TODO: check if shared memory solution is faster
                     function(
                         layer.begin_params + layer.size + i * layer.size + j,
+                        // complex_t(33.0f, 33.0f)
                         cache.activations[j] * (
                             layer_idx == 0 ?
                             complex_t(spins[lhs_unit_idx], 0.0f) :

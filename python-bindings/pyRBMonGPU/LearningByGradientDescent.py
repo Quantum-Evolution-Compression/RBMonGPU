@@ -126,8 +126,9 @@ class LearningByGradientDescent:
 
             self.excluded_states_distances.append(distances)
 
-        # if step < 100:
-        #     gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
+        if hasattr(self, "avoid_correlations"):
+            if step < 100:
+                gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
 
         return gradient
 

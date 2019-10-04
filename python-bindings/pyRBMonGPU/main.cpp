@@ -160,7 +160,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def(py::init<unsigned int, bool>())
         .def("set_total_z_symmetry", &ExactSummation::set_total_z_symmetry)
         .def_property_readonly("num_steps", &ExactSummation::get_num_steps);
-/*
+
     py::class_<ExpectationValue>(m, "ExpectationValue")
         .def(py::init<bool>())
         .def("__call__", &ExpectationValue::__call__<Psi, ExactSummation>)
@@ -214,6 +214,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
-*/
+
     m.def("setDevice", setDevice);
 }

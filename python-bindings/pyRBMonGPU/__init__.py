@@ -3,8 +3,8 @@ from ._pyRBMonGPU import (
     Spins,
     MonteCarloLoop,
     ExactSummation,
-    # ExpectationValue,
-    # HilbertSpaceDistance,
+    ExpectationValue,
+    HilbertSpaceDistance,
     setDevice
 )
 
