@@ -12,18 +12,18 @@
 
 namespace rbm_on_gpu {
 
-Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const float noise, const bool gpu)
+Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu)
   : a_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
     this->N = N;
     this->M = M;
-    this->prefactor = 1.0f;
+    this->prefactor = 1.0;
     this->num_params = N + M + N * M;
 
     std::mt19937 rng(seed);
-    std::uniform_real_distribution<float> random_real(-1.0f, 1.0f);
+    std::uniform_real_distribution<double> random_real(-1.0, 1.0);
 
     for(auto i = 0u; i < N; i++) {
-        this->a_array[i] = complex_t(0.0f, 0.0f);
+        this->a_array[i] = complex_t(0.0, 0.0);
     }
     for(auto j = 0u; j < M; j++) {
         this->b_array[j] = complex_t(noise * random_real(rng), noise * random_real(rng));
@@ -32,7 +32,7 @@ Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const float
         for(auto j = 0u; j < M; j++) {
             const auto idx = j * N + i;
             this->W_array[idx] = (
-                (i == j % N ? complex_t(1.0f, 3.14 / 4.0f) : complex_t(0.0f, 0.0f)) +
+                (i == j % N ? complex_t(1.0, 3.14 / 4.0) : complex_t(0.0, 0.0)) +
                 complex_t(noise * random_real(rng), noise * random_real(rng))
             );
         }
@@ -67,19 +67,19 @@ void Psi::update_kernel() {
     this->W = this->W_array.data();
 }
 
-void Psi::as_vector(complex<float>* result) const {
+void Psi::as_vector(complex<double>* result) const {
     psi_vector(result, *this);
 }
 
-float Psi::norm_function(const ExactSummation& exact_summation) const {
+double Psi::norm_function(const ExactSummation& exact_summation) const {
     return psi_norm(*this, exact_summation);
 }
 
-void Psi::O_k_vector(complex<float>* result, const Spins& spins) const {
+void Psi::O_k_vector(complex<double>* result, const Spins& spins) const {
     psi_O_k_vector(result, *this, spins);
 }
 
-std::complex<float> Psi::log_psi_s_std(const Spins& spins) {
+std::complex<double> Psi::log_psi_s_std(const Spins& spins) {
     complex_t* result;
     MALLOC(result, sizeof(complex_t), this->gpu);
 
@@ -128,13 +128,13 @@ void Psi::create_index_pairs() {
     }
 }
 
-void Psi::get_params(complex<float>* result) const {
+void Psi::get_params(complex<double>* result) const {
     memcpy(result, this->a_array.host_data(), sizeof(complex_t) * this->N);
     memcpy(result + this->N, this->b_array.host_data(), sizeof(complex_t) * this->M);
     memcpy(result + this->N + this->M, this->W_array.host_data(), sizeof(complex_t) * this->N * this->M);
 }
 
-void Psi::set_params(const complex<float>* new_params) {
+void Psi::set_params(const complex<double>* new_params) {
     memcpy(this->a_array.host_data(), new_params, sizeof(complex_t) * this->N);
     memcpy(this->b_array.host_data(), new_params + this->N, sizeof(complex_t) * this->M);
     memcpy(this->W_array.host_data(), new_params + this->N + this->M, sizeof(complex_t) * this->N * this->M);

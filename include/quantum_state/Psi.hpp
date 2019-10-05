@@ -37,7 +37,7 @@ public:
     static constexpr unsigned int  max_M = MAX_HIDDEN_SPINS;
 
     unsigned int   num_params;
-    float          prefactor;
+    double          prefactor;
 
     complex_t* a;
     complex_t* b;
@@ -65,7 +65,7 @@ public:
 
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
-        complex_t result(0.0f, 0.0f);
+        complex_t result(0.0, 0.0);
         for(unsigned int i = 0; i < this->N; i++) {
             result += this->a[i] * spins[i];
         }
@@ -86,15 +86,15 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = complex_t(
-            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0f, 0.0f)) +
-            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]) : complex_t(0.0f, 0.0f))
+            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0, 0.0)) +
+            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]) : complex_t(0.0, 0.0))
         );
 
         tree_sum(result, this->M, summand);
 
         #else
 
-        result = complex_t(0.0f, 0.0f);
+        result = complex_t(0.0, 0.0);
         for(auto i = 0u; i < this->N; i++) {
             result += this->a[i] * spins[i];
         }
@@ -106,22 +106,22 @@ public:
     }
 
     HDINLINE
-    void log_psi_s_real(float& result, const Spins& spins, const Angles& angles) const {
+    void log_psi_s_real(double& result, const Spins& spins, const Angles& angles) const {
         // CAUTION: 'result' has to be a shared variable.
         // j = threadIdx.x
 
         #ifdef __CUDA_ARCH__
 
-        auto summand = float(
-            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0f) +
-            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]).real() : 0.0f)
+        auto summand = double(
+            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0) +
+            (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]).real() : 0.0)
         );
 
         tree_sum(result, this->M, summand);
 
         #else
 
-        result = 0.0f;
+        result = 0.0;
         for(auto i = 0u; i < this->N; i++) {
             result += this->a[i].real() * spins[i];
         }
@@ -136,7 +136,7 @@ public:
         const unsigned int j, const unsigned int position, const Spins& new_spins, Angles& angles
     ) const {
         if(j < this->get_num_angles()) {
-            angles[j] += 2.0f * new_spins[position] * this->W[position * this->M + j];
+            angles[j] += 2.0 * new_spins[position] * this->W[position * this->M + j];
         }
     }
 
@@ -152,22 +152,22 @@ public:
 
 #endif // __CUDACC__
 
-    // complex<float> psi_s_std(const Spins& spins) const {
+    // complex<double> psi_s_std(const Spins& spins) const {
     //     return this->psi_s(spins).to_std();
     // }
 
     // HDINLINE
-    // float probability_s(const Spins& spins, const Angles& angles) const {
-    //     return exp(2.0f * (log(this->prefactor) + this->log_psi_s(spins, angles).real()));
+    // double probability_s(const Spins& spins, const Angles& angles) const {
+    //     return exp(2.0 * (log(this->prefactor) + this->log_psi_s(spins, angles).real()));
     // }
 
-    // float probability_s_py(const Spins& spins) const {
+    // double probability_s_py(const Spins& spins) const {
     //     return this->probability_s(spins);
     // }
 
     HDINLINE
-    float probability_s(const float log_psi_s_real) const {
-        return exp(2.0f * (log(this->prefactor) + log_psi_s_real));
+    double probability_s(const double log_psi_s_real) const {
+        return exp(2.0 * (log(this->prefactor) + log_psi_s_real));
     }
 
     HDINLINE
@@ -224,7 +224,7 @@ public:
         const PsiDerivatives& psi_derivatives
     ) const {
         if(k < this->N) {
-            return complex_t(spins[k], 0.0f);
+            return complex_t(spins[k], 0.0);
         }
 
         const auto N_plus_M = this->N + this->M;
@@ -288,15 +288,15 @@ public:
     vector<pair<int, int>> index_pair_list;
 
 public:
-    Psi(const unsigned int N, const unsigned int M, const int seed, const float noise, const bool gpu);
+    Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu);
     Psi(const Psi& other);
 
 #ifdef __PYTHONCC__
     inline Psi(
-        const xt::pytensor<std::complex<float>, 1u>& a,
-        const xt::pytensor<std::complex<float>, 1u>& b,
-        const xt::pytensor<std::complex<float>, 2u>& W,
-        const float prefactor,
+        const xt::pytensor<std::complex<double>, 1u>& a,
+        const xt::pytensor<std::complex<double>, 1u>& b,
+        const xt::pytensor<std::complex<double>, 2u>& W,
+        const double prefactor,
         const bool gpu
     ) : a_array(a, gpu), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
         this->N = a.shape()[0];
@@ -308,8 +308,8 @@ public:
         this->create_index_pairs();
     }
 
-    xt::pytensor<complex<float>, 1> as_vector_py() const {
-        auto result = xt::pytensor<complex<float>, 1>(
+    xt::pytensor<complex<double>, 1> as_vector_py() const {
+        auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(pow(2, this->N))})
         );
         this->as_vector(result.data());
@@ -317,8 +317,8 @@ public:
         return result;
     }
 
-    xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) const {
-        auto result = xt::pytensor<complex<float>, 1>(
+    xt::pytensor<complex<double>, 1> O_k_vector_py(const Spins& spins) const {
+        auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_params)})
         );
         this->O_k_vector(result.data(), spins);
@@ -330,8 +330,8 @@ public:
         return *this;
     }
 
-    xt::pytensor<complex<float>, 1> get_params_py() const {
-        auto result = xt::pytensor<complex<float>, 1>(
+    xt::pytensor<complex<double>, 1> get_params_py() const {
+        auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(this->num_params)})
         );
         this->get_params(result.data());
@@ -339,7 +339,7 @@ public:
         return result;
     }
 
-    void set_params_py(const xt::pytensor<complex<float>, 1>& new_params) {
+    void set_params_py(const xt::pytensor<complex<double>, 1>& new_params) {
         this->set_params(new_params.data());
     }
 
@@ -349,13 +349,13 @@ public:
 
 #endif // __PYTHONCC__
 
-    void as_vector(complex<float>* result) const;
-    void O_k_vector(complex<float>* result, const Spins& spins) const;
-    float norm_function(const ExactSummation& exact_summation) const;
-    complex<float> log_psi_s_std(const Spins& spins);
+    void as_vector(complex<double>* result) const;
+    void O_k_vector(complex<double>* result, const Spins& spins) const;
+    double norm_function(const ExactSummation& exact_summation) const;
+    complex<double> log_psi_s_std(const Spins& spins);
 
-    void get_params(complex<float>* result) const;
-    void set_params(const complex<float>* new_params);
+    void get_params(complex<double>* result) const;
+    void set_params(const complex<double>* new_params);
 
     void update_kernel();
     void create_index_pairs();

@@ -65,7 +65,7 @@ public:
     unsigned int   width;                   // size of largest layer
 
     unsigned int   num_params;
-    float          prefactor;
+    double          prefactor;
 
 public:
 
@@ -89,7 +89,7 @@ public:
             SYNC;
             const Layer& layer = this->layers[layer_idx];
             MULTI(j, layer.size) {
-                activations_out[j] = complex_t(0.0f, 0.0f);
+                activations_out[j] = complex_t(0.0, 0.0);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     activations_out[j] += (
@@ -126,14 +126,14 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = (
-            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0f, 0.0f)) +
-            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0f, 0.0f))
+            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0, 0.0)) +
+            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0, 0.0))
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
 
         #else
 
-        result = complex_t(0.0f, 0.0f);
+        result = complex_t(0.0, 0.0);
         for(auto i = 0u; i < this->N; i++) {
             result += this->a[i] * spins[i];
         }
@@ -145,7 +145,7 @@ public:
     }
 
     HDINLINE
-    void log_psi_s_real(float& result, const Spins& spins, Angles& cache) const {
+    void log_psi_s_real(double& result, const Spins& spins, Angles& cache) const {
         // CAUTION: 'result' has to be a shared variable.
 
         this->forward_pass(spins, cache.activations, nullptr);
@@ -154,14 +154,14 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = (
-            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0f) +
-            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0f)
+            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0) +
+            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0)
         );
         tree_sum(result, max(this->N, final_layer_size), summand);
 
         #else
 
-        result = 0.0f;
+        result = 0.0;
         for(auto i = 0u; i < this->N; i++) {
             result += this->a[i].real() * spins[i];
         }
@@ -193,7 +193,7 @@ public:
         #include "cuda_kernel_defines.h"
 
         MULTI(i, this->N) {
-            function(i, complex_t(spins[i], 0.0f));
+            function(i, complex_t(spins[i], 0.0));
         }
 
         SHARED complex_t deep_angles[max_deep_angles];
@@ -213,7 +213,7 @@ public:
             } else {
                 // TODO: check if shared memory solution is faster
                 #ifdef __CUDA_ARCH__
-                complex_t unit_activation(0.0f, 0.0f);
+                complex_t unit_activation(0.0, 0.0);
                 #else
                 complex_t unit_activation[Angles::max_width];
                 #endif
@@ -221,7 +221,7 @@ public:
                 SYNC;
                 MULTI(i, layer.size) {
                     #ifndef __CUDA_ARCH__
-                    unit_activation[i] = complex_t(0.0f, 0.0f);
+                    unit_activation[i] = complex_t(0.0, 0.0);
                     #endif
 
                     for(auto j = 0u; j < layer.rhs_connectivity; j++) {
@@ -268,10 +268,10 @@ public:
                     // TODO: check if shared memory solution is faster
                     function(
                         layer.begin_params + layer.size + i * layer.size + j,
-                        // complex_t(33.0f, 33.0f)
+                        // complex_t(33.0, 33.0)
                         cache.activations[j] * (
                             layer_idx == 0 ?
-                            complex_t(spins[lhs_unit_idx], 0.0f) :
+                            complex_t(spins[lhs_unit_idx], 0.0) :
                             my_logcosh(
                                 deep_angles[
                                     this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
@@ -291,8 +291,8 @@ public:
 #endif // __CUDACC__
 
     HDINLINE
-    float probability_s(const float log_psi_s_real) const {
-        return exp(2.0f * (log(this->prefactor) + log_psi_s_real));
+    double probability_s(const double log_psi_s_real) const {
+        return exp(2.0 * (log(this->prefactor) + log_psi_s_real));
     }
 
     HDINLINE
@@ -342,10 +342,10 @@ public:
 
 #ifdef __PYTHONCC__
     inline PsiDeep(
-        const xt::pytensor<std::complex<float>, 1u>& a,
-        const vector<xt::pytensor<std::complex<float>, 1u>> bases_list,
-        const vector<xt::pytensor<std::complex<float>, 2u>>& lhs_weights_list,
-        const float prefactor,
+        const xt::pytensor<std::complex<double>, 1u>& a,
+        const vector<xt::pytensor<std::complex<double>, 1u>> bases_list,
+        const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
+        const double prefactor,
         const bool gpu
     ) : a_array(a, gpu), gpu(gpu) {
         this->N = a.shape()[0];
@@ -422,12 +422,12 @@ public:
         return *this;
     }
 
-    xt::pytensor<complex<float>, 1> O_k_vector_py(const Spins& spins) {
+    xt::pytensor<complex<double>, 1> O_k_vector_py(const Spins& spins) {
         return psi_O_k_vector_py(*this, spins);
     }
 
-    inline vector<xt::pytensor<complex<float>, 1>> get_b() const {
-        vector<xt::pytensor<complex<float>, 1>> result;
+    inline vector<xt::pytensor<complex<double>, 1>> get_b() const {
+        vector<xt::pytensor<complex<double>, 1>> result;
 
         for(const auto& layer : this->layers) {
             result.push_back(layer.bases.to_pytensor<1u>());
@@ -436,8 +436,8 @@ public:
         return result;
     }
 
-    inline vector<xt::pytensor<complex<float>, 2>> get_W() const {
-        vector<xt::pytensor<complex<float>, 2>> result;
+    inline vector<xt::pytensor<complex<double>, 2>> get_W() const {
+        vector<xt::pytensor<complex<double>, 2>> result;
 
         for(const auto& layer : this->layers) {
             result.push_back(layer.lhs_weights.to_pytensor<2u>(shape_t<2u>{
@@ -453,7 +453,7 @@ public:
     inline Array<complex_t> as_vector() const {
         return psi_vector(*this);
     }
-    inline float norm(const ExactSummation& exact_summation) const {
+    inline double norm(const ExactSummation& exact_summation) const {
         return psi_norm(*this, exact_summation);
     }
 

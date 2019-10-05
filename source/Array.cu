@@ -93,7 +93,7 @@ void Array<T>::update_device() {
 
 
 template class Array<unsigned int>;
-template class Array<float>;
+template class Array<double>;
 template class Array<complex_t>;
 template class Array<Spins>;
 

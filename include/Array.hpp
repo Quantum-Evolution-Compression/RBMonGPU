@@ -77,27 +77,27 @@ struct Array : public vector<T>, public kernel::Array<T> {
 
 #ifdef __PYTHONCC__
     template<long unsigned int dim>
-    inline Array<T>& operator=(const xt::pytensor<std::complex<float>, dim>& python_vec) {
+    inline Array<T>& operator=(const xt::pytensor<std::complex<double>, dim>& python_vec) {
         static_assert(is_same<T, complex_t>::value);
-        memcpy(this->host_data(), python_vec.data(), sizeof(std::complex<float>) * this->size());
+        memcpy(this->host_data(), python_vec.data(), sizeof(std::complex<double>) * this->size());
         this->update_device();
         return *this;
     }
 
     template<long unsigned int dim>
-    inline Array<T>(const xt::pytensor<std::complex<float>, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
+    inline Array<T>(const xt::pytensor<std::complex<double>, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
         (*this) = python_vec;
     }
 
     template<unsigned int dim>
-    inline xt::pytensor<std::complex<float>, dim> to_pytensor(shape_t<dim> shape={}) const {
+    inline xt::pytensor<std::complex<double>, dim> to_pytensor(shape_t<dim> shape={}) const {
         static_assert(is_same<T, complex_t>::value);
 
         if(shape == shape_t<dim>()) {
             shape[0] = (long int)this->size();
         }
 
-        xt::pytensor<std::complex<float>, dim> result(shape);
+        xt::pytensor<std::complex<double>, dim> result(shape);
         memcpy(result.data(), this->host_data(), sizeof(complex_t) * this->size());
         return result;
     }

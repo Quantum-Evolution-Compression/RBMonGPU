@@ -5,7 +5,7 @@
 namespace rbm_on_gpu {
 
 Operator::Operator(
-    const std::vector<std::complex<float>>&        coefficients,
+    const std::vector<std::complex<double>>&        coefficients,
     const std::vector<std::vector<PauliMatrices>>&  pauli_types,
     const std::vector<std::vector<unsigned int>>&   pauli_indices,
     const bool                                      gpu
@@ -46,7 +46,7 @@ Operator::Operator(const Operator& other) : gpu(other.gpu) {
     this->max_string_length = other.max_string_length;
 
     this->allocate_memory_and_initialize(
-        reinterpret_cast<complex<float>*>(other.coefficients),
+        reinterpret_cast<complex<double>*>(other.coefficients),
         other.pauli_types,
         other.pauli_indices,
         other.gpu
@@ -54,7 +54,7 @@ Operator::Operator(const Operator& other) : gpu(other.gpu) {
 }
 
 void Operator::allocate_memory_and_initialize(
-    const std::complex<float>* coefficients,
+    const std::complex<double>* coefficients,
     const PauliMatrices*        pauli_types,
     const int*                  pauli_indices,
     const bool                  pointers_on_gpu
@@ -71,7 +71,7 @@ void Operator::allocate_memory_and_initialize(
 }
 
 void Operator::copy_to_host(
-    const std::complex<float>* coefficients,
+    const std::complex<double>* coefficients,
     const PauliMatrices*        pauli_types,
     const int*                  pauli_indices
 ) const {
@@ -88,7 +88,7 @@ Operator::~Operator() noexcept(false) {
     FREE(this->pauli_indices, this->gpu);
 }
 
-void Operator::get_coefficients(complex<float>* coefficients) const {
+void Operator::get_coefficients(complex<double>* coefficients) const {
     MEMCPY_TO_HOST(coefficients, this->coefficients, sizeof(complex_t) * this->num_strings, this->gpu);
 }
 

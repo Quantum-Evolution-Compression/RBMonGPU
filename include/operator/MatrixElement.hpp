@@ -17,7 +17,7 @@ struct MatrixElement {
 };
 
 struct MatrixElementStd {
-    std::complex<float> coefficient;
+    std::complex<double> coefficient;
     Spins                spins;
 };
 

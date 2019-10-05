@@ -22,7 +22,7 @@ namespace rbm_on_gpu {
 
 using namespace std;
 
-using complex_t = cuda_complex::complex<float>;
+using complex_t = cuda_complex::complex<double>;
 template<unsigned int dim>
 using shape_t = array<long int, dim>;
 
@@ -185,7 +185,7 @@ void log_flush() {
     ss->str("");
 }
 
-void log_duration(std::string info, std::chrono::duration<float> duration) {
+void log_duration(std::string info, std::chrono::duration<double> duration) {
     using namespace std;
     using namespace std::chrono;
 

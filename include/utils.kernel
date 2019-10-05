@@ -12,7 +12,7 @@ HDINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& su
     constexpr auto full_mask = 0xffffffff;
 
     if(threadIdx.x == 0) {
-        result = complex_t(0.0f, 0.0f);
+        result = complex_t(0.0, 0.0);
     }
     __syncthreads();
 
@@ -38,14 +38,14 @@ HDINLINE void tree_sum(complex_t& result, const unsigned int size, complex_t& su
     #endif
 }
 
-HDINLINE void tree_sum(float& result, const unsigned int size, float& summand) {
+HDINLINE void tree_sum(double& result, const unsigned int size, double& summand) {
     #ifdef __CUDA_ARCH__
 
     constexpr auto warp_size = 32u;
     constexpr auto full_mask = 0xffffffff;
 
     if(threadIdx.x == 0) {
-        result = 0.0f;
+        result = 0.0;
     }
     __syncthreads();
 
