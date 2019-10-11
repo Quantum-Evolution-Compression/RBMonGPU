@@ -5,6 +5,7 @@ from ._pyRBMonGPU import (
     ExactSummation,
     ExpectationValue,
     HilbertSpaceDistance,
+    get_S_matrix,
     setDevice
 )
 

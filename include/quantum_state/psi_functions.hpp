@@ -8,8 +8,8 @@ namespace rbm_on_gpu {
 HDINLINE
 complex_t my_logcosh(const complex_t z) {
     // return sqrt(0.30102999566 + z*z);
-    return sqrt(1.0 + z*z) - 1.0;
-    // return log(2.0 * cosh(z));
+    // return sqrt(1.0 + z*z) - 1.0;
+    return log(2.0 * cosh(z));
 
     // seems to be dangerous. Does not work for a SW-generator applied on an initial state.
     // return log(1.0 + z*z);
@@ -32,9 +32,9 @@ HDINLINE
 complex_t my_tanh(const complex_t z) {
     // return z / (0.30102999566 + z*z);
     // return z / (1.0 + z*z);
-    // return tanh(z);
+    return tanh(z);
     // return 2.0 * z / (1.0 + z*z);
-    return z / sqrt(1.0 + z*z);
+    // return z / sqrt(1.0 + z*z);
     // const auto e_z = exp(z);
     // return e_z + (1.0 + e_z);
     // return z;

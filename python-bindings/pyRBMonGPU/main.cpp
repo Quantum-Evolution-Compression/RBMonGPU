@@ -8,6 +8,7 @@
 #include "network_functions/ExpectationValue.hpp"
 #include "network_functions/HilbertSpaceDistance.hpp"
 #include "network_functions/PsiOkVector.hpp"
+#include "network_functions/S_matrix.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
@@ -214,6 +215,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
+
+    m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
+        return get_S_matrix(psi, spin_ensemble).to_pytensor<2u>(shape_t<2u>{psi.num_params, psi.num_params});
+    });
 
     m.def("setDevice", setDevice);
 }

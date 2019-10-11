@@ -86,8 +86,8 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
     FREE(result2_device, psi.gpu);
 
     for(auto k = 0u; k < O_k_length; k++) {
-        result[k] *= 1.0 / O_k_length;
-        result_std[k] *= 1.0 / O_k_length;
+        result[k] /= spin_ensemble.get_num_steps();
+        result_std[k] /= spin_ensemble.get_num_steps();
 
         result_std[k] = result_std[k] - complex<double>(
             result[k].real() * result[k].real(), result[k].imag() * result[k].imag()
