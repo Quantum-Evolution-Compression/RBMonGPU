@@ -15,6 +15,21 @@ namespace rbm_on_gpu {
 using namespace std;
 
 
+namespace detail {
+
+template<typename T>
+struct std_type {
+    using type = T;
+};
+
+template<>
+struct std_type<complex_t> {
+    using type = std::complex<double>;
+};
+
+} // namespace detail
+
+
 namespace kernel {
 
 template<typename T>
@@ -90,15 +105,13 @@ struct Array : public vector<T>, public kernel::Array<T> {
     }
 
     template<unsigned int dim>
-    inline xt::pytensor<std::complex<double>, dim> to_pytensor(shape_t<dim> shape={}) const {
-        static_assert(is_same<T, complex_t>::value);
-
+    inline xt::pytensor<typename detail::std_type<T>::type, dim> to_pytensor(shape_t<dim> shape={}) const {
         if(shape == shape_t<dim>()) {
             shape[0] = (long int)this->size();
         }
 
-        xt::pytensor<std::complex<double>, dim> result(shape);
-        memcpy(result.data(), this->host_data(), sizeof(complex_t) * this->size());
+        xt::pytensor<typename detail::std_type<T>::type, dim> result(shape);
+        memcpy(result.data(), this->host_data(), sizeof(T) * this->size());
         return result;
     }
 #endif // __PYTHONCC__

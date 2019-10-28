@@ -9,7 +9,8 @@ HDINLINE
 complex_t my_logcosh(const complex_t z) {
     // return sqrt(0.30102999566 + z*z);
     // return sqrt(1.0 + z*z) - 1.0;
-    return log(2.0 * cosh(z));
+    return complex_t(0.0, -1.0) * log(cosh(z)) + complex_t(0.0, -0.346574);
+    // return tanh(z);
 
     // seems to be dangerous. Does not work for a SW-generator applied on an initial state.
     // return log(1.0 + z*z);
@@ -32,7 +33,8 @@ HDINLINE
 complex_t my_tanh(const complex_t z) {
     // return z / (0.30102999566 + z*z);
     // return z / (1.0 + z*z);
-    return tanh(z);
+    return complex_t(0.0, -1.0) * tanh(z);
+    // return complex_t(2.0, 0.0) / (cosh(2.0 * z) + 1.0);
     // return 2.0 * z / (1.0 + z*z);
     // return z / sqrt(1.0 + z*z);
     // const auto e_z = exp(z);

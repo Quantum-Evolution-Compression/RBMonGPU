@@ -220,5 +220,48 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         return get_S_matrix(psi, spin_ensemble).to_pytensor<2u>(shape_t<2u>{psi.num_params, psi.num_params});
     });
 
+    m.def("get_O_k_vector", [](const Psi& psi, const ExactSummation& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("get_O_k_vector", [](const Psi& psi, const MonteCarloLoop& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("get_O_k_vector", [](const PsiDynamical& psi, const ExactSummation& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("get_O_k_vector", [](const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("get_O_k_vector", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("get_O_k_vector", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
+        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+
     m.def("setDevice", setDevice);
 }

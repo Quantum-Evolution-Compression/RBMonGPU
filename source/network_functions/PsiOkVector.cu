@@ -96,6 +96,54 @@ void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const 
 }
 
 
+template<typename Psi_t, typename SpinEnsemble>
+pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
+    const auto O_k_length = psi.get_num_params();
+    const auto psi_kernel = psi.get_kernel();
+
+    Array<complex_t> result(O_k_length, psi.gpu);
+    Array<double> result_std(O_k_length, psi.gpu);
+
+    result.clear();
+    result_std.clear();
+
+    auto result_ptr = result.data();
+    auto result_std_ptr = result_std.data();
+
+    spin_ensemble.foreach(
+        psi,
+        [=] __device__ __host__ (
+            const unsigned int spin_index,
+            const Spins spins,
+            const complex_t log_psi,
+            typename Psi_t::Angles& angles,
+            const double weight
+        ) {
+            psi_kernel.foreach_O_k(
+                spins,
+                angles,
+                [&](const unsigned int k, const complex_t& O_k_element) {
+                    generic_atomicAdd(&result_ptr[k], weight * O_k_element);
+                    generic_atomicAdd(&result_std_ptr[k], weight * (O_k_element * conj(O_k_element)).real());
+                }
+            );
+        }
+    );
+
+    result.update_host();
+    result_std.update_host();
+
+    for(auto k = 0u; k < O_k_length; k++) {
+        result[k] /= spin_ensemble.get_num_steps();
+        result_std[k] /= spin_ensemble.get_num_steps();
+
+        result_std[k] = sqrt((result_std[k] - result[k] * conj(result[k])).real());
+    }
+
+    return {result, result_std};
+}
+
+
 template void psi_O_k_vector(complex<double>* result, const Psi& psi, const Spins& spins);
 template void psi_O_k_vector(complex<double>* result, const PsiDynamical& psi, const Spins& spins);
 template void psi_O_k_vector(complex<double>* result, const PsiDeep& psi, const Spins& spins);
@@ -107,5 +155,13 @@ template void psi_O_k_vector(complex<double>* result, complex<double>* result_st
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const ExactSummation& spin_ensemble);
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
+
+
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const ExactSummation& spin_ensemble);
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const MonteCarloLoop& spin_ensemble);
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDynamical& psi, const ExactSummation& spin_ensemble);
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const ExactSummation& spin_ensemble);
+template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
 
 } // namespace rbm_on_gpu

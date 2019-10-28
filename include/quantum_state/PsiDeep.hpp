@@ -268,7 +268,6 @@ public:
                     // TODO: check if shared memory solution is faster
                     function(
                         layer.begin_params + layer.size + i * layer.size + j,
-                        // complex_t(33.0, 33.0)
                         cache.activations[j] * (
                             layer_idx == 0 ?
                             complex_t(spins[lhs_unit_idx], 0.0) :
@@ -392,30 +391,30 @@ public:
 
         this->init_kernel();
 
-        cout << "N: " << this->N << endl;
-        cout << "num_layers: " << this->num_layers << endl;
-        cout << "width: " << this->width << endl;
-        cout << "num_params: " << this->num_params << endl;
-        cout << "prefactor: " << this->prefactor << endl;
-        cout << endl;
+        // cout << "N: " << this->N << endl;
+        // cout << "num_layers: " << this->num_layers << endl;
+        // cout << "width: " << this->width << endl;
+        // cout << "num_params: " << this->num_params << endl;
+        // cout << "prefactor: " << this->prefactor << endl;
+        // cout << endl;
 
-        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
-            const auto& layer = *next(this->layers.begin(), layer_idx);
+        // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        //     const auto& layer = *next(this->layers.begin(), layer_idx);
 
-            cout << "Layer: " << layer_idx << endl;
-            cout << "size: " << kernel_layer.size << endl;
-            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
-            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-            cout << "delta: " << kernel_layer.delta << endl;
-            cout << "begin_params: " << kernel_layer.begin_params << endl;
-            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
-            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
-            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-            cout << "bases.size: " << layer.bases.size() << endl;
-            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
-            cout << endl;
-        }
+        //     cout << "Layer: " << layer_idx << endl;
+        //     cout << "size: " << kernel_layer.size << endl;
+        //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+        //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+        //     cout << "delta: " << kernel_layer.delta << endl;
+        //     cout << "begin_params: " << kernel_layer.begin_params << endl;
+        //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+        //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+        //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+        //     cout << "bases.size: " << layer.bases.size() << endl;
+        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+        //     cout << endl;
+        // }
     }
 
     PsiDeep copy() const {

@@ -3,8 +3,12 @@ import numpy as np
 import math
 
 
+def real_noise(shape):
+    return 2 * np.random.random_sample(shape) - 1
+
+
 def complex_noise(shape):
-    return (2 * np.random.random_sample(shape) - 1) + 1j * (2 * np.random.random_sample(shape) - 1)
+    return real_noise(shape) + 1j * real_noise(shape)
 
 
 def new_neural_network(
@@ -64,24 +68,22 @@ def new_deep_neural_network(
     M,
     C,
     initial_value=(0.01 + 1j * math.pi / 4),
-    noise=1e-3,
-    a_noise=None,
-    b_noise=None,
-    W_noise=None,
-    layer_base=0,
-    layer_noise=0.5,
+    noise=1e-4,
     gpu=False
 ):
-    a = (a_noise or noise) * complex_noise(N)
-    b = [(b_noise or noise) * complex_noise(m) for m in M]
+    for n, m, c in zip([N] + M[:-1], M, C):
+        assert m * c % n == 0
+        assert c <= n
 
-    w = (W_noise or noise) * complex_noise((C[0], M[0]))
+    a = noise * complex_noise(N)
+    b = [noise * complex_noise(m) for m in M]
+
+    w = noise * complex_noise((C[0], M[0]))
     w[C[0] // 2, :] = initial_value
     W = [w]
 
-    for c, m in list(zip(C, M))[1:]:
-        w = layer_base + layer_noise * complex_noise((c, m))
-        # w = layer_noise * complex_noise((c, m))
+    for c, m, next_c in zip(C[1:], M[1:], C[2:] + [1]):
+        w = math.sqrt(6 / (c + next_c)) * real_noise((c, m)) + noise * complex_noise((c, m))
         W.append(w)
 
     return PsiDeep(a, b, W, 1.0, gpu)

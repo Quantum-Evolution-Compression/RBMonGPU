@@ -6,6 +6,7 @@ from ._pyRBMonGPU import (
     ExpectationValue,
     HilbertSpaceDistance,
     get_S_matrix,
+    get_O_k_vector,
     setDevice
 )
 

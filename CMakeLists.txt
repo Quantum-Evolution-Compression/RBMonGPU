@@ -50,11 +50,6 @@ set(CXX_INCLUDES ${CXX_INCLUDES} ${NUMPY_INCLUDE_DIRS})
 set(CUDA_INCLUDES ${CUDA_INCLUDES} ${project_include_dir})
 set(CXX_INCLUDES ${CXX_INCLUDES} ${project_include_dir})
 
-# zMinResQLP
-# ==========
-
-set(LIBS ${LIBS} "${CMAKE_CURRENT_LIST_DIR}/libzminresqlp.so")
-
 # Compiler flags
 # ==============
 
