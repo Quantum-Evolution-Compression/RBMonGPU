@@ -7,6 +7,7 @@ from ._pyRBMonGPU import (
     HilbertSpaceDistance,
     get_S_matrix,
     get_O_k_vector,
+    psi_angles,
     setDevice
 )
 

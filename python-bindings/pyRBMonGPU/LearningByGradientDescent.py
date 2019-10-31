@@ -74,7 +74,7 @@ class LearningByGradientDescent:
     @property
     def is_learning_poorly(self):
         graph = self.graph
-        return np.count_nonzero(graph > graph[0] + 0.2) > 20
+        return np.count_nonzero(graph > graph[0] + 0.2) > 40
 
     def has_converged(self, x, threshold=None):
         threshold = threshold or (3e-3 if self.mc else 1e-3)
@@ -148,50 +148,23 @@ class LearningByGradientDescent:
 
         return gradient
 
-    def get_gradient_descent_algorithms(self, eta, epsilon):
-        gamma = 0.9
-        beta1 = 0.9
-        beta2 = 0.999
+    def get_gradient_descent_algorithm(self, name):
         psi_init_params = self.psi_init.params
 
-        return [
-            {
-                "name": "adam",
-                "iter": lambda: gd.adam_generator(
-                    psi_init_params,
-                    lambda step, params: self.set_params_and_return_gradient(
-                        step, params
-                    ),
-                    beta1,
-                    beta2,
-                    eta,
-                    epsilon
+        return {
+            "padam": lambda: gd.padam_generator(
+                psi_init_params,
+                lambda step, params: self.set_params_and_return_gradient(
+                    step, params
                 )
-            },
-            {
-                "name": "rmsprop",
-                "iter": lambda: gd.rmsprop_generator(
-                    psi_init_params,
-                    lambda step, params: self.set_params_and_return_gradient(
-                        step, params
-                    ),
-                    eta,
-                    gamma,
-                    epsilon
+            ),
+            "nag": lambda: gd.nag_generator(
+                psi_init_params,
+                lambda step, params: self.set_params_and_return_gradient(
+                    step, params
                 )
-            },
-            # {
-            #     "name": "nag",
-            #     "iter": gd.nag_generator(
-            #         psi_init_params,
-            #         lambda step, params: self.set_params_and_return_gradient(
-            #             step, params
-            #         ),
-            #         eta,
-            #         gamma
-            #     )
-            # }
-        ]
+            )
+        }[name]()
 
     @property
     def min_report(self):
@@ -210,8 +183,6 @@ class LearningByGradientDescent:
             result["delta_energy_history"] = self.delta_energy_history
         if hasattr(self, "excluded_states_distances"):
             result["excluded_states_distances"] = self.excluded_states_distances
-        result["eta"] = self.eta
-        result["epsilon"] = self.epsilon
 
         return result
 
@@ -234,7 +205,7 @@ class LearningByGradientDescent:
             json.dump(self.report, f, indent=2)
 
     def find_low_laying_state(
-        self, psi_init, operator, excluded_states=[], eta=1e-4, avoid_correlations=0,
+        self, psi_init, operator, excluded_states=[], avoid_correlations=0,
         level_repulsion=1, imaginary_time_evolution=True, min_steps=200, max_steps=1500
     ):
         self.psi0 = psi_init
@@ -251,7 +222,7 @@ class LearningByGradientDescent:
         self.avoid_correlations = avoid_correlations
         self.level_repulsion = level_repulsion
 
-        algorithm = next(iter(self.get_gradient_descent_algorithms(eta)))
+        algorithm = next(iter(self.get_gradient_descent_algorithm()))
         algorithm_iter = algorithm["iter"]()
 
         steps = min_steps
@@ -263,81 +234,33 @@ class LearningByGradientDescent:
 
         return self.psi
 
-    def do_the_gradient_descent(self, eta, epsilon):
+    def do_the_gradient_descent(self, algorithm_name="padam"):
         # max_steps = 400
 
-        self.eta = eta
-        self.epsilon = epsilon
         self.psi0 = self.psi.copy()
-        for algorithm in self.get_gradient_descent_algorithms(eta, epsilon):
-            self.distance_history = []
-            self.verbose_distance_history = []
-            self.gradient_prefactor = 1
-            # self.params_history = []
+        algorithm = self.get_gradient_descent_algorithm(algorithm_name)
+        self.distance_history = []
+        self.verbose_distance_history = []
+        self.gradient_prefactor = 1
 
-            num_steps = 400
-            algorithm_iter = algorithm["iter"]()
-            list(islice(algorithm_iter, num_steps))
+        num_steps = 400
+        list(islice(algorithm, num_steps))
 
-            if self.is_learning_poorly:
-                raise PoorLearning()
+        while num_steps <= 1000 and self.is_descending:
+            list(islice(algorithm, 200))
+            num_steps += 200
 
-            while num_steps <= 1000 and self.is_descending:
-                list(islice(algorithm_iter, 200))
-                num_steps += 200
+        if self.is_learning_poorly:
+            raise PoorLearning()
 
-            # v2
-            # if (
-            #     initial_distance > 2e-4 and self.smoothed_distance_history[-1] / initial_distance > 0.1
-            # ):
-            #     params_at_mark_A = self.psi.params
-            #     self.gradient_prefactor = 1 / 2 if self.is_highly_fluctuating else 2
-            #     list(islice(algorithm_iter, 300))
-            #     num_steps += 300
-            #     while num_steps <= 2000 and self.is_descending:
-            #         list(islice(algorithm_iter, 200))
-            #         num_steps += 200
+        smoothed_distance_history = self.smoothed_distance_history
+        if smoothed_distance_history[0] > 1e-3 and smoothed_distance_history[-1] / smoothed_distance_history[0] > 1 / 3:
+            raise PoorLearning()
 
-            #     if self.smoothed_distance_history[-1] / initial_distance > 0.1:
-            #         self.psi.params = params_at_mark_A
-
-            # if self.smoothed_distance_history[-1] >= initial_distance:
-            #     self.save_gd_report(algorithm, self.psi0.params, eta)
-
-            print(self.smoothed_distance_history[-1])
-
-            return
-            # final_distance = self.smoothed_distance_history[-1]
-
-            # final_distances.append(final_distance)
-            # final_params.append(self.last_params_avg if self.mc else self.psi.params)
-
-            # if print_result:
-            #     print(algorithm["name"], final_distance)
-
-            # if (
-            #     (initial_distance > 2e-4 and final_distance / initial_distance < 0.1) or
-            #     (initial_distance <= 2e-4 and final_distance < initial_distance)
-            # ):
-            #     best_algorithm_idx = min(range(len(final_params)), key=lambda i: final_distances[i])
-            #     self.psi.params = final_params[best_algorithm_idx]
-            #     return
-
-            # self.save_gd_report(algorithm, self.psi0.params, eta)
-
-            # print(f"[{algorithm['name']}] gradient descent did not converge in {num_steps} steps")
-            # print(algorithm["name"], final_distance)
-            # print_result = True
-
-        print("All gradient descent algorithms failed")
-        self.psi.params = self.psi0.params
-        raise DidNotConverge()
+        print(self.smoothed_distance_history[-1])
 
     def do_preconditioning(self, psi, psi_ref):
         print("preconditioning")
-        epsilon = 1e-3
-        beta1 = 0.9
-        beta2 = 0.999
         id_op = Operator(PauliExpression(0, 0), self.gpu)
 
         def gradient(step, params):
@@ -352,13 +275,12 @@ class LearningByGradientDescent:
             return gradient
 
         psi = +psi
-        gd.adam(psi.params, 75, gradient, beta1, beta2, 1e-3, epsilon)
+        gd.padam(psi.params, 75, gradient)
         return psi
 
-    def optimize_for(self, psi, operator, is_unitary=False, regularization=None, eta=4e-3, epsilon=1e-3, psi_init_getter=None, preconditioning=True):
+    def optimize_for(self, psi, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None):
         self.psi = +psi
-        self.psi_init = psi_init_getter() if psi_init_getter is not None else +psi
-        norm_threshold = 1e-1
+        self.psi_init = psi_init
 
         self.regularization = regularization
         self.operator = Operator(operator, self.gpu)
@@ -370,22 +292,25 @@ class LearningByGradientDescent:
 
         if is_unitary:
             success = False
-            for tries in range(5):
+            for tries in range(2):
                 try:
-                    if preconditioning and self.hilbert_space_distance(self.psi, self.psi_init, id_op, True, self.spin_ensemble) > 0.05:
+                    if (
+                        self.psi_init is not psi and
+                        self.hilbert_space_distance(self.psi, self.psi_init, id_op, True, self.spin_ensemble) > 0.05
+                    ):
                         self.psi_init = self.do_preconditioning(self.psi_init, self.psi)
 
-                    self.do_the_gradient_descent(eta, epsilon)
+                    if self.psi_init is not psi:
+                        self.do_the_gradient_descent("padam")
+                    else:
+                        self.do_the_gradient_descent("nag")
+
                     success = True
                     break
                 except PoorLearning:
                     self.unsuccessful_curves.append(self.distance_history)
+                    self.psi_init = psi_init_getter()
 
-                    # eta = max(eta / 1.5, 5e-4)
-                    # epsilon = min(epsilon * 1.5, 1e-2)
-                    # print(f"network is poorly learning: lower eta to {eta:.3g} and epsilon to {epsilon:.3g}")
-                    self.psi = +psi
-                    self.psi_init = psi_init_getter() if psi_init_getter is not None else +psi
             if not success:
                 self.save_report()
                 raise DidNotConverge()
@@ -397,7 +322,7 @@ class LearningByGradientDescent:
         #     for n in range(num_steps):
         #         self.optimize_for(fitted_operator, is_unitary=False, regularization=regularization, eta=eta)
         else:
-            self.do_the_gradient_descent(eta)
+            self.do_the_gradient_descent()
 
         if not self.mc:
             self.psi.normalize(self.spin_ensemble)

@@ -63,9 +63,10 @@ public:
     Layer          layers[max_layers];
     unsigned int   num_layers;
     unsigned int   width;                   // size of largest layer
+    unsigned int   num_units;
 
     unsigned int   num_params;
-    double          prefactor;
+    double         prefactor;
 
 public:
 
@@ -185,6 +186,23 @@ public:
         this->log_psi_s(log_psi, spins, cache);
 
         return exp(log(this->prefactor) + log_psi);
+    }
+
+    template<typename Function>
+    HDINLINE
+    void foreach_angle(const Spins& spins, Angles& cache, Function function) const {
+        #include "cuda_kernel_defines.h"
+
+        SHARED complex_t deep_angles[max_deep_angles];
+        this->forward_pass(spins, cache.activations, deep_angles);
+
+        for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            const Layer& layer = this->layers[layer_idx];
+
+            MULTI(j, layer.size) {
+                function(layer.begin_angles + j, deep_angles[layer.begin_angles + j]);
+            }
+        }
     }
 
     template<typename Function>
@@ -314,6 +332,10 @@ public:
         return this->layers[0].size;
     }
 
+    HDINLINE
+    unsigned int get_num_units() const {
+        return this->num_units;
+    }
 };
 
 } // namespace kernel
@@ -351,6 +373,7 @@ public:
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
         this->width = this->N;
+        this->num_units = 0u;
 
         Array<complex_t> rhs_weights_array(0, false);
         Array<unsigned int> rhs_connections_array(0, false);
@@ -365,6 +388,8 @@ public:
             if(size > this->width) {
                 this->width = size;
             }
+
+            this->num_units += size;
 
             Array<complex_t> lhs_weights_array(lhs_weights, gpu);
             Array<complex_t> bases_array(bases, gpu);

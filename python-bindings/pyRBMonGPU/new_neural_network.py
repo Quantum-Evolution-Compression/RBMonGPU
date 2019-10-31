@@ -83,7 +83,11 @@ def new_deep_neural_network(
     W = [w]
 
     for c, m, next_c in zip(C[1:], M[1:], C[2:] + [1]):
-        w = math.sqrt(6 / (c + next_c)) * real_noise((c, m)) + noise * complex_noise((c, m))
+        w = (
+            math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
+            # 1j * math.sqrt(6 / (c + next_c)) / 1e2 * real_noise((c, m)) +
+            noise * complex_noise((c, m))
+        )
         W.append(w)
 
     return PsiDeep(a, b, W, 1.0, gpu)

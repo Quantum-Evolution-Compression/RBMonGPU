@@ -8,6 +8,7 @@
 #include "network_functions/ExpectationValue.hpp"
 #include "network_functions/HilbertSpaceDistance.hpp"
 #include "network_functions/PsiOkVector.hpp"
+#include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
 
 #include <pybind11/pybind11.h>
@@ -257,6 +258,21 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     });
     m.def("get_O_k_vector", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
         auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+
+    m.def("psi_angles", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
+        auto result_and_result_std = psi_angles(psi, spin_ensemble);
+        return make_pair(
+            result_and_result_std.first.to_pytensor<1u>(),
+            result_and_result_std.second.to_pytensor<1u>()
+        );
+    });
+    m.def("psi_angles", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
+        auto result_and_result_std = psi_angles(psi, spin_ensemble);
         return make_pair(
             result_and_result_std.first.to_pytensor<1u>(),
             result_and_result_std.second.to_pytensor<1u>()
