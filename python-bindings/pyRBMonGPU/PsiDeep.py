@@ -1,6 +1,7 @@
 from ._pyRBMonGPU import PsiDeep
 from json_numpy import NumpyEncoder, NumpyDecoder
 import json
+import numpy as np
 
 
 def to_json(self):
@@ -20,11 +21,20 @@ def to_json(self):
 @staticmethod
 def from_json(json_obj, gpu):
     obj = json.loads(
-        json.dumps(json_obj),
+        json.dumps(
+            json_obj,
+            cls=NumpyEncoder
+        ),
         cls=NumpyDecoder
     )
 
-    return PsiDeep(obj["a"], obj["b"], obj["W"], obj["prefactor"], gpu)
+    return PsiDeep(
+        obj["a"],
+        obj["b"],
+        obj["W"],
+        obj["prefactor"],
+        gpu
+    )
 
 
 def normalize(self, exact_summation):

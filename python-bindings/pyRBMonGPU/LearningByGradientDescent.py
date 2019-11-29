@@ -62,7 +62,7 @@ class LearningByGradientDescent:
 
     @property
     def is_highly_fluctuating(self):
-        graph = self.graph[-50:]
+        graph = np.log(self.distance_history[-50:])
         diff_graph = graph[1:] - graph[:-1]
         return np.std(diff_graph) > 0.25
 
