@@ -106,7 +106,7 @@ def new_deep_neural_network(
     connections = []
     for n, m, c in zip([N] + M[:-1], M, C):
         if dim == 1:
-            delta_j = m * c / n
+            delta_j = max(n // m, 1)
             connections.append(np.array([
                 [
                     (j * delta_j + i) % n
@@ -118,8 +118,8 @@ def new_deep_neural_network(
             range2D = lambda area: product(range(area[0]), range(area[1]))
             linear_idx = lambda row, col: row * n[0] + col
 
-            delta_j1 = m[0] * c[0] / n[0]
-            delta_j2 = m[1] * c[1] / n[1]
+            delta_j1 = max(n[0] // m[0], 1)
+            delta_j2 = max(n[1] // m[1], 1)
             connections.append(np.array([
                 [
                     linear_idx(

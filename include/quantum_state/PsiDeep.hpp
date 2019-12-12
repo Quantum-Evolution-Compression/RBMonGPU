@@ -433,13 +433,25 @@ public:
         //     cout << "size: " << kernel_layer.size << endl;
         //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
         //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-        //     cout << "delta: " << kernel_layer.delta << endl;
         //     cout << "begin_params: " << kernel_layer.begin_params << endl;
         //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
         //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
         //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
         //     cout << "biases.size: " << layer.biases.size() << endl;
         //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+        //     cout << "lhs_connections: " << endl;
+        //     for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+        //         for(auto j = 0u; j < layer.size; j++) {
+        //             cout << layer.lhs_connections[i * layer.size + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
+        //     for(auto i = 0u; i < layer.size; i++) {
+        //         for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
+        //             cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
         //     cout << endl;
         // }
     }
