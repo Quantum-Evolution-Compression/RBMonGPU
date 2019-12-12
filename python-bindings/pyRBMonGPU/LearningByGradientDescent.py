@@ -41,6 +41,7 @@ class LearningByGradientDescent:
         self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(self.num_params, psi.gpu)
         self.expectation_value = pyRBMonGPU.ExpectationValue(self.gpu)
         self.regularization = None
+        self.eta = None
 
     @property
     def smoothed_distance_history(self):
@@ -108,6 +109,9 @@ class LearningByGradientDescent:
             gradient, distance = self.hilbert_space_distance.gradient(
                 self.psi0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
             )
+            distance -= self.distance_0
+            if distance < 0:
+                gradient *= -1
 
             gradient *= self.gradient_prefactor
             if self.regularization is not None:
@@ -151,18 +155,24 @@ class LearningByGradientDescent:
     def get_gradient_descent_algorithm(self, name):
         psi_init_params = self.psi_init.params
 
+        kwargs = {}
+        if self.eta is not None:
+            kwargs["eta"] = self.eta
+
         return {
             "padam": lambda: gd.padam_generator(
                 psi_init_params,
                 lambda step, params: self.set_params_and_return_gradient(
                     step, params
-                )
+                ),
+                **kwargs
             ),
             "nag": lambda: gd.nag_generator(
                 psi_init_params,
                 lambda step, params: self.set_params_and_return_gradient(
                     step, params
-                )
+                ),
+                **kwargs
             )
         }[name]()
 
@@ -250,12 +260,12 @@ class LearningByGradientDescent:
             list(islice(algorithm, 200))
             num_steps += 200
 
-        if self.is_learning_poorly:
-            raise PoorLearning()
+        # if self.is_learning_poorly:
+        #     raise PoorLearning()
 
-        smoothed_distance_history = self.smoothed_distance_history
-        if smoothed_distance_history[0] > 1e-3 and smoothed_distance_history[-1] / smoothed_distance_history[0] > 1 / 3:
-            raise PoorLearning()
+        # smoothed_distance_history = self.smoothed_distance_history
+        # if smoothed_distance_history[0] > 1e-3 and smoothed_distance_history[-1] / smoothed_distance_history[0] > 1 / 3:
+        #     raise PoorLearning()
 
         print(self.smoothed_distance_history[-1])
 
@@ -278,10 +288,12 @@ class LearningByGradientDescent:
         gd.padam(psi.params, 75, gradient)
         return psi
 
-    def optimize_for(self, psi, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None):
+    def optimize_for(self, psi, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None, eta=None, distance_0=0):
         self.psi = +psi
         self.psi_init = psi_init
 
+        self.eta = eta
+        self.distance_0 = distance_0
         self.regularization = regularization
         self.operator = Operator(operator, self.gpu)
         self.is_unitary = is_unitary
@@ -322,7 +334,7 @@ class LearningByGradientDescent:
         #     for n in range(num_steps):
         #         self.optimize_for(fitted_operator, is_unitary=False, regularization=regularization, eta=eta)
         else:
-            self.do_the_gradient_descent()
+            self.do_the_gradient_descent("padam")
 
         if not self.mc:
             self.psi.normalize(self.spin_ensemble)

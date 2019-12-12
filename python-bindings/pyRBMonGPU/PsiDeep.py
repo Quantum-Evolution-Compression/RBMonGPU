@@ -1,7 +1,6 @@
 from ._pyRBMonGPU import PsiDeep
 from json_numpy import NumpyEncoder, NumpyDecoder
 import json
-import numpy as np
 
 
 def to_json(self):
@@ -9,6 +8,7 @@ def to_json(self):
         type="PsiDeep",
         a=self.a,
         b=self.b,
+        connections=self.connections,
         W=self.W,
         prefactor=self.prefactor
     )
@@ -31,6 +31,7 @@ def from_json(json_obj, gpu):
     return PsiDeep(
         obj["a"],
         obj["b"],
+        obj["connections"],
         obj["W"],
         obj["prefactor"],
         gpu

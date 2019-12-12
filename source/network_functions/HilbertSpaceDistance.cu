@@ -89,6 +89,50 @@ void kernel::HilbertSpaceDistance::compute_averages(
                 );
             }
         },
+        max(psi.get_width(), psi_prime.get_width())
+    );
+}
+
+template<typename Psi_t, typename SpinEnsemble>
+void kernel::HilbertSpaceDistance::overlap(
+    const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+) const {
+    MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
+    MEMSET(this->probability_ratio_avg, 0, sizeof(double), this->gpu)
+
+    const auto this_ = *this;
+    const auto psi_kernel = psi.get_kernel();
+    const auto psi_prime_kernel = psi_prime.get_kernel();
+
+    spin_ensemble.foreach(
+        psi,
+        [=] __device__ __host__ (
+            const unsigned int spin_index,
+            const Spins spins,
+            const complex_t log_psi,
+            typename Psi_t::Angles& angles,
+            const double weight
+        ) {
+            #include "cuda_kernel_defines.h"
+
+            SHARED typename Psi_t::Angles angles_prime;
+            angles_prime.init(psi_prime_kernel, spins);
+
+            SHARED complex_t log_psi_prime;
+            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
+
+            SHARED complex_t   omega;
+            SHARED double      probability_ratio;
+
+            SINGLE
+            {
+                omega = exp(conj(log_psi_prime - log_psi));
+                probability_ratio = exp(2.0 * (log_psi_prime.real() - log_psi.real()));
+
+                generic_atomicAdd(this_.omega_avg, weight * omega);
+                generic_atomicAdd(this_.probability_ratio_avg, weight * probability_ratio);
+            }
+        },
         max(psi.get_num_angles(), psi_prime.get_num_angles())
     );
 }
@@ -153,6 +197,26 @@ double HilbertSpaceDistance::distance(
         (omega_avg_host * conj(omega_avg_host)).real() / (
             next_state_norm_avg_host * probability_ratio_avg_host
         )
+    );
+}
+
+template<typename Psi_t, typename SpinEnsemble>
+double HilbertSpaceDistance::overlap(
+    const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+) const {
+    this->overlap(psi, psi_prime, spin_ensemble);
+
+    complex_t omega_avg_host;
+    double probability_ratio_avg_host;
+
+    MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
+    MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
+
+    omega_avg_host /= spin_ensemble.get_num_steps();
+    probability_ratio_avg_host /= spin_ensemble.get_num_steps();
+
+    return sqrt(
+        (omega_avg_host * conj(omega_avg_host)).real() / probability_ratio_avg_host
     );
 }
 
@@ -223,6 +287,26 @@ template double HilbertSpaceDistance::distance(
     const MonteCarloLoop& spin_ensemble
 ) const;
 
+template double HilbertSpaceDistance::overlap(
+    const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
+) const;
+template double HilbertSpaceDistance::overlap(
+    const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
+) const;
+
+template double HilbertSpaceDistance::overlap(
+    const PsiDynamical& psi, const PsiDynamical& psi_prime, const ExactSummation& spin_ensemble
+) const;
+template double HilbertSpaceDistance::overlap(
+    const PsiDynamical& psi, const PsiDynamical& psi_prime, const MonteCarloLoop& spin_ensemble
+) const;
+
+template double HilbertSpaceDistance::overlap(
+    const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+) const;
+template double HilbertSpaceDistance::overlap(
+    const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
+) const;
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,

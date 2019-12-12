@@ -35,6 +35,11 @@ public:
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
         const bool is_unitary, const SpinEnsemble& spin_ensemble
     ) const;
+
+    template<typename Psi_t, typename SpinEnsemble>
+    void overlap(
+        const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+    ) const;
 };
 
 } // namespace kernel
@@ -56,6 +61,11 @@ public:
     double distance(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
+    ) const;
+
+    template<typename Psi_t, typename SpinEnsemble>
+    double overlap(
+        const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
     ) const;
 
     template<typename Psi_t, typename SpinEnsemble>

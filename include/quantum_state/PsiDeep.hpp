@@ -38,23 +38,33 @@ class PsiDeep {
 public:
     using Angles = rbm_on_gpu::PsiDeepAngles;
 
-    static constexpr unsigned int max_layers = 5u;
+    static constexpr unsigned int max_layers = 3u;
     static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
 
+    // TODO: Try to use stack-allocated arrays
     struct Layer {
         unsigned int  size;                 // number of units
+        unsigned int  begin_angles;         // index of the first unit of this layer in a global list of angles
+        unsigned int  begin_params;         // index of the first unit of this layer in a global list of parameters
         unsigned int  lhs_connectivity;     // number of connections to the lhs per unit
         unsigned int  rhs_connectivity;     // number of connections to the rhs per unit
-        unsigned int  delta;                // step-width of connections to the lhs
-        unsigned int  begin_angles;         // index of angle corresponding to the first unit of this layer in a global list of angles
-        unsigned int  begin_params;         // index of param corresponding to the first unit of this layer in a global list of params
+        unsigned int* lhs_connections;      // connectivity matrix to the lhs: lhs-connectivity x size
+        unsigned int* rhs_connections;      // connectivity matrix to the rhs: size x rhs-connectivity
         complex_t*    lhs_weights;          // weight matrix to the lhs: lhs-connectivity x size
         complex_t*    rhs_weights;          // weight matrix to the rhs: size x rhs-connectivity
-        complex_t*    bases;                // basis factors
-        unsigned int* rhs_connections;      // connectivity matrix to the rhs: size x rhs-connectivity
+        complex_t*    biases;               // bias factors
 
-        HDINLINE unsigned int lhs_connection(const unsigned int i) const {
-            return this->delta * i;
+        HDINLINE unsigned int lhs_connection(const unsigned int i, const unsigned int j) const {
+            return this->lhs_connections[i * this->size + j];
+        }
+        HDINLINE unsigned int rhs_connection(const unsigned int i, const unsigned int j) const {
+            return this->rhs_connections[i * this->rhs_connectivity + j];
+        }
+        HDINLINE complex_t lhs_weight(const unsigned int i, const unsigned int j) const {
+            return this->lhs_weights[i * this->size + j];
+        }
+        HDINLINE complex_t rhs_weight(const unsigned int i, const unsigned int j) const {
+            return this->rhs_weights[i * this->rhs_connectivity + j];
         }
     };
 
@@ -75,7 +85,7 @@ public:
     HDINLINE
     void forward_pass(
         const Spins& spins,
-        complex_t* activations_in, /* after this functions has finished, this holds the *output*-activations of the last layer */
+        complex_t* activations_in, /* once this functions has finished, this holds the *output*-activations of the last layer */
         complex_t* deep_angles) const
     {
         #include "cuda_kernel_defines.h"
@@ -94,17 +104,11 @@ public:
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     activations_out[j] += (
-                        layer.lhs_weights[i * layer.size + j] *
-                        activations_in[
-                            (layer.lhs_connection(j) + i) % (
-                                layer_idx == 0u ?
-                                this->N :
-                                this->layers[layer_idx - 1u].size
-                            )
-                        ]
+                        layer.lhs_weight(i, j) *
+                        activations_in[layer.lhs_connection(i, j)]
                     );
                 }
-                activations_out[j] += layer.bases[j];
+                activations_out[j] += layer.biases[j];
 
                 if(deep_angles != nullptr) {
                     deep_angles[layer.begin_angles + j] = activations_out[j];
@@ -220,7 +224,7 @@ public:
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
 
-            // calculate the unit-activations of the layer.
+            // calculate the activations of the layer.
             // here, these are the back-propagated derivatives.
             if(layer_idx == this->num_layers - 1) {
                 MULTI(j, layer.size) {
@@ -249,8 +253,8 @@ public:
                         unit_activation[i] +=
                         #endif
                         (
-                            layer.rhs_weights[i * layer.rhs_connectivity + j] * cache.activations[
-                                layer.rhs_connections[i * layer.rhs_connectivity + j]
+                            layer.rhs_weight(i, j) * cache.activations[
+                                layer.rhs_connection(i, j)
                             ]
                         );
                     }
@@ -276,13 +280,7 @@ public:
                 function(layer.begin_params + j, cache.activations[j]);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
-                    const auto lhs_unit_idx = (
-                        (layer.lhs_connection(j) + i) % (
-                            layer_idx == 0u ?
-                            this->N :
-                            this->layers[layer_idx - 1].size
-                        )
-                    );
+                    const auto lhs_unit_idx = layer.lhs_connection(i, j);
                     // TODO: check if shared memory solution is faster
                     function(
                         layer.begin_params + layer.size + i * layer.size + j,
@@ -347,24 +345,24 @@ public:
     struct Layer {
         unsigned int        size;
         unsigned int        lhs_connectivity;
-
+        Array<unsigned int> lhs_connections;
+        Array<unsigned int> rhs_connections;
         Array<complex_t>    lhs_weights;
         Array<complex_t>    rhs_weights;
-        Array<complex_t>    bases;
-        Array<unsigned int> rhs_connections;
+        Array<complex_t>    biases;
     };
     list<Layer> layers;
     bool gpu;
-
-    // vector<pair<int, int>> index_pair_list;
 
 public:
     PsiDeep(const PsiDeep& other);
 
 #ifdef __PYTHONCC__
+
     inline PsiDeep(
         const xt::pytensor<std::complex<double>, 1u>& a,
-        const vector<xt::pytensor<std::complex<double>, 1u>> bases_list,
+        const vector<xt::pytensor<std::complex<double>, 1u>> biases_list,
+        const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
         const double prefactor,
         const bool gpu
@@ -375,15 +373,16 @@ public:
         this->width = this->N;
         this->num_units = 0u;
 
-        Array<complex_t> rhs_weights_array(0, false);
         Array<unsigned int> rhs_connections_array(0, false);
+        Array<complex_t> rhs_weights_array(0, false);
 
         for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            const auto& lhs_connections = lhs_connections_list[layer_idx];
             const auto& lhs_weights = lhs_weights_list[layer_idx];
-            const auto& bases = bases_list[layer_idx];
+            const auto& biases = biases_list[layer_idx];
 
-            const unsigned int size = bases.size();
-            const unsigned int lhs_connectivity = lhs_weights.shape()[0];
+            const unsigned int size = biases.size();
+            const unsigned int lhs_connectivity = lhs_connections.shape()[0];
 
             if(size > this->width) {
                 this->width = size;
@@ -391,27 +390,30 @@ public:
 
             this->num_units += size;
 
+            Array<unsigned int> lhs_connections_array(lhs_connections, gpu);
             Array<complex_t> lhs_weights_array(lhs_weights, gpu);
-            Array<complex_t> bases_array(bases, gpu);
+            Array<complex_t> biases_array(biases, gpu);
 
-            const auto rhs_weights_and_connections = this->compile_rhs_weights_and_connections(
-                layer_idx > 0 ? bases_list[layer_idx - 1].size() : this->N,
+            const auto rhs_connections_and_weights = this->compile_rhs_connections_and_weights(
+                layer_idx > 0 ? biases_list[layer_idx - 1].size() : this->N,
                 size,
                 lhs_connectivity,
+                lhs_connections_array,
                 lhs_weights_array
             );
 
             this->layers.push_front({
                 size,
                 lhs_connectivity,
+                move(lhs_connections_array),
+                move(rhs_connections_array),
                 move(lhs_weights_array),
                 move(rhs_weights_array),
-                move(bases_array),
-                move(rhs_connections_array)
+                move(biases_array)
             });
 
-            rhs_weights_array = move(rhs_weights_and_connections.first);
-            rhs_connections_array = move(rhs_weights_and_connections.second);
+            rhs_connections_array = move(rhs_connections_and_weights.first);
+            rhs_weights_array = move(rhs_connections_and_weights.second);
         }
 
         this->init_kernel();
@@ -431,13 +433,24 @@ public:
         //     cout << "size: " << kernel_layer.size << endl;
         //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
         //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-        //     cout << "delta: " << kernel_layer.delta << endl;
         //     cout << "begin_params: " << kernel_layer.begin_params << endl;
         //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
         //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
         //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-        //     cout << "bases.size: " << layer.bases.size() << endl;
-        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+        //     cout << "biases.size: " << layer.biases.size() << endl;
+        //     cout << "lhs_connections: " << endl;
+        //     for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+        //         for(auto j = 0u; j < layer.size; j++) {
+        //             cout << layer.lhs_connections[i * layer.size + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
+        //     for(auto i = 0u; i < layer.size; i++) {
+        //         for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
+        //             cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
         //     cout << endl;
         // }
     }
@@ -454,7 +467,7 @@ public:
         vector<xt::pytensor<complex<double>, 1>> result;
 
         for(const auto& layer : this->layers) {
-            result.push_back(layer.bases.to_pytensor<1u>());
+            result.push_back(layer.biases.to_pytensor<1u>());
         }
 
         return result;
@@ -465,6 +478,18 @@ public:
 
         for(const auto& layer : this->layers) {
             result.push_back(layer.lhs_weights.to_pytensor<2u>(shape_t<2u>{
+                (long int)layer.lhs_connectivity, (long int)layer.size
+            }));
+        }
+
+        return result;
+    }
+
+    inline vector<xt::pytensor<unsigned int, 2>> get_connections() const {
+        vector<xt::pytensor<unsigned int, 2>> result;
+
+        for(const auto& layer : this->layers) {
+            result.push_back(layer.lhs_connections.to_pytensor<2u>(shape_t<2u>{
                 (long int)layer.lhs_connectivity, (long int)layer.size
             }));
         }
@@ -488,10 +513,11 @@ public:
     void update_kernel();
 
 private:
-    pair<Array<complex_t>, Array<unsigned int>> compile_rhs_weights_and_connections(
+    pair<Array<unsigned int>, Array<complex_t>> compile_rhs_connections_and_weights(
         const unsigned int prev_size,
         const unsigned int size,
         const unsigned int lhs_connectivity,
+        const Array<unsigned int>& lhs_connections,
         const Array<complex_t>& lhs_weights
     );
 };
