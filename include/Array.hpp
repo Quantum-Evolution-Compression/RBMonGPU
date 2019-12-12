@@ -91,6 +91,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
     void update_device();
 
 #ifdef __PYTHONCC__
+
     template<long unsigned int dim>
     inline Array<T>& operator=(const xt::pytensor<std::complex<double>, dim>& python_vec) {
         static_assert(is_same<T, complex_t>::value);
@@ -100,7 +101,19 @@ struct Array : public vector<T>, public kernel::Array<T> {
     }
 
     template<long unsigned int dim>
+    inline Array<T>& operator=(const xt::pytensor<T, dim>& python_vec) {
+        memcpy(this->host_data(), python_vec.data(), sizeof(T) * this->size());
+        this->update_device();
+        return *this;
+    }
+
+    template<long unsigned int dim>
     inline Array<T>(const xt::pytensor<std::complex<double>, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
+        (*this) = python_vec;
+    }
+
+    template<long unsigned int dim>
+    inline Array<T>(const xt::pytensor<T, dim>& python_vec, const bool gpu) : Array<T>(python_vec.size(), gpu) {
         (*this) = python_vec;
     }
 

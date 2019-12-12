@@ -1,6 +1,7 @@
 from pyRBMonGPU import PsiDynamical, Psi, PsiDeep
 import numpy as np
 import math
+from itertools import product
 
 
 def real_noise(shape):
@@ -67,22 +68,34 @@ def new_deep_neural_network(
     N,
     M,
     C,
+    dim=1,
     initial_value=(0.01 + 1j * math.pi / 4),
     noise=1e-4,
     gpu=False
 ):
+    N_linear = N if dim == 1 else N[0] * N[1]
+    M_linear = M if dim == 1 else [m[0] * m[1] for m in M]
+    C_linear = C if dim == 1 else [c[0] * c[1] for c in C]
+
     for n, m, c in zip([N] + M[:-1], M, C):
-        assert m * c % n == 0
-        assert c <= n
+        if dim == 1:
+            assert m * c % n == 0
+            assert c <= n
+        elif dim == 2:
+            assert m[0] * c[0] % n[0] == 0
+            assert m[1] * c[1] % n[1] == 0
+            assert c[0] <= n[0]
+            assert c[1] <= n[1]
 
-    a = noise * complex_noise(N)
-    b = [noise * complex_noise(m) for m in M]
+    a = noise * complex_noise(N_linear)
+    b = [noise * complex_noise(m) for m in M_linear]
 
-    w = noise * complex_noise((C[0], M[0]))
-    w[C[0] // 2, :] = initial_value
+    w = noise * complex_noise((C_linear[0], M_linear[0]))
+
+    w[C_linear[0] // 2, :] = initial_value
     W = [w]
 
-    for c, m, next_c in zip(C[1:], M[1:], C[2:] + [1]):
+    for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [1]):
         w = (
             math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
             # 1j * math.sqrt(6 / (c + next_c)) / 1e2 * real_noise((c, m)) +
@@ -90,4 +103,32 @@ def new_deep_neural_network(
         )
         W.append(w)
 
-    return PsiDeep(a, b, W, 1.0, gpu)
+    connections = []
+    for n, m, c in zip([N] + M[:-1], M, C):
+        if dim == 1:
+            delta_j = m * c / n
+            connections.append(np.array([
+                [
+                    (j * delta_j + i) % n
+                    for j in range(m)
+                ]
+                for i in range(c)
+            ]))
+        elif dim == 2:
+            range2D = lambda area: product(range(area[0]), range(area[1]))
+            linear_idx = lambda row, col: row * n[0] + col
+
+            delta_j1 = m[0] * c[0] / n[0]
+            delta_j2 = m[1] * c[1] / n[1]
+            connections.append(np.array([
+                [
+                    linear_idx(
+                        (j1 * delta_j1 + i1) % n[0],
+                        (j2 * delta_j2 + i2) % n[1]
+                    )
+                    for j1, j2 in range2D(m)
+                ]
+                for i1, i2 in range2D(c)
+            ]))
+
+    return PsiDeep(a, b, connections, W, 1.0, gpu)

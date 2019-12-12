@@ -107,6 +107,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def(py::init<
             const complex_tensor<1u>&,
             const vector<complex_tensor<1u>>&,
+            const vector<xt::pytensor<unsigned int, 2u>>&,
             const vector<complex_tensor<2u>>&,
             const double,
             const bool
@@ -123,6 +124,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         )
         .def_property_readonly("a", [](const PsiDeep& psi) {return psi.a_array.to_pytensor<1u>();})
         .def_property_readonly("b", &PsiDeep::get_b)
+        .def_property_readonly("connections", &PsiDeep::get_connections)
         .def_property_readonly("W", &PsiDeep::get_W)
         .def_property_readonly("vector", [](const PsiDeep& psi) {return psi.as_vector().to_pytensor<1u>();})
         .def("norm", &PsiDeep::norm)
@@ -210,6 +212,12 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
