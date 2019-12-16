@@ -31,6 +31,9 @@ using namespace pybind11::literals;
 template<unsigned int dim>
 using complex_tensor = xt::pytensor<std::complex<double>, dim>;
 
+template<unsigned int dim>
+using real_tensor = xt::pytensor<double, dim>;
+
 // Python Module and Docstrings
 
 PYBIND11_MODULE(_pyRBMonGPU, m)
@@ -40,6 +43,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<Psi>(m, "Psi")
         .def(py::init<
             const complex_tensor<1u>&,
+            const real_tensor<1u>&,
             const complex_tensor<1u>&,
             const complex_tensor<2u>&,
             const double,
@@ -79,7 +83,11 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_readonly("hidden_spin_weight", &PsiDynamical::Link::hidden_spin_weight);
 
     py::class_<PsiDynamical>(m, "PsiDynamical")
-        .def(py::init<vector<complex<double>>, const bool>())
+        .def(py::init<
+            vector<complex<double>>,
+            const real_tensor<1u>&,
+            const bool
+        >())
         .def("copy", &PsiDynamical::copy)
         .def("add_hidden_spin", &PsiDynamical::add_hidden_spin)
         .def(
@@ -106,6 +114,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<PsiDeep>(m, "PsiDeep")
         .def(py::init<
             const complex_tensor<1u>&,
+            const real_tensor<1u>&,
             const vector<complex_tensor<1u>>&,
             const vector<xt::pytensor<unsigned int, 2u>>&,
             const vector<complex_tensor<2u>>&,
@@ -123,6 +132,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             [](PsiDeep& psi, const complex_tensor<1u>& new_params) {psi.set_params(Array<complex_t>(new_params, false));}
         )
         .def_property_readonly("a", [](const PsiDeep& psi) {return psi.a_array.to_pytensor<1u>();})
+        .def_property_readonly("alpha", [](const PsiDeep& psi) {return psi.alpha_array.to_pytensor<1u>();})
         .def_property_readonly("b", &PsiDeep::get_b)
         .def_property_readonly("connections", &PsiDeep::get_connections)
         .def_property_readonly("W", &PsiDeep::get_W)
@@ -205,25 +215,25 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("difference", &ExpectationValue::difference<PsiDeep, MonteCarloLoop>);
 
     py::class_<HilbertSpaceDistance>(m, "HilbertSpaceDistance")
-        .def(py::init<unsigned int, bool>())
-        .def("__call__", &HilbertSpaceDistance::distance<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
+        .def(py::init<unsigned int, unsigned int, bool>())
+        .def("__call__", &HilbertSpaceDistance::distance<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDynamical, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "enable_alpha"_a);
 
     m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
         return get_S_matrix(psi, spin_ensemble).to_pytensor<2u>(shape_t<2u>{psi.num_params, psi.num_params});

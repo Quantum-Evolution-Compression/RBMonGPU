@@ -216,6 +216,7 @@ public:
 
         MULTI(i, this->N) {
             function(i, complex_t(spins[i], 0.0));
+            function(this->N + i, complex_t(0.0, 0.0));
         }
 
         SHARED complex_t deep_angles[max_deep_angles];
@@ -342,6 +343,7 @@ public:
 class PsiDeep : public kernel::PsiDeep {
 public:
     Array<complex_t> a_array;
+    Array<double> alpha_array;
     struct Layer {
         unsigned int        size;
         unsigned int        lhs_connectivity;
@@ -361,12 +363,13 @@ public:
 
     inline PsiDeep(
         const xt::pytensor<std::complex<double>, 1u>& a,
+        const xt::pytensor<double, 1u>& alpha,
         const vector<xt::pytensor<std::complex<double>, 1u>> biases_list,
         const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
         const double prefactor,
         const bool gpu
-    ) : a_array(a, gpu), gpu(gpu) {
+    ) : a_array(a, gpu), alpha_array(alpha, false), gpu(gpu) {
         this->N = a.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();

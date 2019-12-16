@@ -116,12 +116,19 @@ public:
     };
 
     clist spin_weights;
+    Array<double> alpha_array;
     vector<Link> links;
     vector<pair<int, int>> index_pair_list;
     bool gpu;
 
 public:
-    PsiDynamical(const clist& spin_weights, const bool gpu=true);
+
+#ifdef __PYTHONCC__
+    PsiDynamical(const clist& spin_weights, const xt::pytensor<double, 1u>& alpha, const bool gpu=true)
+    : spin_weights(spin_weights), alpha_array(alpha, false), gpu(gpu) {
+        this->init(spin_weights.data(), spin_weights.size(), false);
+    }
+#endif
 
     PsiDynamical(const PsiDynamical& other);
     ~PsiDynamical() noexcept(false);

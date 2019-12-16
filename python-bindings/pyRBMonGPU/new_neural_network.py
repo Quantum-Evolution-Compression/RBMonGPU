@@ -21,9 +21,10 @@ def new_neural_network(
     gpu=False
 ):
     a = noise * complex_noise(N)
+    alpha = np.zeros(N)
     b = noise * complex_noise(M)
 
-    result = PsiDynamical(a, gpu)
+    result = PsiDynamical(a, alpha, gpu)
 
     for j, b_spin in enumerate(b):
         first_spin = (j - connectivity // 2 + N) % N
@@ -55,13 +56,14 @@ def new_static_neural_network(
     gpu=False
 ):
     a = noise * complex_noise(N)
+    alpha = np.zeros(N)
     b = noise * complex_noise(M)
     W = noise * complex_noise((N, M))
 
     for alpha in range(M // N):
         W[:, alpha * N:(alpha + 1) * N] += initial_value * np.diag(np.ones(N))
 
-    return Psi(a, b, W, 1, gpu)
+    return Psi(a, alpha, b, W, 1, gpu)
 
 
 def new_deep_neural_network(
@@ -70,6 +72,7 @@ def new_deep_neural_network(
     C,
     dim=1,
     initial_value=(0.01 + 1j * math.pi / 4),
+    alpha=0,
     noise=1e-4,
     gpu=False
 ):
@@ -88,11 +91,14 @@ def new_deep_neural_network(
             assert c[1] <= n[1]
 
     a = noise * complex_noise(N_linear)
+    if isinstance(alpha, (float, int)):
+        alpha = alpha * np.ones(N_linear)
+
     b = [noise * complex_noise(m) for m in M_linear]
 
     w = noise * complex_noise((C_linear[0], M_linear[0]))
 
-    w[C_linear[0] // 2, :] = initial_value
+    w[C_linear[0] // 2, :] += initial_value
     W = [w]
 
     for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [1]):
@@ -131,4 +137,6 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    return PsiDeep(a, b, connections, W, 1.0, gpu)
+    # return a, alpha, b, connections, W
+
+    return PsiDeep(a, alpha, b, connections, W, 1.0, gpu)

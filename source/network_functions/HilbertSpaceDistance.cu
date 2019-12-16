@@ -6,6 +6,7 @@
 #include "quantum_state/PsiDeep.hpp"
 
 #include <cstring>
+#include <math.h>
 
 
 namespace rbm_on_gpu {
@@ -13,7 +14,7 @@ namespace rbm_on_gpu {
 namespace kernel {
 
 
-template<bool compute_gradient, typename Psi_t, typename SpinEnsemble>
+template<bool compute_gradient, bool enable_alpha, typename Psi_t, typename SpinEnsemble>
 void kernel::HilbertSpaceDistance::compute_averages(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
@@ -50,6 +51,34 @@ void kernel::HilbertSpaceDistance::compute_averages(
             SHARED complex_t log_psi_prime;
             psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
 
+            SHARED complex_t O_alpha_i[MAX_SPINS];
+            if(enable_alpha) {
+                SHARED Spins spins_i;
+                SHARED complex_t log_psi_prime_base;
+                SHARED complex_t log_psi_prime_i;
+                SINGLE {
+                    log_psi_prime_base = log_psi_prime;
+                    log_psi_prime += this_.log_Z;
+                }
+                for(auto i = 0u; i < psi_kernel.get_num_spins(); i++) {
+                    SYNC;
+                    SINGLE {
+                        spins_i = spins.flip(i);
+                    }
+                    SYNC;
+
+                    angles_prime.init(psi_prime_kernel, spins_i);
+                    psi_prime_kernel.log_psi_s(log_psi_prime_i, spins_i, angles_prime);
+                    SINGLE {
+                        O_alpha_i[i] = spins[i] * exp(log_psi_prime_i - log_psi_prime_base);
+                        log_psi_prime += this_.sin_alpha[i] * O_alpha_i[i];
+                    }
+                }
+
+                // TODO: optimize
+                angles_prime.init(psi_prime_kernel, spins);
+            }
+
             SHARED complex_t   omega;
             SHARED double      probability_ratio;
 
@@ -59,7 +88,6 @@ void kernel::HilbertSpaceDistance::compute_averages(
             {
                 if(is_unitary) {
                     omega = exp(conj(log_psi_prime - log_psi)) * local_energy;
-                    // TODO: move to `record`
                     generic_atomicAdd(
                         this_.next_state_norm_avg,
                         weight * (local_energy * conj(local_energy)).real()
@@ -83,6 +111,13 @@ void kernel::HilbertSpaceDistance::compute_averages(
                     spins,
                     angles_prime,
                     [&](const unsigned int k, const complex_t& O_k_element) {
+                        if(enable_alpha) {
+                            if(k >= psi_kernel.get_num_spins() && k < 2 * psi_kernel.get_num_spins()) {
+                                const auto i = k - psi_kernel.get_num_spins();
+                                generic_atomicAdd(&this_.omega_O_k_avg[k], weight * omega * conj(O_alpha_i[i]));
+                                generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * 2.0 * conj(O_alpha_i[i]));
+                            }
+                        }
                         generic_atomicAdd(&this_.omega_O_k_avg[k], weight * omega * conj(O_k_element));
                         generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * 2.0 * conj(O_k_element));
                     }
@@ -93,55 +128,56 @@ void kernel::HilbertSpaceDistance::compute_averages(
     );
 }
 
-template<typename Psi_t, typename SpinEnsemble>
-void kernel::HilbertSpaceDistance::overlap(
-    const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
-) const {
-    MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
-    MEMSET(this->probability_ratio_avg, 0, sizeof(double), this->gpu)
+// template<typename Psi_t, typename SpinEnsemble>
+// void kernel::HilbertSpaceDistance::overlap(
+//     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+// ) const {
+//     MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
+//     MEMSET(this->probability_ratio_avg, 0, sizeof(double), this->gpu)
 
-    const auto this_ = *this;
-    const auto psi_kernel = psi.get_kernel();
-    const auto psi_prime_kernel = psi_prime.get_kernel();
+//     const auto this_ = *this;
+//     const auto psi_kernel = psi.get_kernel();
+//     const auto psi_prime_kernel = psi_prime.get_kernel();
 
-    spin_ensemble.foreach(
-        psi,
-        [=] __device__ __host__ (
-            const unsigned int spin_index,
-            const Spins spins,
-            const complex_t log_psi,
-            typename Psi_t::Angles& angles,
-            const double weight
-        ) {
-            #include "cuda_kernel_defines.h"
+//     spin_ensemble.foreach(
+//         psi,
+//         [=] __device__ __host__ (
+//             const unsigned int spin_index,
+//             const Spins spins,
+//             const complex_t log_psi,
+//             typename Psi_t::Angles& angles,
+//             const double weight
+//         ) {
+//             #include "cuda_kernel_defines.h"
 
-            SHARED typename Psi_t::Angles angles_prime;
-            angles_prime.init(psi_prime_kernel, spins);
+//             SHARED typename Psi_t::Angles angles_prime;
+//             angles_prime.init(psi_prime_kernel, spins);
 
-            SHARED complex_t log_psi_prime;
-            psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
+//             SHARED complex_t log_psi_prime;
+//             psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
 
-            SHARED complex_t   omega;
-            SHARED double      probability_ratio;
+//             SHARED complex_t   omega;
+//             SHARED double      probability_ratio;
 
-            SINGLE
-            {
-                omega = exp(conj(log_psi_prime - log_psi));
-                probability_ratio = exp(2.0 * (log_psi_prime.real() - log_psi.real()));
+//             SINGLE
+//             {
+//                 omega = exp(conj(log_psi_prime - log_psi));
+//                 probability_ratio = exp(2.0 * (log_psi_prime.real() - log_psi.real()));
 
-                generic_atomicAdd(this_.omega_avg, weight * omega);
-                generic_atomicAdd(this_.probability_ratio_avg, weight * probability_ratio);
-            }
-        },
-        max(psi.get_num_angles(), psi_prime.get_num_angles())
-    );
-}
+//                 generic_atomicAdd(this_.omega_avg, weight * omega);
+//                 generic_atomicAdd(this_.probability_ratio_avg, weight * probability_ratio);
+//             }
+//         },
+//         max(psi.get_num_angles(), psi_prime.get_num_angles())
+//     );
+// }
 
 } // namespace kernel
 
-HilbertSpaceDistance::HilbertSpaceDistance(const unsigned int O_k_length, const bool gpu)
+HilbertSpaceDistance::HilbertSpaceDistance(const unsigned int N, const unsigned int O_k_length, const bool gpu)
       : omega_O_k_avg_host(O_k_length),
-        probability_ratio_O_k_avg_host(O_k_length) {
+        probability_ratio_O_k_avg_host(O_k_length),
+        sin_alpha_ar(N, gpu) {
     this->gpu = gpu;
 
     MALLOC(this->omega_avg, sizeof(complex_t), this->gpu);
@@ -174,12 +210,32 @@ void HilbertSpaceDistance::allocate_local_energies(const unsigned int num_local_
     MALLOC(this->local_energies, sizeof(complex_t) * this->num_local_energies, this->gpu);
 }
 
+template<typename Psi_t>
+void HilbertSpaceDistance::compute_delta_alpha(const Psi_t& psi, const Psi_t& psi_prime) {
+    this->log_Z = 0.0;
+
+    for(auto i = 0u; i < psi.get_num_spins(); i++) {
+        const auto delta_alpha = psi_prime.alpha_array[i] - psi.alpha_array[i];
+        this->log_Z += log(cos(delta_alpha));
+        this->sin_alpha_ar[i] = sin(delta_alpha) / cos(delta_alpha); // the denominator acts as a small correction
+    }
+
+    this->sin_alpha_ar.update_device();
+    this->sin_alpha = this->sin_alpha_ar.data();
+}
+
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinEnsemble& spin_ensemble
-) const {
-    this->compute_averages<false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    const SpinEnsemble& spin_ensemble, bool enable_alpha
+) {
+    if(enable_alpha) {
+        this->compute_delta_alpha(psi, psi_prime);
+        this->compute_averages<false, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    }
+    else {
+        this->compute_averages<false, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    }
 
     complex_t omega_avg_host;
     double probability_ratio_avg_host;
@@ -200,32 +256,38 @@ double HilbertSpaceDistance::distance(
     );
 }
 
-template<typename Psi_t, typename SpinEnsemble>
-double HilbertSpaceDistance::overlap(
-    const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
-) const {
-    this->overlap(psi, psi_prime, spin_ensemble);
+// template<typename Psi_t, typename SpinEnsemble>
+// double HilbertSpaceDistance::overlap(
+//     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+// ) const {
+//     this->overlap(psi, psi_prime, spin_ensemble);
 
-    complex_t omega_avg_host;
-    double probability_ratio_avg_host;
+//     complex_t omega_avg_host;
+//     double probability_ratio_avg_host;
 
-    MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
-    MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
+//     MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
+//     MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
 
-    omega_avg_host /= spin_ensemble.get_num_steps();
-    probability_ratio_avg_host /= spin_ensemble.get_num_steps();
+//     omega_avg_host /= spin_ensemble.get_num_steps();
+//     probability_ratio_avg_host /= spin_ensemble.get_num_steps();
 
-    return sqrt(
-        (omega_avg_host * conj(omega_avg_host)).real() / probability_ratio_avg_host
-    );
-}
+//     return sqrt(
+//         (omega_avg_host * conj(omega_avg_host)).real() / probability_ratio_avg_host
+//     );
+// }
 
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinEnsemble& spin_ensemble
+    const bool is_unitary, const SpinEnsemble& spin_ensemble, bool enable_alpha
 ) {
-    this->compute_averages<true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    if(enable_alpha) {
+        this->compute_delta_alpha(psi, psi_prime);
+        this->compute_averages<true, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    }
+    else {
+        this->compute_averages<true, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
+    }
 
     complex<double> omega_avg_host;
     double probability_ratio_avg_host;
@@ -262,77 +324,77 @@ double HilbertSpaceDistance::gradient(
 
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble
-) const;
+    const ExactSummation& spin_ensemble, bool enable_alpha
+);
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble
-) const;
+    const MonteCarloLoop& spin_ensemble, bool enable_alpha
+);
 
 template double HilbertSpaceDistance::distance(
     const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble
-) const;
+    const ExactSummation& spin_ensemble, bool enable_alpha
+);
 template double HilbertSpaceDistance::distance(
     const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble
-) const;
+    const MonteCarloLoop& spin_ensemble, bool enable_alpha
+);
 
 template double HilbertSpaceDistance::distance(
     const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble
-) const;
+    const ExactSummation& spin_ensemble, bool enable_alpha
+);
 template double HilbertSpaceDistance::distance(
     const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble
-) const;
+    const MonteCarloLoop& spin_ensemble, bool enable_alpha
+);
 
-template double HilbertSpaceDistance::overlap(
-    const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
-) const;
-template double HilbertSpaceDistance::overlap(
-    const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
-) const;
+// template double HilbertSpaceDistance::overlap(
+//     const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble, bool enable_alpha
+// );
+// template double HilbertSpaceDistance::overlap(
+//     const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble, bool enable_alpha
+// );
 
-template double HilbertSpaceDistance::overlap(
-    const PsiDynamical& psi, const PsiDynamical& psi_prime, const ExactSummation& spin_ensemble
-) const;
-template double HilbertSpaceDistance::overlap(
-    const PsiDynamical& psi, const PsiDynamical& psi_prime, const MonteCarloLoop& spin_ensemble
-) const;
+// template double HilbertSpaceDistance::overlap(
+//     const PsiDynamical& psi, const PsiDynamical& psi_prime, const ExactSummation& spin_ensemble, bool enable_alpha
+// );
+// template double HilbertSpaceDistance::overlap(
+//     const PsiDynamical& psi, const PsiDynamical& psi_prime, const MonteCarloLoop& spin_ensemble, bool enable_alpha
+// );
 
-template double HilbertSpaceDistance::overlap(
-    const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
-) const;
-template double HilbertSpaceDistance::overlap(
-    const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
-) const;
+// template double HilbertSpaceDistance::overlap(
+//     const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble, bool enable_alpha
+// );
+// template double HilbertSpaceDistance::overlap(
+//     const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble, bool enable_alpha
+// );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble
+    const bool is_unitary, const ExactSummation& spin_ensemble, bool enable_alpha
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble, bool enable_alpha
 );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble
+    const bool is_unitary, const ExactSummation& spin_ensemble, bool enable_alpha
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDynamical& psi, const PsiDynamical& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble, bool enable_alpha
 );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble
+    const bool is_unitary, const ExactSummation& spin_ensemble, bool enable_alpha
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble, bool enable_alpha
 );
 
 } // namespace rbm_on_gpu

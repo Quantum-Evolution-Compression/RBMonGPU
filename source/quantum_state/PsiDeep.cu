@@ -14,6 +14,7 @@ namespace rbm_on_gpu {
 PsiDeep::PsiDeep(const PsiDeep& other)
     :
     a_array(other.a_array),
+    alpha_array(other.alpha_array),
     layers(other.layers),
     gpu(other.gpu)
 {
@@ -28,7 +29,7 @@ PsiDeep::PsiDeep(const PsiDeep& other)
 
 
 void PsiDeep::init_kernel() {
-    this->num_params = this->N;
+    this->num_params = 2 * this->N; // a and alpha
     auto angle_idx = 0u;
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         const auto& layer = *next(this->layers.begin(), layer_idx);
@@ -113,6 +114,8 @@ Array<complex_t> PsiDeep::get_params() const {
     auto it = result.begin();
     copy(this->a_array.begin(), this->a_array.end(), it);
     it += this->N;
+    copy(this->alpha_array.begin(), this->alpha_array.end(), it);
+    it += this->N;
 
     for(const auto& layer : this->layers) {
         copy(layer.biases.begin(), layer.biases.end(), it);
@@ -130,6 +133,10 @@ void PsiDeep::set_params(const Array<complex_t>& new_params) {
 
     copy(it, it + this->N, this->a_array.begin());
     this->a_array.update_device();
+    it += this->N;
+    for(auto i = 0u; i < this->N; i++) {
+        this->alpha_array[i] = (*(it + i)).real();
+    }
     it += this->N;
 
     for(auto layer_it = this->layers.begin(); layer_it != this->layers.end(); layer_it++) {

@@ -12,14 +12,9 @@ namespace rbm_on_gpu {
 using clist = PsiDynamical::clist;
 
 
-PsiDynamical::PsiDynamical(const clist& spin_weights, const bool gpu)
-    : spin_weights(spin_weights), gpu(gpu)
-{
-    this->init(spin_weights.data(), spin_weights.size(), false);
-}
-
 PsiDynamical::PsiDynamical(const PsiDynamical& other)
     :   spin_weights(other.spin_weights),
+        alpha_array(other.alpha_array),
         links(other.links),
         gpu(other.gpu)
 {

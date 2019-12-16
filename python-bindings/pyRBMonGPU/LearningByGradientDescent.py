@@ -38,7 +38,7 @@ class LearningByGradientDescent:
         self.mc = type(spin_ensemble) is pyRBMonGPU.MonteCarloLoop
         self.spin_ensemble = spin_ensemble
         self.num_params = psi.num_params
-        self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(self.num_params, psi.gpu)
+        self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(psi.N, self.num_params, psi.gpu)
         self.expectation_value = pyRBMonGPU.ExpectationValue(self.gpu)
         self.regularization = None
         self.eta = None

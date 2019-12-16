@@ -13,7 +13,7 @@
 namespace rbm_on_gpu {
 
 Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu)
-  : a_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
+  : a_array(N, gpu), alpha_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
     this->N = N;
     this->M = M;
     this->prefactor = 1.0;
@@ -49,6 +49,7 @@ Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const doubl
 Psi::Psi(const Psi& other)
     :
     a_array(other.a_array),
+    alpha_array(other.alpha_array),
     b_array(other.b_array),
     W_array(other.W_array),
     gpu(other.gpu) {

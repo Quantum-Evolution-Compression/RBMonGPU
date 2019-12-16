@@ -281,6 +281,7 @@ public:
 class Psi : public kernel::Psi {
 public:
     Array<complex_t> a_array;
+    Array<double> alpha_array;
     Array<complex_t> b_array;
     Array<complex_t> W_array;
     bool gpu;
@@ -294,11 +295,12 @@ public:
 #ifdef __PYTHONCC__
     inline Psi(
         const xt::pytensor<std::complex<double>, 1u>& a,
+        const xt::pytensor<double, 1u>& alpha,
         const xt::pytensor<std::complex<double>, 1u>& b,
         const xt::pytensor<std::complex<double>, 2u>& W,
         const double prefactor,
         const bool gpu
-    ) : a_array(a, gpu), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
+    ) : a_array(a, gpu), alpha_array(alpha, false), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
         this->N = a.shape()[0];
         this->M = b.shape()[0];
         this->prefactor = prefactor;
