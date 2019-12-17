@@ -1,4 +1,4 @@
-from pyRBMonGPU import PsiDynamical, Psi, PsiDeep
+from pyRBMonGPU import Psi, PsiDeep
 import numpy as np
 import math
 from itertools import product
@@ -16,54 +16,23 @@ def new_neural_network(
     N,
     M,
     initial_value=(0.01 + 1j * math.pi / 4),
-    connectivity=5,
+    alpha=0,
+    beta=0,
     noise=1e-6,
     gpu=False
 ):
-    a = noise * complex_noise(N)
-    alpha = np.zeros(N)
-    b = noise * complex_noise(M)
+    if isinstance(alpha, (int, float)):
+        alpha = alpha * np.ones(N)
+    if isinstance(beta, (int, float)):
+        beta = beta * np.ones(N)
 
-    result = PsiDynamical(a, alpha, gpu)
-
-    for j, b_spin in enumerate(b):
-        first_spin = (j - connectivity // 2 + N) % N
-        W_j = noise * complex_noise(connectivity)
-        W_j[connectivity // 2] = initial_value
-        result.add_hidden_spin(first_spin, W_j, b_spin)
-
-    result.update()
-
-    return result
-
-
-def add_hidden_spin(psi, position, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6):
-    W_j = noise * complex_noise(connectivity)
-    W_j[connectivity // 2] += initial_value
-    psi.add_hidden_spin((position - connectivity // 2 + psi.N) % psi.N, W_j, noise * complex_noise(1)[0])
-
-
-def add_hidden_layer(psi, connectivity, initial_value=(0.01 + 1j * math.pi / 4), noise=1e-6):
-    for i in range(psi.N):
-        add_hidden_spin(psi, i, connectivity, initial_value, noise)
-
-
-def new_static_neural_network(
-    N,
-    M,
-    initial_value=(0.01 + 1j * math.pi / 4),
-    noise=1e-6,
-    gpu=False
-):
-    a = noise * complex_noise(N)
-    alpha = np.zeros(N)
     b = noise * complex_noise(M)
     W = noise * complex_noise((N, M))
 
-    for alpha in range(M // N):
-        W[:, alpha * N:(alpha + 1) * N] += initial_value * np.diag(np.ones(N))
+    for r in range(M // N):
+        W[:, r * N:(r + 1) * N] += initial_value * np.diag(np.ones(N))
 
-    return Psi(a, alpha, b, W, 1, gpu)
+    return Psi(alpha, beta, b, W, 1, gpu)
 
 
 def new_deep_neural_network(
@@ -73,6 +42,7 @@ def new_deep_neural_network(
     dim=1,
     initial_value=(0.01 + 1j * math.pi / 4),
     alpha=0,
+    beta=0,
     noise=1e-4,
     gpu=False
 ):
@@ -90,9 +60,10 @@ def new_deep_neural_network(
             assert c[0] <= n[0]
             assert c[1] <= n[1]
 
-    a = noise * complex_noise(N_linear)
     if isinstance(alpha, (float, int)):
         alpha = alpha * np.ones(N_linear)
+    if isinstance(beta, (float, int)):
+        beta = beta * np.ones(N_linear)
 
     b = [noise * complex_noise(m) for m in M_linear]
 
@@ -137,6 +108,4 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    # return a, alpha, b, connections, W
-
-    return PsiDeep(a, alpha, b, connections, W, 1.0, gpu)
+    return PsiDeep(alpha, beta, b, connections, W, 1.0, gpu)

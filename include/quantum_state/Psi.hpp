@@ -37,9 +37,9 @@ public:
     static constexpr unsigned int  max_M = MAX_HIDDEN_SPINS;
 
     unsigned int   num_params;
-    double          prefactor;
+    unsigned int   O_k_length;
+    double         prefactor;
 
-    complex_t* a;
     complex_t* b;
     complex_t* W;
 
@@ -66,9 +66,6 @@ public:
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
         complex_t result(0.0, 0.0);
-        for(unsigned int i = 0; i < this->N; i++) {
-            result += this->a[i] * spins[i];
-        }
         for(unsigned int j = 0; j < this->M; j++) {
             result += my_logcosh(this->angle(j, spins));
         }
@@ -86,7 +83,6 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = complex_t(
-            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0, 0.0)) +
             (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]) : complex_t(0.0, 0.0))
         );
 
@@ -95,9 +91,6 @@ public:
         #else
 
         result = complex_t(0.0, 0.0);
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i] * spins[i];
-        }
         for(auto j = 0u; j < this->M; j++) {
             result += my_logcosh(angles[j]);
         }
@@ -113,7 +106,6 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = double(
-            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0) +
             (threadIdx.x < this->M ? my_logcosh(angles[threadIdx.x]).real() : 0.0)
         );
 
@@ -122,9 +114,6 @@ public:
         #else
 
         result = 0.0;
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i].real() * spins[i];
-        }
         for(auto j = 0u; j < this->M; j++) {
             result += my_logcosh(angles[j]).real();
         }
@@ -211,9 +200,14 @@ public:
     }
 
     HDINLINE
-    static unsigned int get_num_params(const unsigned int N, const unsigned int M) {
-        return N + M + N * M;
+    unsigned int get_O_k_length() const {
+        return this->O_k_length;
     }
+
+    // HDINLINE
+    // static unsigned int get_num_params(const unsigned int N, const unsigned int M) {
+    //     return 2 * N + M + N * M;
+    // }
 
 #ifdef __CUDACC__
 
@@ -223,18 +217,12 @@ public:
         const Spins& spins,
         const PsiDerivatives& psi_derivatives
     ) const {
-        if(k < this->N) {
-            return complex_t(spins[k], 0.0);
+        if(k < this->M) {
+            return psi_derivatives.tanh_angles[k];
         }
 
-        const auto N_plus_M = this->N + this->M;
-        if(k < N_plus_M) {
-            const auto j = k - this->N;
-            return psi_derivatives.tanh_angles[j];
-        }
-
-        const auto i = (k - N_plus_M) / this->M;
-        const auto j = (k - N_plus_M) % this->M;
+        const auto i = (k - this->M) / this->M;
+        const auto j = (k - this->M) % this->M;
         return psi_derivatives.tanh_angles[j] * spins[i];
     }
 
@@ -251,20 +239,14 @@ public:
     template<typename Function>
     HDINLINE
     void foreach_O_k(const Spins& spins, const Angles& angles, Function function) const {
-        #ifdef __CUDA_ARCH__
-        __shared__ Derivatives derivatives;
-        derivatives.init(*this, angles);
-        __syncthreads();
+        #include "cuda_kernel_defines.h"
 
-        for(auto k = threadIdx.x; k < this->num_params; k += blockDim.x)
-        #else
-        Derivatives derivatives;
+        SHARED Derivatives derivatives;
         derivatives.init(*this, angles);
+        SYNC;
 
-        for(auto k = 0u; k < this->num_params; k++)
-        #endif
-        {
-            function(k, this->get_O_k_element(k, spins, derivatives));
+        LOOP(k, this->O_k_length) {
+            function(2 * this->N + k, this->get_O_k_element(k, spins, derivatives));
         }
     }
 
@@ -280,8 +262,8 @@ public:
 
 class Psi : public kernel::Psi {
 public:
-    Array<complex_t> a_array;
     Array<double> alpha_array;
+    Array<double> beta_array;
     Array<complex_t> b_array;
     Array<complex_t> W_array;
     bool gpu;
@@ -294,20 +276,20 @@ public:
 
 #ifdef __PYTHONCC__
     inline Psi(
-        const xt::pytensor<std::complex<double>, 1u>& a,
         const xt::pytensor<double, 1u>& alpha,
+        const xt::pytensor<double, 1u>& beta,
         const xt::pytensor<std::complex<double>, 1u>& b,
         const xt::pytensor<std::complex<double>, 2u>& W,
         const double prefactor,
         const bool gpu
-    ) : a_array(a, gpu), alpha_array(alpha, false), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
-        this->N = a.shape()[0];
+    ) : alpha_array(alpha, false), beta_array(alpha, false), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
+        this->N = alpha.shape()[0];
         this->M = b.shape()[0];
         this->prefactor = prefactor;
-        this->num_params = N + M + N * M;
+        this->num_params = 2 * N + M + N * M;
+        this->O_k_length = M + N * M;
 
         this->update_kernel();
-        this->create_index_pairs();
     }
 
     xt::pytensor<complex<double>, 1> as_vector_py() const {
@@ -321,7 +303,7 @@ public:
 
     xt::pytensor<complex<double>, 1> O_k_vector_py(const Spins& spins) const {
         auto result = xt::pytensor<complex<double>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->num_params)})
+            std::array<long int, 1>({static_cast<long int>(this->O_k_length)})
         );
         this->O_k_vector(result.data(), spins);
 
@@ -360,7 +342,6 @@ public:
     void set_params(const complex<double>* new_params);
 
     void update_kernel();
-    void create_index_pairs();
 };
 
 } // namespace rbm_on_gpu

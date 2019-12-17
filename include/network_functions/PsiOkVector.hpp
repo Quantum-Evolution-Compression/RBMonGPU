@@ -33,7 +33,7 @@ inline xt::pytensor<complex<double>, 1> psi_O_k_vector_py(
     const Psi_t& psi, const Spins& spins
 ) {
     auto result = xt::pytensor<complex<double>, 1>(
-        std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
+        std::array<long int, 1>({static_cast<long int>(psi.get_O_k_length())})
     );
 
     psi_O_k_vector(result.data(), psi, spins);

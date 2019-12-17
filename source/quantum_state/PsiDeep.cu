@@ -13,8 +13,8 @@ namespace rbm_on_gpu {
 
 PsiDeep::PsiDeep(const PsiDeep& other)
     :
-    a_array(other.a_array),
     alpha_array(other.alpha_array),
+    beta_array(other.beta_array),
     layers(other.layers),
     gpu(other.gpu)
 {
@@ -29,7 +29,7 @@ PsiDeep::PsiDeep(const PsiDeep& other)
 
 
 void PsiDeep::init_kernel() {
-    this->num_params = 2 * this->N; // a and alpha
+    this->num_params = 2 * this->N; // alpha and beta
     auto angle_idx = 0u;
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         const auto& layer = *next(this->layers.begin(), layer_idx);
@@ -53,14 +53,13 @@ void PsiDeep::init_kernel() {
             0u
         );
     }
+    this->O_k_length = this->num_params - 2 * this->N;
 
     this->update_kernel();
 }
 
 
 void PsiDeep::update_kernel() {
-    this->a = this->a_array.data();
-
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         Layer& layer = *next(this->layers.begin(), layer_idx);
         auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
@@ -111,11 +110,11 @@ pair<Array<unsigned int>, Array<complex_t>> PsiDeep::compile_rhs_connections_and
 Array<complex_t> PsiDeep::get_params() const {
     Array<complex_t> result(this->num_params, false);
 
-    auto it = result.begin();
-    copy(this->a_array.begin(), this->a_array.end(), it);
-    it += this->N;
-    copy(this->alpha_array.begin(), this->alpha_array.end(), it);
-    it += this->N;
+    for(auto i = 0u; i < this->N; i++) {
+        result[i]= complex_t(this->alpha_array[i], 0.0);
+        result[this->N + i] = complex_t(this->beta_array[i], 0.0);
+    }
+    auto it = result.begin() + 2 * this->N;
 
     for(const auto& layer : this->layers) {
         copy(layer.biases.begin(), layer.biases.end(), it);
@@ -129,15 +128,11 @@ Array<complex_t> PsiDeep::get_params() const {
 
 
 void PsiDeep::set_params(const Array<complex_t>& new_params) {
-    auto it = new_params.begin();
-
-    copy(it, it + this->N, this->a_array.begin());
-    this->a_array.update_device();
-    it += this->N;
     for(auto i = 0u; i < this->N; i++) {
-        this->alpha_array[i] = (*(it + i)).real();
+        this->alpha_array[i] = new_params[i].real();
+        this->beta_array[i] = new_params[this->N + i].real();
     }
-    it += this->N;
+    auto it = new_params.begin() + 2 * this->N;
 
     for(auto layer_it = this->layers.begin(); layer_it != this->layers.end(); layer_it++) {
         auto& layer = *layer_it;

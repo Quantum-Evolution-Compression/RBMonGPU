@@ -69,13 +69,13 @@ public:
     };
 
     unsigned int   N;
-    complex_t*     a;
     Layer          layers[max_layers];
     unsigned int   num_layers;
     unsigned int   width;                   // size of largest layer
     unsigned int   num_units;
 
     unsigned int   num_params;
+    unsigned int   O_k_length;
     double         prefactor;
 
 public:
@@ -131,17 +131,14 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = (
-            (threadIdx.x < this->N ? this->a[threadIdx.x] * spins[threadIdx.x] : complex_t(0.0, 0.0)) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0, 0.0))
         );
-        tree_sum(result, max(this->N, final_layer_size), summand);
+        // TODO: check if simple atomic add is faster
+        tree_sum(result, final_layer_size, summand);
 
         #else
 
         result = complex_t(0.0, 0.0);
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i] * spins[i];
-        }
         for(auto j = 0u; j < final_layer_size; j++) {
             result += cache.activations[j];
         }
@@ -159,17 +156,13 @@ public:
         #ifdef __CUDA_ARCH__
 
         auto summand = (
-            (threadIdx.x < this->N ? this->a[threadIdx.x].real() * spins[threadIdx.x] : 0.0) +
             (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0)
         );
-        tree_sum(result, max(this->N, final_layer_size), summand);
+        tree_sum(result, final_layer_size, summand);
 
         #else
 
         result = 0.0;
-        for(auto i = 0u; i < this->N; i++) {
-            result += this->a[i].real() * spins[i];
-        }
         for(auto j = 0u; j < final_layer_size; j++) {
             result += cache.activations[j].real();
         }
@@ -213,11 +206,6 @@ public:
     HDINLINE
     void foreach_O_k(const Spins& spins, Angles& cache, Function function) const {
         #include "cuda_kernel_defines.h"
-
-        MULTI(i, this->N) {
-            function(i, complex_t(spins[i], 0.0));
-            function(this->N + i, complex_t(0.0, 0.0));
-        }
 
         SHARED complex_t deep_angles[max_deep_angles];
         this->forward_pass(spins, cache.activations, deep_angles);
@@ -335,6 +323,11 @@ public:
     unsigned int get_num_units() const {
         return this->num_units;
     }
+
+    HDINLINE
+    unsigned int get_O_k_length() const {
+        return this->O_k_length;
+    }
 };
 
 } // namespace kernel
@@ -342,8 +335,9 @@ public:
 
 class PsiDeep : public kernel::PsiDeep {
 public:
-    Array<complex_t> a_array;
     Array<double> alpha_array;
+    Array<double> beta_array;
+
     struct Layer {
         unsigned int        size;
         unsigned int        lhs_connectivity;
@@ -354,6 +348,7 @@ public:
         Array<complex_t>    biases;
     };
     list<Layer> layers;
+
     bool gpu;
 
 public:
@@ -362,15 +357,15 @@ public:
 #ifdef __PYTHONCC__
 
     inline PsiDeep(
-        const xt::pytensor<std::complex<double>, 1u>& a,
         const xt::pytensor<double, 1u>& alpha,
+        const xt::pytensor<double, 1u>& beta,
         const vector<xt::pytensor<std::complex<double>, 1u>> biases_list,
         const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
         const double prefactor,
         const bool gpu
-    ) : a_array(a, gpu), alpha_array(alpha, false), gpu(gpu) {
-        this->N = a.shape()[0];
+    ) : alpha_array(alpha, false), beta_array(beta, false), gpu(gpu) {
+        this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
         this->width = this->N;
@@ -421,42 +416,42 @@ public:
 
         this->init_kernel();
 
-        // cout << "N: " << this->N << endl;
-        // cout << "num_layers: " << this->num_layers << endl;
-        // cout << "width: " << this->width << endl;
-        // cout << "num_params: " << this->num_params << endl;
-        // cout << "prefactor: " << this->prefactor << endl;
-        // cout << endl;
+        cout << "N: " << this->N << endl;
+        cout << "num_layers: " << this->num_layers << endl;
+        cout << "width: " << this->width << endl;
+        cout << "num_params: " << this->num_params << endl;
+        cout << "prefactor: " << this->prefactor << endl;
+        cout << endl;
 
-        // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
-        //     const auto& layer = *next(this->layers.begin(), layer_idx);
+        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+            const auto& layer = *next(this->layers.begin(), layer_idx);
 
-        //     cout << "Layer: " << layer_idx << endl;
-        //     cout << "size: " << kernel_layer.size << endl;
-        //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
-        //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-        //     cout << "begin_params: " << kernel_layer.begin_params << endl;
-        //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
-        //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
-        //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-        //     cout << "biases.size: " << layer.biases.size() << endl;
-        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
-        //     cout << "lhs_connections: " << endl;
-        //     for(auto i = 0u; i < layer.lhs_connectivity; i++) {
-        //         for(auto j = 0u; j < layer.size; j++) {
-        //             cout << layer.lhs_connections[i * layer.size + j] << ", ";
-        //         }
-        //         cout << endl;
-        //     }
-        //     for(auto i = 0u; i < layer.size; i++) {
-        //         for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
-        //             cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
-        //         }
-        //         cout << endl;
-        //     }
-        //     cout << endl;
-        // }
+            cout << "Layer: " << layer_idx << endl;
+            cout << "size: " << kernel_layer.size << endl;
+            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+            cout << "begin_params: " << kernel_layer.begin_params << endl;
+            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+            cout << "biases.size: " << layer.biases.size() << endl;
+            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+            cout << "lhs_connections: " << endl;
+            for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+                for(auto j = 0u; j < layer.size; j++) {
+                    cout << layer.lhs_connections[i * layer.size + j] << ", ";
+                }
+                cout << endl;
+            }
+            for(auto i = 0u; i < layer.size; i++) {
+                for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
+                    cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
+                }
+                cout << endl;
+            }
+            cout << endl;
+        }
     }
 
     PsiDeep copy() const {

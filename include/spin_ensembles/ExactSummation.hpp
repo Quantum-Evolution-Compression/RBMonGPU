@@ -46,7 +46,7 @@ public:
 
         SHARED Spins        spins;
         SHARED complex_t    log_psi;
-        SHARED double        weight;
+        SHARED double       weight;
 
         #ifdef __CUDA_ARCH__
         const auto spin_index = blockIdx.x;

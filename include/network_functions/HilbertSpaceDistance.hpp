@@ -28,14 +28,13 @@ public:
     complex_t*  probability_ratio_O_k_avg;
     double*     next_state_norm_avg;
 
-    complex_t*      local_energies;
-    unsigned int    num_local_energies;
+    // free quaxis variables
+    double* delta_alpha;
+    double* delta_beta;
+    double* sin_sum_alpha;
+    double* cos_sum_alpha;
 
-    // alpha-related variables
-    double log_Z;
-    double* sin_alpha;
-
-    template<bool compute_gradient, bool enable_alpha, typename Psi_t, typename SpinEnsemble>
+    template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename SpinEnsemble>
     void compute_averages(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
         const bool is_unitary, const SpinEnsemble& spin_ensemble
@@ -56,20 +55,22 @@ private:
     vector<complex<double>> omega_O_k_avg_host;
     vector<complex<double>> probability_ratio_O_k_avg_host;
 
-    Array<double> sin_alpha_ar;
+    Array<double> delta_alpha_ar;
+    Array<double> delta_beta_ar;
+    Array<double> sin_sum_alpha_ar;
+    Array<double> cos_sum_alpha_ar;
 
 public:
     HilbertSpaceDistance(const unsigned int N, const unsigned int O_k_length, const bool gpu);
     ~HilbertSpaceDistance() noexcept(false);
 
-    void allocate_local_energies(const unsigned int num_local_energies);
     template<typename Psi_t>
-    void compute_delta_alpha(const Psi_t& psi, const Psi_t& psi_prime);
+    void update_quaxis(const Psi_t& psi, const Psi_t& psi_prime);
 
     template<typename Psi_t, typename SpinEnsemble>
     double distance(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool enable_alpha
+        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
     );
 
     // template<typename Psi_t, typename SpinEnsemble>
@@ -80,16 +81,16 @@ public:
     template<typename Psi_t, typename SpinEnsemble>
     double gradient(
         complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool enable_alpha
+        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
     );
 
     template<typename Psi_t, typename SpinEnsemble>
     inline double gradient(
         complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const quantum_expression::PauliExpression& expr, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool enable_alpha
+        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
     ) {
         return this->gradient(
-            result, psi, psi_prime, psi.transform_operator(expr), is_unitary, spin_ensemble, enable_alpha
+            result, psi, psi_prime, psi.transform_operator(expr), is_unitary, spin_ensemble, free_quantum_axis
         );
     }
 
@@ -98,11 +99,11 @@ public:
     template<typename Psi_t, typename SpinEnsemble>
     pair<xt::pytensor<complex<double>, 1u>, double> gradient_py(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool enable_alpha
+        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
     ) {
         xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_params()}));
 
-        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble, enable_alpha);
+        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble, free_quantum_axis);
 
         return {grad, distance};
     }

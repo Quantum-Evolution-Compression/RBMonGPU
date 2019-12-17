@@ -1,7 +1,6 @@
 #include "network_functions/ExpectationValue.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
-#include "quantum_state/PsiDynamical.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
 #include "Array.hpp"
@@ -468,38 +467,28 @@ vector<complex<double>> ExpectationValue::operator() (
 
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const ExactSummation&) const;
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::operator()(const PsiDynamical& psi, const Operator& operator_, const ExactSummation&) const;
-template complex<double> ExpectationValue::operator()(const PsiDynamical& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const ExactSummation&) const;
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const MonteCarloLoop&) const;
 
 
 template pair<double, complex<double>> ExpectationValue::fluctuation(const Psi&, const Operator&, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const Psi&, const Operator&, const MonteCarloLoop&) const;
-template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDynamical&, const Operator&, const ExactSummation&) const;
-template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 
 
 template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const ExactSummation&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const ExactSummation&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const Psi&, const Operator&, const MonteCarloLoop&) const;
-template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDynamical&, const Operator&, const ExactSummation&) const;
-template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDynamical&, const Operator&, const MonteCarloLoop&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 
 template vector<complex<double>> ExpectationValue::difference(const Psi&, const Psi&, const vector<Operator>&, const ExactSummation&) const;
 template vector<complex<double>> ExpectationValue::difference(const Psi&, const Psi&, const vector<Operator>&, const MonteCarloLoop&) const;
-template vector<complex<double>> ExpectationValue::difference(const PsiDynamical&, const PsiDynamical&, const vector<Operator>&, const ExactSummation&) const;
-template vector<complex<double>> ExpectationValue::difference(const PsiDynamical&, const PsiDynamical&, const vector<Operator>&, const MonteCarloLoop&) const;
 template vector<complex<double>> ExpectationValue::difference(const PsiDeep&, const PsiDeep&, const vector<Operator>&, const ExactSummation&) const;
 template vector<complex<double>> ExpectationValue::difference(const PsiDeep&, const PsiDeep&, const vector<Operator>&, const MonteCarloLoop&) const;
 
@@ -508,12 +497,6 @@ template vector<complex<double>> ExpectationValue::operator()(
 ) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const Psi& psi, const vector<Operator>& operator_, const MonteCarloLoop&
-) const;
-template vector<complex<double>> ExpectationValue::operator()(
-    const PsiDynamical& psi, const vector<Operator>& operator_, const ExactSummation&
-) const;
-template vector<complex<double>> ExpectationValue::operator()(
-    const PsiDynamical& psi, const vector<Operator>& operator_, const MonteCarloLoop&
 ) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiDeep& psi, const vector<Operator>& operator_, const ExactSummation&

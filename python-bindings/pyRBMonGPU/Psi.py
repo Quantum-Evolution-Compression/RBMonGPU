@@ -1,5 +1,6 @@
 from ._pyRBMonGPU import Psi
 from json_numpy import NumpyEncoder, NumpyDecoder
+from QuantumExpression import sigma_x, sigma_y
 import json
 import numpy as np
 
@@ -42,6 +43,12 @@ def from_json(json_obj, gpu):
     )
 
 
+def transform(self, operator, threshold=1e-10):
+    alpha_generator = sum(-1j * alpha_i * sigma_y(i) for i, alpha_i in enumerate(self.alpha))
+    beta_generator = sum(-1j * beta_i * sigma_x(i) for i, beta_i in enumerate(self.beta))
+    return operator.rotate_by(beta_generator, 0).rotate_by(alpha_generator, 0).apply_threshold(threshold)
+
+
 def normalize(self, exact_summation):
     self.prefactor /= self.norm(exact_summation)
 
@@ -52,5 +59,6 @@ def __pos__(self):
 
 setattr(Psi, "to_json", to_json)
 setattr(Psi, "from_json", from_json)
+setattr(Psi, "transform", transform)
 setattr(Psi, "normalize", normalize)
 setattr(Psi, "__pos__", __pos__)

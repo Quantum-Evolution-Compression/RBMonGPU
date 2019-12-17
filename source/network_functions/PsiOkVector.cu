@@ -1,6 +1,5 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiDynamical.hpp"
 #include "quantum_state/PsiDeep.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
@@ -145,22 +144,17 @@ pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi_t& psi, const Spi
 
 
 template void psi_O_k_vector(complex<double>* result, const Psi& psi, const Spins& spins);
-template void psi_O_k_vector(complex<double>* result, const PsiDynamical& psi, const Spins& spins);
 template void psi_O_k_vector(complex<double>* result, const PsiDeep& psi, const Spins& spins);
 
 
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const ExactSummation& spin_ensemble);
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const MonteCarloLoop& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDynamical& psi, const ExactSummation& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const ExactSummation& spin_ensemble);
 template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
 
 
 template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const ExactSummation& spin_ensemble);
 template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const MonteCarloLoop& spin_ensemble);
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDynamical& psi, const ExactSummation& spin_ensemble);
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDynamical& psi, const MonteCarloLoop& spin_ensemble);
 template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const ExactSummation& spin_ensemble);
 template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
 

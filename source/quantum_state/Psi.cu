@@ -13,7 +13,7 @@
 namespace rbm_on_gpu {
 
 Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu)
-  : a_array(N, gpu), alpha_array(N, gpu), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
+  : alpha_array(N, false), beta_array(N, false), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
     this->N = N;
     this->M = M;
     this->prefactor = 1.0;
@@ -22,13 +22,13 @@ Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const doubl
     std::mt19937 rng(seed);
     std::uniform_real_distribution<double> random_real(-1.0, 1.0);
 
-    for(auto i = 0u; i < N; i++) {
-        this->a_array[i] = complex_t(0.0, 0.0);
-    }
     for(auto j = 0u; j < M; j++) {
         this->b_array[j] = complex_t(noise * random_real(rng), noise * random_real(rng));
     }
     for(auto i = 0u; i < N; i++) {
+        this->alpha_array[i] = 0.0;
+        this->beta_array[i] = 0.0;
+
         for(auto j = 0u; j < M; j++) {
             const auto idx = j * N + i;
             this->W_array[idx] = (
@@ -38,18 +38,16 @@ Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const doubl
         }
     }
 
-    this->a_array.update_device();
     this->b_array.update_device();
     this->W_array.update_device();
 
     this->update_kernel();
-    this->create_index_pairs();
 }
 
 Psi::Psi(const Psi& other)
     :
-    a_array(other.a_array),
     alpha_array(other.alpha_array),
+    beta_array(other.beta_array),
     b_array(other.b_array),
     W_array(other.W_array),
     gpu(other.gpu) {
@@ -59,11 +57,9 @@ Psi::Psi(const Psi& other)
     this->num_params = other.num_params;
 
     this->update_kernel();
-    this->create_index_pairs();
 }
 
 void Psi::update_kernel() {
-    this->a = this->a_array.data();
     this->b = this->b_array.data();
     this->W = this->W_array.data();
 }
@@ -115,32 +111,23 @@ std::complex<double> Psi::log_psi_s_std(const Spins& spins) {
     return result_host.to_std();
 }
 
-void Psi::create_index_pairs() {
-    for(auto i = 0; i < this->N; i++) {
-        this->index_pair_list.push_back(make_pair(i, -1));
-    }
-    for(auto j = 0; j < this->M; j++) {
-        this->index_pair_list.push_back(make_pair(-1, j));
-    }
-    for(auto i = 0; i < this->N; i++) {
-        for(auto j = 0; j < this->M; j++) {
-            this->index_pair_list.push_back(make_pair(i, j));
-        }
-    }
-}
-
 void Psi::get_params(complex<double>* result) const {
-    memcpy(result, this->a_array.host_data(), sizeof(complex_t) * this->N);
-    memcpy(result + this->N, this->b_array.host_data(), sizeof(complex_t) * this->M);
-    memcpy(result + this->N + this->M, this->W_array.host_data(), sizeof(complex_t) * this->N * this->M);
+    for(auto i = 0u; i < this->N; i++) {
+        result[i] = complex<double>(this->alpha_array[i], 0.0);
+        result[this->N + i] = complex<double>(this->beta_array[i], 0.0);
+    }
+    memcpy(result + 2 * this->N, this->b_array.host_data(), sizeof(complex_t) * this->M);
+    memcpy(result + 2 * this->N + this->M, this->W_array.host_data(), sizeof(complex_t) * this->N * this->M);
 }
 
 void Psi::set_params(const complex<double>* new_params) {
-    memcpy(this->a_array.host_data(), new_params, sizeof(complex_t) * this->N);
-    memcpy(this->b_array.host_data(), new_params + this->N, sizeof(complex_t) * this->M);
-    memcpy(this->W_array.host_data(), new_params + this->N + this->M, sizeof(complex_t) * this->N * this->M);
+    for(auto i = 0u; i < this->N; i++) {
+        this->alpha_array[i] = new_params[i].real();
+        this->beta_array[i] = new_params[this->N + i].real();
+    }
+    memcpy(this->b_array.host_data(), new_params + 2 * this->N, sizeof(complex_t) * this->M);
+    memcpy(this->W_array.host_data(), new_params + 2 * this->N + this->M, sizeof(complex_t) * this->N * this->M);
 
-    this->a_array.update_device();
     this->b_array.update_device();
     this->W_array.update_device();
 
