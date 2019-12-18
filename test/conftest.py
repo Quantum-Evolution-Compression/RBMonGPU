@@ -1,8 +1,5 @@
-from make_Psi import psi_random
-from make_PsiDynamical import psi_random as psidynamical_random
-# from pyRBMonGPU import ExactSummation, MonteCarloLoop
+from pyRBMonGPU import new_neural_network, new_deep_neural_network, MonteCarloLoop, ExactSummation
 import quantum_tools as qt
-from PauliExpression import PauliExpression
 
 
 def pytest_addoption(parser):
@@ -21,20 +18,42 @@ def pytest_generate_tests(metafunc):
 
     if 'psi' in metafunc.fixturenames:
         psi_list = [
-            lambda gpu: psidynamical_random(2, 2, 0.01, gpu),
-            # lambda gpu: psi_random(2, 2, 0.01, gpu),
-            # lambda gpu: psi_random(5, 10, 0.1, gpu),
+            lambda gpu: new_neural_network(2, 2, gpu=gpu),
+            lambda gpu: new_neural_network(3, 9, noise=1e-2, gpu=gpu),
         ]
         metafunc.parametrize("psi", psi_list)
 
-    if 'operator' in metafunc.fixturenames:
-        operator_list = [
-            lambda N, unitary: 0.05 * (
-                PauliExpression(1.0j, {0: 2, 1: 2}) +
-                PauliExpression(1.0j, {N - 2: 1, N - 1: 3})
-            ) + (1 if unitary else 0),
-            lambda N, unitary: 0.05j * qt.disordered_Heisenberg_chain(
-                N, 1.0, 0.5, 2.0
-            ) + (1 if unitary else 0)
+    if 'psi_deep' in metafunc.fixturenames:
+        psi_list = [
+            lambda gpu: new_deep_neural_network(2, [2], [2], gpu=gpu),
+            lambda gpu: new_deep_neural_network(3, [9, 6], [1, 3], noise=1e-2, gpu=gpu),
+            lambda gpu: new_deep_neural_network(8, [16, 8, 4], [4, 2, 4], noise=1e-2, gpu=gpu),
         ]
-        metafunc.parametrize("operator", operator_list)
+        metafunc.parametrize("psi_deep", psi_list)
+
+    if 'psi_all' in metafunc.fixturenames:
+        psi_list = [
+            lambda gpu: new_neural_network(3, 9, noise=1e-2, gpu=gpu),
+            lambda gpu: new_neural_network(4, 8, noise=1e-2, alpha=0.5, beta=0.5, free_quantum_axis=True, gpu=gpu),
+            lambda gpu: new_neural_network(8, 24, noise=1e-2, alpha=1, beta=1, free_quantum_axis=True, gpu=gpu),
+            lambda gpu: new_deep_neural_network(2, [2], [2], gpu=gpu),
+            lambda gpu: new_deep_neural_network(8, [16, 8, 4], [4, 2, 4], noise=1e-2, gpu=gpu),
+            lambda gpu: new_deep_neural_network(6, [12, 8, 4], [4, 3, 4], noise=1e-3, alpha=1, beta=1, free_quantum_axis=True, gpu=gpu),
+        ]
+        metafunc.parametrize("psi_all", psi_list)
+
+    if 'hamiltonian' in metafunc.fixturenames:
+        metafunc.parametrize(
+            "hamiltonian",
+            [
+                lambda L: qt.disordered_Heisenberg_chain(L, 1, 0.2, 1)
+            ]
+        )
+
+    if 'spin_ensemble' in metafunc.fixturenames:
+        metafunc.parametrize(
+            "spin_ensemble",
+            [
+                lambda L, gpu: ExactSummation(L, gpu)
+            ]
+        )

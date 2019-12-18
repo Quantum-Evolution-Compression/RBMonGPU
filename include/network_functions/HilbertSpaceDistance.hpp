@@ -61,7 +61,7 @@ private:
     Array<double> cos_sum_alpha_ar;
 
 public:
-    HilbertSpaceDistance(const unsigned int N, const unsigned int O_k_length, const bool gpu);
+    HilbertSpaceDistance(const unsigned int N, const unsigned int num_params, const bool gpu);
     ~HilbertSpaceDistance() noexcept(false);
 
     template<typename Psi_t>

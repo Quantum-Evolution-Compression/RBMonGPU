@@ -446,6 +446,7 @@ public:
         //         }
         //         cout << endl;
         //     }
+        //     cout << "rhs_connections: " << endl;
         //     for(auto i = 0u; i < layer.size; i++) {
         //         for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
         //             cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";

@@ -79,6 +79,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         )
         .def_readonly("num_params", &Psi::num_params)
         .def_property("params", &Psi::get_params_py, &Psi::set_params_py)
+        .def_property_readonly("free_quantum_axis", [](const Psi& psi) {return psi.free_quantum_axis;})
         .def_property_readonly("num_angles", &Psi::get_num_angles);
 
     py::class_<PsiDeep>(m, "PsiDeep")
@@ -108,6 +109,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("connections", &PsiDeep::get_connections)
         .def_property_readonly("W", &PsiDeep::get_W)
         .def_property_readonly("vector", [](const PsiDeep& psi) {return psi.as_vector().to_pytensor<1u>();})
+        .def_property_readonly("free_quantum_axis", [](const PsiDeep& psi) {return psi.free_quantum_axis;})
         .def("norm", &PsiDeep::norm)
         .def("O_k_vector", &PsiDeep::O_k_vector_py);
 
@@ -234,6 +236,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             result_and_result_std.first.to_pytensor<1u>(),
             result_and_result_std.second.to_pytensor<1u>()
         );
+    });
+
+    m.def("activation_function", [](const complex<double>& x) {
+        return my_logcosh(complex_t(x.real(), x.imag())).to_std();
     });
 
     m.def("setDevice", setDevice);

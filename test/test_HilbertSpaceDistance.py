@@ -1,96 +1,63 @@
-from pyRBMonGPU import HilbertSpaceDistance, ExactSummation, Spins
-import pytest
-from pytest import approx
-from scipy.linalg import expm
+from pyRBMonGPU import HilbertSpaceDistance, ExactSummation, Operator
 import numpy as np
-from copy import deepcopy
+from pathlib import Path
+import json
 
 
-@pytest.mark.parametrize("unitary", (True, False))
-def test_distance(psi, operator, gpu, unitary):
-    psi = psi(gpu)[0]
+def test_gradient(psi_all, hamiltonian, gpu):
+    psi = psi_all(gpu)
+
     N = psi.N
-    operator = operator(N, unitary)
+    H = hamiltonian(N)
+    spin_ensemble = ExactSummation(N, gpu)
 
-    exact_a = psi.vector
-    if unitary:
-        exact_b = operator.matrix(N) @ exact_a
-    else:
-        exact_b = expm(operator.matrix(N)) @ exact_a
+    psi.normalize(spin_ensemble)
+    psi1 = +psi
 
-    ab = exact_a @ exact_b.conj()
-    exact_distance = 1.0 - (
-        abs(ab)**2 / ((exact_a @ exact_a.conj()) * (exact_b @ exact_b.conj()))
-    )**0.5
+    hs_distance = HilbertSpaceDistance(N, psi.num_params, gpu)
+    op = Operator(1 + 1j * psi.transform(H) * 1e-2, gpu)
 
-    hilbert_space_distance = HilbertSpaceDistance(psi.num_params, gpu)
-    spin_ensemble = ExactSummation(N)
-    compiled_op = CompiledOperator(operator, gpu)
+    gradient_ref, distance_ref = hs_distance.gradient(psi, psi, op, True, spin_ensemble)
+    gradient_ref[:2 * N] = gradient_ref[:2 * N].real
 
-    assert hilbert_space_distance(
-        psi, psi, compiled_op, unitary, spin_ensemble, False
-    ) == approx(exact_distance, rel=1e-2 if unitary else 5e-2)
+    eps = 1e-6
 
+    def distance_diff(delta_params):
+        psi1.params = psi.params + delta_params
+        plus_distance = hs_distance(psi, psi1, op, True, spin_ensemble)
 
-# @pytest.mark.parametrize("unitary", (True, False))
-# def test_gradient(psi, operator, gpu, unitary):
-#     eps = 1e-4
+        psi1.params = psi.params - delta_params
+        minus_distance = hs_distance(psi, psi1, op, True, spin_ensemble)
 
-#     psi_output = psi(gpu)
-#     psi = psi_output[0]
-#     args = psi_output[1:]
-#     psi0 = psi.__class__(*args, 1.0, gpu)
+        return (plus_distance - minus_distance) / (2 * eps)
 
-#     N = psi.N
-#     M = psi.M
-#     F = psi.F if hasattr(psi, "F") else None
+    gradient_test = np.zeros(psi.num_params, dtype=complex)
 
-#     hilbert_space_distance = HilbertSpaceDistance(psi.num_active_params, gpu)
-#     compiled_op = CompiledOperator(operator(N, unitary), gpu)
-#     spin_ensemble = ExactSummation(N)
+    for k in range(psi.num_params):
+        delta_params = np.zeros(psi.num_params, dtype=complex)
+        delta_params[k] = eps
+        gradient_test[k] = distance_diff(delta_params)
 
-#     my_distance = lambda psi: (
-#         hilbert_space_distance(psi0, psi, compiled_op, unitary, spin_ensemble, False)
-#     )
+        if k >= 2 * N:
+            delta_params = np.zeros(psi.num_params, dtype=complex)
+            delta_params[k] = 1j * eps
+            gradient_test[k] += 1j * distance_diff(delta_params)
 
-#     def my_derivative(arg_idx, idx, c=1):
-#         args_plus = deepcopy(args)
-#         args_minus = deepcopy(args)
-#         args_plus[arg_idx][idx] += c * eps
-#         args_minus[arg_idx][idx] -= c * eps
+    print(gradient_test - gradient_ref)
+    print(gradient_ref)
 
-#         psi_plus = psi.__class__(*args_plus, 1.0, gpu)
-#         psi_minus = psi.__class__(*args_minus, 1.0, gpu)
+    condition = np.allclose(gradient_test, gradient_ref, rtol=1e-2, atol=1e-8)
 
-#         diff = my_distance(psi_plus) - my_distance(psi_minus)
-#         return diff / (2 * eps)
+    if not condition:
+        with open(Path().home() / "test_gradient.json", "w") as f:
+            json.dump(
+                {
+                    "gradient_ref.real": gradient_ref.real.tolist(),
+                    "gradient_ref.imag": gradient_ref.imag.tolist(),
+                    "gradient_test.real": gradient_test.real.tolist(),
+                    "gradient_test.imag": gradient_test.imag.tolist(),
+                },
+                f
+            )
 
-#     target_gradient = np.zeros(psi.num_active_params, dtype=complex)
-
-#     for i in range(N):
-#         target_gradient[i] = my_derivative(0, i) + 1j * my_derivative(0, i, 1j)
-
-#     for j in range(M):
-#         target_gradient[N + j] = my_derivative(1, j) + 1j * my_derivative(1, j, 1j)
-
-#     for i in range(N):
-#         for j in range(M):
-#             target_gradient[N + M + i * M + j] = my_derivative(2, (i, j)) + 1j * my_derivative(2, (i, j), 1j)
-
-#     if F is not None:
-#         for i in range(N):
-#             for f in range(F):
-#                 target_gradient[N + M + N * M + i * F + f] = my_derivative(4, (i, f)) + 1j * my_derivative(4, (i, f), 1j)
-
-#         for f in range(F):
-#             for j in range(M):
-#                 target_gradient[N + M + N * M + N * F + f * M + j] = my_derivative(5, (f, j)) + 1j * my_derivative(5, (f, j), 1j)
-
-#     test_gradient = hilbert_space_distance.gradient(
-#         psi0, psi0, compiled_op, unitary, spin_ensemble
-#     )[0]
-
-#     # print((test_gradient - target_gradient).real / target_gradient.real)
-#     # print(target_gradient)
-
-#     assert test_gradient == approx(target_gradient, rel=3e-1)
+    assert condition
