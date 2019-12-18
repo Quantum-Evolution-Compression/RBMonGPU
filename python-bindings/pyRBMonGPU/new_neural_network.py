@@ -18,6 +18,7 @@ def new_neural_network(
     initial_value=(0.01 + 1j * math.pi / 4),
     alpha=0,
     beta=0,
+    free_quantum_axis=False,
     noise=1e-6,
     gpu=False
 ):
@@ -32,7 +33,7 @@ def new_neural_network(
     for r in range(M // N):
         W[:, r * N:(r + 1) * N] += initial_value * np.diag(np.ones(N))
 
-    return Psi(alpha, beta, b, W, 1, gpu)
+    return Psi(alpha, beta, b, W, 1, free_quantum_axis, gpu)
 
 
 def new_deep_neural_network(
@@ -43,6 +44,7 @@ def new_deep_neural_network(
     initial_value=(0.01 + 1j * math.pi / 4),
     alpha=0,
     beta=0,
+    free_quantum_axis=False,
     noise=1e-4,
     gpu=False
 ):
@@ -108,4 +110,4 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    return PsiDeep(alpha, beta, b, connections, W, 1.0, gpu)
+    return PsiDeep(alpha, beta, b, connections, W, 1.0, free_quantum_axis, gpu)

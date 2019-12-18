@@ -266,12 +266,12 @@ public:
     Array<double> beta_array;
     Array<complex_t> b_array;
     Array<complex_t> W_array;
+
+    const bool  free_quantum_axis;
     bool gpu;
 
-    vector<pair<int, int>> index_pair_list;
-
 public:
-    Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu);
+    Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool free_quantum_axis, const bool gpu);
     Psi(const Psi& other);
 
 #ifdef __PYTHONCC__
@@ -281,8 +281,9 @@ public:
         const xt::pytensor<std::complex<double>, 1u>& b,
         const xt::pytensor<std::complex<double>, 2u>& W,
         const double prefactor,
+        const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(alpha, false), b_array(b, gpu), W_array(W, gpu), gpu(gpu) {
+    ) : alpha_array(alpha, false), beta_array(alpha, false), b_array(b, gpu), W_array(W, gpu), free_quantum_axis(free_quantum_axis), gpu(gpu) {
         this->N = alpha.shape()[0];
         this->M = b.shape()[0];
         this->prefactor = prefactor;

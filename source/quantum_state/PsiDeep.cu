@@ -16,6 +16,7 @@ PsiDeep::PsiDeep(const PsiDeep& other)
     alpha_array(other.alpha_array),
     beta_array(other.beta_array),
     layers(other.layers),
+    free_quantum_axis(other.free_quantum_axis),
     gpu(other.gpu)
 {
     this->N = other.N;

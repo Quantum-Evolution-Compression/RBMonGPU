@@ -12,8 +12,8 @@
 
 namespace rbm_on_gpu {
 
-Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool gpu)
-  : alpha_array(N, false), beta_array(N, false), b_array(M, gpu), W_array(N * M, gpu), gpu(gpu) {
+Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool free_quantum_axis, const bool gpu)
+  : alpha_array(N, false), beta_array(N, false), b_array(M, gpu), W_array(N * M, gpu), free_quantum_axis(free_quantum_axis), gpu(gpu) {
     this->N = N;
     this->M = M;
     this->prefactor = 1.0;
@@ -50,6 +50,7 @@ Psi::Psi(const Psi& other)
     beta_array(other.beta_array),
     b_array(other.b_array),
     W_array(other.W_array),
+    free_quantum_axis(other.free_quantum_axis),
     gpu(other.gpu) {
     this->N = other.N;
     this->M = other.M;

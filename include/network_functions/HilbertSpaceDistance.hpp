@@ -70,7 +70,7 @@ public:
     template<typename Psi_t, typename SpinEnsemble>
     double distance(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
+        const SpinEnsemble& spin_ensemble
     );
 
     // template<typename Psi_t, typename SpinEnsemble>
@@ -81,29 +81,19 @@ public:
     template<typename Psi_t, typename SpinEnsemble>
     double gradient(
         complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
+        const SpinEnsemble& spin_ensemble
     );
-
-    template<typename Psi_t, typename SpinEnsemble>
-    inline double gradient(
-        complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const quantum_expression::PauliExpression& expr, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
-    ) {
-        return this->gradient(
-            result, psi, psi_prime, psi.transform_operator(expr), is_unitary, spin_ensemble, free_quantum_axis
-        );
-    }
 
 #ifdef __PYTHONCC__
 
     template<typename Psi_t, typename SpinEnsemble>
     pair<xt::pytensor<complex<double>, 1u>, double> gradient_py(
         const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, bool free_quantum_axis
+        const SpinEnsemble& spin_ensemble
     ) {
         xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_params()}));
 
-        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble, free_quantum_axis);
+        const double distance = this->gradient(grad.data(), psi, psi_prime, operator_, is_unitary, spin_ensemble);
 
         return {grad, distance};
     }

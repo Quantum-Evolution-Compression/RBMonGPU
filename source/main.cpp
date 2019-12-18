@@ -62,7 +62,7 @@ int main(void)
     const bool gpu = false;
 
     Operator op(coefficients, pauli_types, pauli_indices, gpu);
-    Psi psi(N, M, 0, 1e-3, gpu);
+    Psi psi(N, M, 0, 1e-3, false, gpu);
 
     // DifferentiatePsi differentiate_psi(psi.get_num_params(), gpu);
 

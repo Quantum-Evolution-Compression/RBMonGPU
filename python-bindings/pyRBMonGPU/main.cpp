@@ -46,6 +46,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const complex_tensor<1u>&,
             const complex_tensor<2u>&,
             const double,
+            const bool,
             const bool
         >())
         .def("copy", &Psi::copy)
@@ -88,6 +89,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const vector<xt::pytensor<unsigned int, 2u>>&,
             const vector<complex_tensor<2u>>&,
             const double,
+            const bool,
             const bool
         >())
         .def("copy", &PsiDeep::copy)
@@ -173,18 +175,18 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 
     py::class_<HilbertSpaceDistance>(m, "HilbertSpaceDistance")
         .def(py::init<unsigned int, unsigned int, bool>())
-        .def("__call__", &HilbertSpaceDistance::distance<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "free_quantum_axis"_a);
+        .def("__call__", &HilbertSpaceDistance::distance<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("overlap", &HilbertSpaceDistance::overlap<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
 
     m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
         return get_S_matrix(psi, spin_ensemble).to_pytensor<2u>(shape_t<2u>{psi.num_params, psi.num_params});

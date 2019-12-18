@@ -239,9 +239,9 @@ void HilbertSpaceDistance::update_quaxis(const Psi_t& psi, const Psi_t& psi_prim
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinEnsemble& spin_ensemble, bool free_quantum_axis
+    const SpinEnsemble& spin_ensemble
 ) {
-    if(free_quantum_axis) {
+    if(psi.free_quantum_axis) {
         this->update_quaxis(psi, psi_prime);
         this->compute_averages<false, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
     }
@@ -291,9 +291,9 @@ double HilbertSpaceDistance::distance(
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinEnsemble& spin_ensemble, bool free_quantum_axis
+    const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) {
-    if(free_quantum_axis) {
+    if(psi.free_quantum_axis) {
         this->update_quaxis(psi, psi_prime);
         this->compute_averages<true, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
     }
@@ -336,52 +336,52 @@ double HilbertSpaceDistance::gradient(
 
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble, bool free_quantum_axis
+    const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::distance(
     const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+    const MonteCarloLoop& spin_ensemble
 );
 
 template double HilbertSpaceDistance::distance(
     const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
-    const ExactSummation& spin_ensemble, bool free_quantum_axis
+    const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::distance(
     const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
-    const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+    const MonteCarloLoop& spin_ensemble
 );
 
 // template double HilbertSpaceDistance::overlap(
-//     const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble, bool free_quantum_axis
+//     const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
 // );
 // template double HilbertSpaceDistance::overlap(
-//     const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+//     const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
 // );
 
 // template double HilbertSpaceDistance::overlap(
-//     const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble, bool free_quantum_axis
+//     const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
 // );
 // template double HilbertSpaceDistance::overlap(
-//     const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+//     const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
 // );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble, bool free_quantum_axis
+    const bool is_unitary, const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble
 );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_,
-    const bool is_unitary, const ExactSummation& spin_ensemble, bool free_quantum_axis
+    const bool is_unitary, const ExactSummation& spin_ensemble
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_,
-    const bool is_unitary, const MonteCarloLoop& spin_ensemble, bool free_quantum_axis
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble
 );
 
 } // namespace rbm_on_gpu

@@ -337,6 +337,7 @@ class PsiDeep : public kernel::PsiDeep {
 public:
     Array<double> alpha_array;
     Array<double> beta_array;
+    const bool    free_quantum_axis;
 
     struct Layer {
         unsigned int        size;
@@ -363,8 +364,9 @@ public:
         const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
         const double prefactor,
+        const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(beta, false), gpu(gpu) {
+    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), gpu(gpu) {
         this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
@@ -416,42 +418,42 @@ public:
 
         this->init_kernel();
 
-        cout << "N: " << this->N << endl;
-        cout << "num_layers: " << this->num_layers << endl;
-        cout << "width: " << this->width << endl;
-        cout << "num_params: " << this->num_params << endl;
-        cout << "prefactor: " << this->prefactor << endl;
-        cout << endl;
+        // cout << "N: " << this->N << endl;
+        // cout << "num_layers: " << this->num_layers << endl;
+        // cout << "width: " << this->width << endl;
+        // cout << "num_params: " << this->num_params << endl;
+        // cout << "prefactor: " << this->prefactor << endl;
+        // cout << endl;
 
-        for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-            const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
-            const auto& layer = *next(this->layers.begin(), layer_idx);
+        // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
+        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        //     const auto& layer = *next(this->layers.begin(), layer_idx);
 
-            cout << "Layer: " << layer_idx << endl;
-            cout << "size: " << kernel_layer.size << endl;
-            cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
-            cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
-            cout << "begin_params: " << kernel_layer.begin_params << endl;
-            cout << "begin_angles: " << kernel_layer.begin_angles << endl;
-            cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
-            cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
-            cout << "biases.size: " << layer.biases.size() << endl;
-            cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
-            cout << "lhs_connections: " << endl;
-            for(auto i = 0u; i < layer.lhs_connectivity; i++) {
-                for(auto j = 0u; j < layer.size; j++) {
-                    cout << layer.lhs_connections[i * layer.size + j] << ", ";
-                }
-                cout << endl;
-            }
-            for(auto i = 0u; i < layer.size; i++) {
-                for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
-                    cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
-                }
-                cout << endl;
-            }
-            cout << endl;
-        }
+        //     cout << "Layer: " << layer_idx << endl;
+        //     cout << "size: " << kernel_layer.size << endl;
+        //     cout << "lhs_connectivity: " << kernel_layer.lhs_connectivity << endl;
+        //     cout << "rhs_connectivity: " << kernel_layer.rhs_connectivity << endl;
+        //     cout << "begin_params: " << kernel_layer.begin_params << endl;
+        //     cout << "begin_angles: " << kernel_layer.begin_angles << endl;
+        //     cout << "lhs_weights.size: " << layer.lhs_weights.size() << endl;
+        //     cout << "rhs_weights.size: " << layer.rhs_weights.size() << endl;
+        //     cout << "biases.size: " << layer.biases.size() << endl;
+        //     cout << "rhs_connections.size: " << layer.rhs_connections.size() << endl;
+        //     cout << "lhs_connections: " << endl;
+        //     for(auto i = 0u; i < layer.lhs_connectivity; i++) {
+        //         for(auto j = 0u; j < layer.size; j++) {
+        //             cout << layer.lhs_connections[i * layer.size + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
+        //     for(auto i = 0u; i < layer.size; i++) {
+        //         for(auto j = 0u; j < kernel_layer.rhs_connectivity; j++) {
+        //             cout << layer.rhs_connections[i * kernel_layer.rhs_connectivity + j] << ", ";
+        //         }
+        //         cout << endl;
+        //     }
+        //     cout << endl;
+        // }
     }
 
     PsiDeep copy() const {
