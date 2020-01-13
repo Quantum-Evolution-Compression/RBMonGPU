@@ -46,7 +46,7 @@ class LearningByGradientDescent:
     @property
     def smoothed_distance_history(self):
         distances = np.array(self.distance_history)
-        sigma = 3 if self.mc else 1
+        sigma = 5 if self.mc else 1
         return gaussian_filter1d(distances, sigma, mode='nearest')
 
     def smoothed(self, x):

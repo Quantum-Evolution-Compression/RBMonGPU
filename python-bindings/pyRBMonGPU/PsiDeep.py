@@ -57,8 +57,24 @@ def __pos__(self):
     return self.copy()
 
 
+@property
+def vector(self):
+    alpha = self.alpha
+    beta = self.beta
+
+    result = self._vector
+    for i in range(self.N):
+        if abs(alpha[i]) > 1e-10:
+            result = (1j * alpha[i] * sigma_y(i)).exp(0).sparse_matrix(self.N) @ result
+        if abs(beta[i]) > 1e-10:
+            result = (1j * beta[i] * sigma_x(i)).exp(0).sparse_matrix(self.N) @ result
+
+    return result
+
+
 setattr(PsiDeep, "to_json", to_json)
 setattr(PsiDeep, "from_json", from_json)
 setattr(PsiDeep, "transform", transform)
 setattr(PsiDeep, "normalize", normalize)
 setattr(PsiDeep, "__pos__", __pos__)
+setattr(PsiDeep, "vector", vector)
