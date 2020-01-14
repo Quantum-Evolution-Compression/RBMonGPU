@@ -20,12 +20,6 @@ void kernel::HilbertSpaceDistance::compute_averages(
 ) const {
     const auto num_params = psi_prime.get_num_params();
 
-    MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
-    MEMSET(this->omega_O_k_avg, 0, sizeof(complex_t) * num_params, this->gpu)
-    MEMSET(this->probability_ratio_avg, 0, sizeof(double), this->gpu)
-    MEMSET(this->probability_ratio_O_k_avg, 0, sizeof(complex_t) * num_params, this->gpu)
-    MEMSET(this->next_state_norm_avg, 0, sizeof(double), this->gpu);
-
     const auto this_ = *this;
     const auto psi_kernel = psi.get_kernel();
     const auto psi_prime_kernel = psi_prime.get_kernel();
@@ -143,79 +137,31 @@ void kernel::HilbertSpaceDistance::compute_averages(
     );
 }
 
-// template<typename Psi_t, typename SpinEnsemble>
-// void kernel::HilbertSpaceDistance::overlap(
-//     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
-// ) const {
-//     MEMSET(this->omega_avg, 0, sizeof(complex_t), this->gpu)
-//     MEMSET(this->probability_ratio_avg, 0, sizeof(double), this->gpu)
-
-//     const auto this_ = *this;
-//     const auto psi_kernel = psi.get_kernel();
-//     const auto psi_prime_kernel = psi_prime.get_kernel();
-
-//     spin_ensemble.foreach(
-//         psi,
-//         [=] __device__ __host__ (
-//             const unsigned int spin_index,
-//             const Spins spins,
-//             const complex_t log_psi,
-//             typename Psi_t::Angles& angles,
-//             const double weight
-//         ) {
-//             #include "cuda_kernel_defines.h"
-
-//             SHARED typename Psi_t::Angles angles_prime;
-//             angles_prime.init(psi_prime_kernel, spins);
-
-//             SHARED complex_t log_psi_prime;
-//             psi_prime_kernel.log_psi_s(log_psi_prime, spins, angles_prime);
-
-//             SHARED complex_t   omega;
-//             SHARED double      probability_ratio;
-
-//             SINGLE
-//             {
-//                 omega = exp(conj(log_psi_prime - log_psi));
-//                 probability_ratio = exp(2.0 * (log_psi_prime.real() - log_psi.real()));
-
-//                 generic_atomicAdd(this_.omega_avg, weight * omega);
-//                 generic_atomicAdd(this_.probability_ratio_avg, weight * probability_ratio);
-//             }
-//         },
-//         max(psi.get_num_angles(), psi_prime.get_num_angles())
-//     );
-// }
-
 } // namespace kernel
 
 HilbertSpaceDistance::HilbertSpaceDistance(const unsigned int N, const unsigned int num_params, const bool gpu)
-      : omega_O_k_avg_host(num_params),
-        probability_ratio_O_k_avg_host(num_params),
+      : num_params(num_params),
+        omega_avg_ar(1, gpu),
+        omega_O_k_avg_ar(num_params, gpu),
+        probability_ratio_avg_ar(1, gpu),
+        probability_ratio_O_k_avg_ar(num_params, gpu),
+        next_state_norm_avg_ar(1, gpu),
         delta_alpha_ar(N, gpu),
         delta_beta_ar(N, gpu),
         sin_sum_alpha_ar(N, gpu),
         cos_sum_alpha_ar(N, gpu) {
     this->gpu = gpu;
 
-    MALLOC(this->omega_avg, sizeof(complex_t), this->gpu);
-    MALLOC(this->omega_O_k_avg, sizeof(complex_t) * num_params, this->gpu);
-    MALLOC(this->probability_ratio_avg, sizeof(double), this->gpu);
-    MALLOC(this->probability_ratio_O_k_avg, sizeof(complex_t) * num_params, this->gpu);
-    MALLOC(this->next_state_norm_avg, sizeof(double), this->gpu);
+    this->omega_avg = this->omega_avg_ar.data();
+    this->omega_O_k_avg = this->omega_O_k_avg_ar.data();
+    this->probability_ratio_avg = this->probability_ratio_avg_ar.data();
+    this->probability_ratio_O_k_avg = this->probability_ratio_O_k_avg_ar.data();
+    this->next_state_norm_avg = this->next_state_norm_avg_ar.data();
 
     this->delta_alpha = this->delta_alpha_ar.data();
     this->delta_beta = this->delta_beta_ar.data();
     this->sin_sum_alpha = this->sin_sum_alpha_ar.data();
     this->cos_sum_alpha = this->cos_sum_alpha_ar.data();
-}
-
-HilbertSpaceDistance::~HilbertSpaceDistance() noexcept(false) {
-    FREE(this->omega_avg, this->gpu);
-    FREE(this->omega_O_k_avg, this->gpu);
-    FREE(this->probability_ratio_avg, this->gpu);
-    FREE(this->probability_ratio_O_k_avg, this->gpu);
-    FREE(this->next_state_norm_avg, this->gpu);
 }
 
 template<typename Psi_t>
@@ -236,11 +182,22 @@ void HilbertSpaceDistance::update_quaxis(const Psi_t& psi, const Psi_t& psi_prim
     this->cos_sum_alpha_ar.update_device();
 }
 
+
+void HilbertSpaceDistance::clear() {
+    this->omega_avg_ar.clear();
+    this->omega_O_k_avg_ar.clear();
+    this->probability_ratio_avg_ar.clear();
+    this->probability_ratio_O_k_avg_ar.clear();
+    this->next_state_norm_avg_ar.clear();
+}
+
+
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
     const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
     const SpinEnsemble& spin_ensemble
 ) {
+    this->clear();
     if(psi.free_quantum_axis) {
         this->update_quaxis(psi, psi_prime);
         this->compute_averages<false, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
@@ -249,50 +206,28 @@ double HilbertSpaceDistance::distance(
         this->compute_averages<false, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
     }
 
-    complex_t omega_avg_host;
-    double probability_ratio_avg_host;
-    double next_state_norm_avg_host;
+    this->omega_avg_ar.update_host();
+    this->probability_ratio_avg_ar.update_host();
+    this->next_state_norm_avg_ar.update_host();
 
-    MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
-    MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
-    MEMCPY_TO_HOST(&next_state_norm_avg_host, this->next_state_norm_avg, sizeof(double), this->gpu);
-
-    omega_avg_host /= spin_ensemble.get_num_steps();
-    probability_ratio_avg_host /= spin_ensemble.get_num_steps();
-    next_state_norm_avg_host /= spin_ensemble.get_num_steps();
+    this->omega_avg_ar.front() /= spin_ensemble.get_num_steps();
+    this->probability_ratio_avg_ar.front() /= spin_ensemble.get_num_steps();
+    this->next_state_norm_avg_ar.front() /= spin_ensemble.get_num_steps();
 
     return 1.0 - sqrt(
-        (omega_avg_host * conj(omega_avg_host)).real() / (
-            next_state_norm_avg_host * probability_ratio_avg_host
+        (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real() / (
+            this->next_state_norm_avg_ar.front() * this->probability_ratio_avg_ar.front()
         )
     );
 }
 
-// template<typename Psi_t, typename SpinEnsemble>
-// double HilbertSpaceDistance::overlap(
-//     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
-// ) const {
-//     this->overlap(psi, psi_prime, spin_ensemble);
-
-//     complex_t omega_avg_host;
-//     double probability_ratio_avg_host;
-
-//     MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
-//     MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
-
-//     omega_avg_host /= spin_ensemble.get_num_steps();
-//     probability_ratio_avg_host /= spin_ensemble.get_num_steps();
-
-//     return sqrt(
-//         (omega_avg_host * conj(omega_avg_host)).real() / probability_ratio_avg_host
-//     );
-// }
 
 template<typename Psi_t, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) {
+    this->clear();
     if(psi.free_quantum_axis) {
         this->update_quaxis(psi, psi_prime);
         this->compute_averages<true, true>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
@@ -301,32 +236,29 @@ double HilbertSpaceDistance::gradient(
         this->compute_averages<true, false>(psi, psi_prime, operator_, is_unitary, spin_ensemble);
     }
 
-    complex<double> omega_avg_host;
-    double probability_ratio_avg_host;
-    const auto num_params = psi_prime.get_num_params();
-    double next_state_norm_avg_host;
+    this->omega_avg_ar.update_host();
+    this->omega_O_k_avg_ar.update_host();
+    this->probability_ratio_avg_ar.update_host();
+    this->probability_ratio_O_k_avg_ar.update_host();
+    this->next_state_norm_avg_ar.update_host();
 
-    MEMCPY_TO_HOST(&omega_avg_host, this->omega_avg, sizeof(complex_t), this->gpu);
-    MEMCPY_TO_HOST(this->omega_O_k_avg_host.data(), this->omega_O_k_avg, sizeof(complex_t) * num_params, this->gpu);
-    MEMCPY_TO_HOST(&probability_ratio_avg_host, this->probability_ratio_avg, sizeof(double), this->gpu);
-    MEMCPY_TO_HOST(this->probability_ratio_O_k_avg_host.data(), this->probability_ratio_O_k_avg, sizeof(complex_t) * num_params, this->gpu);
-    MEMCPY_TO_HOST(&next_state_norm_avg_host, this->next_state_norm_avg, sizeof(double), this->gpu);
+    this->omega_avg_ar.front() /= spin_ensemble.get_num_steps();
+    this->probability_ratio_avg_ar.front() /= spin_ensemble.get_num_steps();
+    this->next_state_norm_avg_ar.front() /= spin_ensemble.get_num_steps();
 
-    omega_avg_host /= spin_ensemble.get_num_steps();
-    probability_ratio_avg_host /= spin_ensemble.get_num_steps();
-    next_state_norm_avg_host /= spin_ensemble.get_num_steps();
+    const auto u = (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real();
+    const auto v = this->next_state_norm_avg_ar.front() * this->probability_ratio_avg_ar.front();
 
-    const auto u = (omega_avg_host * conj(omega_avg_host)).real();
-    const auto v = next_state_norm_avg_host * probability_ratio_avg_host;
+    for(auto k = 0u; k < this->num_params; k++) {
+        this->omega_O_k_avg_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
+        this->probability_ratio_O_k_avg_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
 
-    for(auto k = 0u; k < num_params; k++) {
-        this->omega_O_k_avg_host.at(k) *= 1.0 / spin_ensemble.get_num_steps();
-        this->probability_ratio_O_k_avg_host.at(k) *= 1.0 / spin_ensemble.get_num_steps();
+        const auto u_k_prime = 2.0 * conj(this->omega_avg_ar.front()) * this->omega_O_k_avg_ar[k];
+        const auto v_k_prime = this->next_state_norm_avg_ar.front() * this->probability_ratio_O_k_avg_ar[k];
 
-        const auto u_k_prime = 2.0 * conj(omega_avg_host) * this->omega_O_k_avg_host[k];
-        const auto v_k_prime = next_state_norm_avg_host * this->probability_ratio_O_k_avg_host[k];
-
-        result[k] = -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v);
+        result[k] = (
+            -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v)
+        ).to_std();
     }
 
     return 1.0 - sqrt(u / v);
@@ -351,20 +283,6 @@ template double HilbertSpaceDistance::distance(
     const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
     const MonteCarloLoop& spin_ensemble
 );
-
-// template double HilbertSpaceDistance::overlap(
-//     const Psi& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
-// );
-// template double HilbertSpaceDistance::overlap(
-//     const Psi& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
-// );
-
-// template double HilbertSpaceDistance::overlap(
-//     const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
-// );
-// template double HilbertSpaceDistance::overlap(
-//     const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
-// );
 
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_,

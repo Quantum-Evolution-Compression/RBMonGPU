@@ -8,7 +8,8 @@ import numpy as np
 def to_json(self):
     obj = dict(
         type="Psi",
-        a=self.a,
+        alpha=self.alpha,
+        beta=self.beta,
         b=self.b,
         W=self.W,
         prefactor=self.prefactor
@@ -35,7 +36,8 @@ def load_array_from_json(obj):
 @staticmethod
 def from_json(json_obj, gpu):
     return Psi(
-        load_array_from_json(json_obj["a"]),
+        load_array_from_json(json_obj["alpha"]),
+        load_array_from_json(json_obj["beta"]),
         load_array_from_json(json_obj["b"]),
         load_array_from_json(json_obj["W"]),
         json_obj["prefactor"],

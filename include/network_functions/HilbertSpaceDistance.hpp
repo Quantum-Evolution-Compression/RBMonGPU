@@ -51,18 +51,23 @@ public:
 
 class HilbertSpaceDistance : public kernel::HilbertSpaceDistance {
 private:
+    const unsigned int  num_params;
 
-    vector<complex<double>> omega_O_k_avg_host;
-    vector<complex<double>> probability_ratio_O_k_avg_host;
+    Array<complex_t> omega_avg_ar;
+    Array<complex_t> omega_O_k_avg_ar;
+    Array<double>    probability_ratio_avg_ar;
+    Array<complex_t> probability_ratio_O_k_avg_ar;
+    Array<double>    next_state_norm_avg_ar;
 
     Array<double> delta_alpha_ar;
     Array<double> delta_beta_ar;
     Array<double> sin_sum_alpha_ar;
     Array<double> cos_sum_alpha_ar;
 
+    void clear();
+
 public:
     HilbertSpaceDistance(const unsigned int N, const unsigned int num_params, const bool gpu);
-    ~HilbertSpaceDistance() noexcept(false);
 
     template<typename Psi_t>
     void update_quaxis(const Psi_t& psi, const Psi_t& psi_prime);
