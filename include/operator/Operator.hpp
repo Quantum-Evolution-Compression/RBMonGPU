@@ -90,15 +90,14 @@ public:
     template<typename Psi_t>
     HDINLINE
     void local_energy(complex_t& result, const Psi_t& psi, const Spins& spins, const complex_t& log_psi, const typename Psi_t::Angles& angles) const {
+        #include "cuda_kernel_defines.h"
         // CAUTION: 'result' is only updated by the first thread.
 
-        #ifdef __CUDA_ARCH__
-
-        if(threadIdx.x == 0) {
+        SINGLE {
             result = complex_t(0.0, 0.0);
         }
 
-        __shared__ typename Psi_t::Angles angles_prime;
+        SHARED typename Psi_t::Angles angles_prime;
 
         for(auto n = 0u; n < this->num_strings; n++) {
             angles_prime.init(psi, angles);
@@ -107,32 +106,12 @@ public:
                 spins, n, psi, angles_prime
             );
 
-            __shared__ complex_t log_psi_prime;
+            SHARED complex_t log_psi_prime;
             psi.log_psi_s(log_psi_prime, matrix_element.spins, angles_prime);
-            if(threadIdx.x == 0) {
+            SINGLE {
                 result += matrix_element.coefficient * exp(log_psi_prime - log_psi);
             }
         }
-
-        #else
-
-        result = complex_t(0.0, 0.0);
-        typename Psi_t::Angles angles_prime;
-
-        for(auto n = 0u; n < this->num_strings; n++) {
-            angles_prime.init(psi, angles);
-
-            const auto matrix_element = this->nth_matrix_element(
-                spins, n, psi, angles_prime
-            );
-
-            complex_t log_psi_prime;
-            psi.log_psi_s(log_psi_prime, matrix_element.spins, angles_prime);
-
-            result += matrix_element.coefficient * exp(log_psi_prime - log_psi);
-        }
-
-        #endif
     }
 
     template<typename Psi_t, typename Function>

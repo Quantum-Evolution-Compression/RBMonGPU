@@ -73,7 +73,7 @@ void generic_atomicAdd(T* address, const T& value) {
 #define MAX_SPINS 64
 #endif
 
-constexpr auto MAX_HIDDEN_SPINS = 4 * MAX_SPINS;
+constexpr auto MAX_HIDDEN_SPINS = 2 * MAX_SPINS;
 
 /**
  * Print a cuda error message including file/line info to stderr

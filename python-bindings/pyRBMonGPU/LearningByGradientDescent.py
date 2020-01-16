@@ -41,7 +41,6 @@ class LearningByGradientDescent:
         self.hilbert_space_distance = pyRBMonGPU.HilbertSpaceDistance(psi.N, self.num_params, psi.gpu)
         self.expectation_value = pyRBMonGPU.ExpectationValue(self.gpu)
         self.regularization = None
-        self.eta = None
 
     @property
     def smoothed_distance_history(self):
@@ -107,7 +106,7 @@ class LearningByGradientDescent:
 
         if self.mode == modes.unitary_evolution:
             gradient, distance = self.hilbert_space_distance.gradient(
-                self.psi0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
+                self.psi_0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
             )
             distance -= self.distance_0
             if distance < 0:
@@ -117,7 +116,6 @@ class LearningByGradientDescent:
             if self.regularization is not None:
                 gradient += self.regularization.gradient(step, self.psi)
                 complexity = self.regularization.cost(step, self.psi)
-                self.verbose_distance_history.append((+distance, +complexity))
                 distance += complexity
 
             self.distance_history.append(distance)
@@ -155,26 +153,13 @@ class LearningByGradientDescent:
     def get_gradient_descent_algorithm(self, name):
         psi_init_params = self.psi_init.params
 
-        kwargs = {}
-        if self.eta is not None:
-            kwargs["eta"] = self.eta
-
-        return {
-            "padam": lambda: gd.padam_generator(
-                psi_init_params,
-                lambda step, params: self.set_params_and_return_gradient(
-                    step, params
-                ),
-                **kwargs
+        return getattr(gd, f"{name}_generator")(
+            psi_init_params,
+            lambda step, params: self.set_params_and_return_gradient(
+                step, params
             ),
-            "nag": lambda: gd.nag_generator(
-                psi_init_params,
-                lambda step, params: self.set_params_and_return_gradient(
-                    step, params
-                ),
-                **kwargs
-            )
-        }[name]()
+            **self.algorithm_kwargs
+        )
 
     @property
     def min_report(self):
@@ -185,24 +170,24 @@ class LearningByGradientDescent:
             result["is_unitary"] = self.is_unitary
         if hasattr(self, "distance_history"):
             result["distance_history"] = self.distance_history
-        if hasattr(self, "unsuccessful_curves"):
-            result["unsuccessful_curves"] = self.unsuccessful_curves
         if hasattr(self, "energy_history"):
             result["energy_history"] = self.energy_history
         if hasattr(self, "delta_energy_history"):
             result["delta_energy_history"] = self.delta_energy_history
         if hasattr(self, "excluded_states_distances"):
             result["excluded_states_distances"] = self.excluded_states_distances
+        if hasattr(self, "algorithm_kwargs"):
+            result["algorithm_kwargs"] = self.algorithm_kwargs
 
         return result
 
     @property
     def report(self):
         result = self.min_report
-        if hasattr(self, "psi0"):
-            result["psi0"] = self.psi0.to_json()
-        if hasattr(self, "psi"):
-            result["psi"] = self.psi.to_json()
+        if hasattr(self, "psi_0"):
+            result["psi_0"] = self.psi_0.to_json()
+        if hasattr(self, "best_solution"):
+            result["best_solution_name"] = self.best_solution["name"]
 
         return result
 
@@ -218,7 +203,7 @@ class LearningByGradientDescent:
         self, psi_init, operator, excluded_states=[], avoid_correlations=0,
         level_repulsion=1, imaginary_time_evolution=True, min_steps=200, max_steps=1500
     ):
-        self.psi0 = psi_init
+        self.psi_0 = psi_init
         self.psi = +psi_init
         self.identity = Operator(PauliExpression(0, 0), self.gpu)
         self.operator = Operator(operator, self.gpu)
@@ -246,11 +231,10 @@ class LearningByGradientDescent:
 
     def do_the_gradient_descent(self, algorithm_name="padam"):
         # max_steps = 400
+        self.psi = +self.psi_init
 
-        self.psi0 = self.psi.copy()
         algorithm = self.get_gradient_descent_algorithm(algorithm_name)
         self.distance_history = []
-        self.verbose_distance_history = []
         self.gradient_prefactor = 1
 
         num_steps = 400
@@ -267,12 +251,13 @@ class LearningByGradientDescent:
         # if smoothed_distance_history[0] > 1e-3 and smoothed_distance_history[-1] / smoothed_distance_history[0] > 1 / 3:
         #     raise PoorLearning()
 
-        print(self.smoothed_distance_history[-1])
+        # print(self.smoothed_distance_history[-1])
 
-    def do_preconditioning(self, psi, psi_ref):
+    def do_preconditioning(self, psi, psi_ref, **algorithm_kwargs):
         print("preconditioning")
-        id_op = Operator(PauliExpression(0, 0), self.gpu)
+        id_op = Operator(PauliExpression(1), self.gpu)
 
+        self.distance_history = []
         def gradient(step, params):
             psi.params = params
             if not self.mc:
@@ -281,60 +266,63 @@ class LearningByGradientDescent:
             gradient, distance = self.hilbert_space_distance.gradient(
                 psi_ref, psi, id_op, True, self.spin_ensemble
             )
+            self.distance_history.append(distance)
 
             return gradient
 
         psi = +psi
-        gd.padam(psi.params, 75, gradient)
+        gd.padam(psi.params, 75, gradient, **algorithm_kwargs)
         return psi
 
-    def optimize_for(self, psi, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None, eta=None, distance_0=0):
-        self.psi = +psi
+    def optimize_for(
+        self, psi_0, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None, distance_0=0,
+        methods=["padam", "nag", "padam_0"],
+        **algorithm_kwargs
+    ):
+        self.psi_0 = psi_0
         self.psi_init = psi_init
 
-        self.eta = eta
+        if "eta" not in algorithm_kwargs:
+            algorithm_kwargs["eta"] = 1e-1
+        self.algorithm_kwargs = algorithm_kwargs
         self.distance_0 = distance_0
         self.regularization = regularization
         self.operator = Operator(operator, self.gpu)
         self.is_unitary = is_unitary
         self.mode = modes.unitary_evolution
-        self.unsuccessful_curves = []
 
-        id_op = Operator(PauliExpression(0, 0), self.gpu)
+        for n_tries in range(3):
 
-        if is_unitary:
-            success = False
-            for tries in range(2):
-                try:
-                    if (
-                        self.psi_init is not psi and
-                        self.hilbert_space_distance(self.psi, self.psi_init, id_op, True, self.spin_ensemble) > 0.05
-                    ):
-                        self.psi_init = self.do_preconditioning(self.psi_init, self.psi)
+            self.solutions = []
+            for method_name in methods:
 
-                    if self.psi_init is not psi:
-                        self.do_the_gradient_descent("padam")
-                    else:
-                        self.do_the_gradient_descent("nag")
-
-                    success = True
-                    break
-                except PoorLearning:
-                    self.unsuccessful_curves.append(self.distance_history)
+                if method_name.endswith('0'):
+                    method = method_name[:-2]
                     self.psi_init = psi_init_getter()
+                else:
+                    method = method_name
+                    self.psi_init = psi_init
 
-            if not success:
-                self.save_report()
-                raise DidNotConverge()
+                self.do_the_gradient_descent(method)
+                if not math.isnan(self.distance_history[-1]) and self.distance_history[-1] < 0.15:
+                    self.solutions.append(dict(
+                        name=method_name,
+                        distance_history=self.distance_history,
+                        psi=+self.psi
+                    ))
+            if self.solutions:
+                break
 
-        # elif operator.max_norm > norm_threshold:
-        #     print("divide [max_norm]")
-        #     num_steps = int(operator.max_norm / norm_threshold) + 1
-        #     fitted_operator = 1 / num_steps * operator
-        #     for n in range(num_steps):
-        #         self.optimize_for(fitted_operator, is_unitary=False, regularization=regularization, eta=eta)
-        else:
-            self.do_the_gradient_descent("padam")
+            self.algorithm_kwargs["eta"] /= 10
+            print(f"lower learning-rate eta to {self.algorithm_kwargs['eta']:.3g}")
+
+        if not self.solutions:
+            raise RuntimeError("did not converge")
+
+        self.best_solution = min(self.solutions, key=lambda solution: solution["distance_history"][-1])
+        self.distance_history = self.best_solution["distance_history"]
+        self.psi = self.best_solution["psi"]
+        print(self.smoothed_distance_history[-1])
 
         if not self.mc:
             self.psi.normalize(self.spin_ensemble)
