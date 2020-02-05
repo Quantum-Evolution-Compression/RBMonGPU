@@ -9,7 +9,9 @@ from ._pyRBMonGPU import (
     get_O_k_vector,
     psi_angles,
     activation_function,
-    setDevice
+    setDevice,
+    PsiClassical,
+    PsiDeepMin
 )
 
 from .Psi import Psi

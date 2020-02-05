@@ -3,6 +3,7 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
+#include "quantum_state/PsiClassical.hpp"
 
 #include <cstring>
 #include <math.h>
@@ -13,9 +14,9 @@ namespace rbm_on_gpu {
 namespace kernel {
 
 
-template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename SpinEnsemble>
+template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 void kernel::HilbertSpaceDistance::compute_averages(
-    const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
+    const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) const {
     const auto num_params = psi_prime.get_num_params();
@@ -39,7 +40,7 @@ void kernel::HilbertSpaceDistance::compute_averages(
             SHARED complex_t local_energy;
             operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
-            SHARED typename Psi_t::Angles angles_prime;
+            SHARED typename Psi_t_prime::Angles angles_prime;
             angles_prime.init(psi_prime_kernel, spins);
 
             SHARED complex_t log_psi_prime;
@@ -112,14 +113,14 @@ void kernel::HilbertSpaceDistance::compute_averages(
                     MULTI(i, N) {
                         const auto O_alpha_i = spins[i] * psi_i_ratio[i];
                         generic_atomicAdd(&this_.omega_O_k_avg[i], weight * omega * conj(O_alpha_i));
-                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[i], weight * probability_ratio * 2.0 * conj(O_alpha_i));
+                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[i], weight * probability_ratio * conj(O_alpha_i));
 
                         const auto O_beta_i = complex_t(0.0, 1.0) * (
                             psi_i_ratio[i] * this_.cos_sum_alpha[i] -
                             spins[i] * this_.sin_sum_alpha[i]
                         );
                         generic_atomicAdd(&this_.omega_O_k_avg[N + i], weight * omega * conj(O_beta_i));
-                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[N + i], weight * probability_ratio * 2.0 * conj(O_beta_i));
+                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[N + i], weight * probability_ratio * conj(O_beta_i));
                     }
                 }
 
@@ -128,7 +129,7 @@ void kernel::HilbertSpaceDistance::compute_averages(
                     angles_prime,
                     [&](const unsigned int k, const complex_t& O_k_element) {
                         generic_atomicAdd(&this_.omega_O_k_avg[k], weight * omega * conj(O_k_element));
-                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * 2.0 * conj(O_k_element));
+                        generic_atomicAdd(&this_.probability_ratio_O_k_avg[k], weight * probability_ratio * conj(O_k_element));
                     }
                 );
             }
@@ -164,8 +165,8 @@ HilbertSpaceDistance::HilbertSpaceDistance(const unsigned int N, const unsigned 
     this->cos_sum_alpha = this->cos_sum_alpha_ar.data();
 }
 
-template<typename Psi_t>
-void HilbertSpaceDistance::update_quaxis(const Psi_t& psi, const Psi_t& psi_prime) {
+template<typename Psi_t, typename Psi_t_prime>
+void HilbertSpaceDistance::update_quaxis(const Psi_t& psi, const Psi_t_prime& psi_prime) {
     for(auto i = 0u; i < psi.get_num_spins(); i++) {
         const auto delta_alpha = psi_prime.alpha_array[i] - psi.alpha_array[i];
         const auto sum_alpha = psi_prime.alpha_array[i] + psi.alpha_array[i];
@@ -192,9 +193,9 @@ void HilbertSpaceDistance::clear() {
 }
 
 
-template<typename Psi_t, typename SpinEnsemble>
+template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
-    const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
+    const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
     const SpinEnsemble& spin_ensemble
 ) {
     this->clear();
@@ -214,7 +215,8 @@ double HilbertSpaceDistance::distance(
     this->probability_ratio_avg_ar.front() /= spin_ensemble.get_num_steps();
     this->next_state_norm_avg_ar.front() /= spin_ensemble.get_num_steps();
 
-    return 1.0 - sqrt(
+    return sqrt(
+        1.0 -
         (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real() / (
             this->next_state_norm_avg_ar.front() * this->probability_ratio_avg_ar.front()
         )
@@ -222,9 +224,9 @@ double HilbertSpaceDistance::distance(
 }
 
 
-template<typename Psi_t, typename SpinEnsemble>
+template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
-    complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
+    complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
     const bool is_unitary, const SpinEnsemble& spin_ensemble
 ) {
     this->clear();
@@ -253,15 +255,18 @@ double HilbertSpaceDistance::gradient(
         this->omega_O_k_avg_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
         this->probability_ratio_O_k_avg_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
 
-        const auto u_k_prime = 2.0 * conj(this->omega_avg_ar.front()) * this->omega_O_k_avg_ar[k];
+        const auto u_k_prime = conj(this->omega_avg_ar.front()) * this->omega_O_k_avg_ar[k];
         const auto v_k_prime = this->next_state_norm_avg_ar.front() * this->probability_ratio_O_k_avg_ar[k];
 
+        // result[k] = (
+        //     -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v)
+        // ).to_std();
         result[k] = (
-            -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v)
-        ).to_std();
+            -(u_k_prime * v - u * v_k_prime) / (v * v)
+        ).to_std() / sqrt(1.0 - u / v);
     }
 
-    return 1.0 - sqrt(u / v);
+    return sqrt(1.0 - u / v);
 }
 
 
@@ -299,6 +304,21 @@ template double HilbertSpaceDistance::gradient(
 );
 template double HilbertSpaceDistance::gradient(
     complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_,
+    const bool is_unitary, const MonteCarloLoop& spin_ensemble
+);
+
+
+template double HilbertSpaceDistance::distance(
+    const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary,
+    const ExactSummation& spin_ensemble
+);
+
+template double HilbertSpaceDistance::gradient(
+    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_,
+    const bool is_unitary, const ExactSummation& spin_ensemble
+);
+template double HilbertSpaceDistance::gradient(
+    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_,
     const bool is_unitary, const MonteCarloLoop& spin_ensemble
 );
 

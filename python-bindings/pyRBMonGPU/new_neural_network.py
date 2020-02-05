@@ -46,6 +46,7 @@ def new_deep_neural_network(
     beta=0,
     free_quantum_axis=False,
     noise=1e-4,
+    translational_invariance=False,
     gpu=False
 ):
     N_linear = N if dim == 1 else N[0] * N[1]
@@ -70,6 +71,9 @@ def new_deep_neural_network(
     b = [noise * complex_noise(m) for m in M_linear]
 
     w = noise * complex_noise((C_linear[0], M_linear[0]))
+
+    if translational_invariance:
+        w = noise * np.stack([complex_noise((M_linear[0]))] * N_linear, axis=0)
 
     w[C_linear[0] // 2, :] += initial_value
     W = [w]

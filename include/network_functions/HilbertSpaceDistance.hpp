@@ -34,9 +34,9 @@ public:
     double* sin_sum_alpha;
     double* cos_sum_alpha;
 
-    template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename SpinEnsemble>
+    template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     void compute_averages(
-        const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_,
+        const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
         const bool is_unitary, const SpinEnsemble& spin_ensemble
     ) const;
 
@@ -69,12 +69,12 @@ private:
 public:
     HilbertSpaceDistance(const unsigned int N, const unsigned int num_params, const bool gpu);
 
-    template<typename Psi_t>
-    void update_quaxis(const Psi_t& psi, const Psi_t& psi_prime);
+    template<typename Psi_t, typename Psi_t_prime>
+    void update_quaxis(const Psi_t& psi, const Psi_t_prime& psi_prime);
 
-    template<typename Psi_t, typename SpinEnsemble>
+    template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double distance(
-        const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
+        const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     );
 
@@ -83,17 +83,17 @@ public:
     //     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
     // ) const;
 
-    template<typename Psi_t, typename SpinEnsemble>
+    template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double gradient(
-        complex<double>* result, const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
+        complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     );
 
 #ifdef __PYTHONCC__
 
-    template<typename Psi_t, typename SpinEnsemble>
+    template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     pair<xt::pytensor<complex<double>, 1u>, double> gradient_py(
-        const Psi_t& psi, const Psi_t& psi_prime, const Operator& operator_, const bool is_unitary,
+        const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     ) {
         xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_params()}));
