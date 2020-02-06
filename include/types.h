@@ -28,6 +28,8 @@ using shape_t = array<long int, dim>;
 
 void setDevice(int device);
 
+#define TRANSLATIONAL_INVARIANCE
+
 #ifdef __CUDACC__
 
 #define HDINLINE __host__ __device__ __forceinline__

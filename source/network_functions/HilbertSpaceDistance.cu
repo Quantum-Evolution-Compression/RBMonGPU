@@ -38,7 +38,7 @@ void kernel::HilbertSpaceDistance::compute_averages(
             #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
+            operator_.local_energy(local_energy, psi_kernel, spins.rotate_left(1, N), log_psi, angles);
 
             SHARED typename Psi_t_prime::Angles angles_prime;
             angles_prime.init(psi_prime_kernel, spins);
@@ -215,10 +215,11 @@ double HilbertSpaceDistance::distance(
     this->probability_ratio_avg_ar.front() /= spin_ensemble.get_num_steps();
     this->next_state_norm_avg_ar.front() /= spin_ensemble.get_num_steps();
 
+    // return this->probability_ratio_avg_ar.front();
     return sqrt(
         1.0 -
         (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real() / (
-            this->next_state_norm_avg_ar.front() * this->probability_ratio_avg_ar.front()
+            this->next_state_norm_avg_ar.front() *this->probability_ratio_avg_ar.front()
         )
     );
 }
@@ -258,15 +259,15 @@ double HilbertSpaceDistance::gradient(
         const auto u_k_prime = conj(this->omega_avg_ar.front()) * this->omega_O_k_avg_ar[k];
         const auto v_k_prime = this->next_state_norm_avg_ar.front() * this->probability_ratio_O_k_avg_ar[k];
 
-        // result[k] = (
-        //     -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v)
-        // ).to_std();
         result[k] = (
             -(u_k_prime * v - u * v_k_prime) / (v * v)
         ).to_std() / sqrt(1.0 - u / v);
+
+        // result[k] = 2.0 * v_k_prime.to_std();
     }
 
     return sqrt(1.0 - u / v);
+    // return v;
 }
 
 

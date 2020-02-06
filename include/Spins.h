@@ -92,6 +92,13 @@ struct Spins {
             }
         #endif
     }
+    HDINLINE Spins rotate_left(const unsigned int shift, const unsigned int N) const {
+        return Spins(
+            (
+                (this->configuration << shift) | (this->configuration >> (N - shift))
+            ) & (N - 1)
+        );
+    }
 
     HDINLINE double operator[](const int position) const {
         #if MAX_SPINS <= 64

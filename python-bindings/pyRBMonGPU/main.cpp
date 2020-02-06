@@ -165,7 +165,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<rbm_on_gpu::Spins>(m, "Spins")
         .def(py::init<rbm_on_gpu::Spins::type>())
         .def("array", &rbm_on_gpu::Spins::array)
-        .def("flip", &rbm_on_gpu::Spins::flip);
+        .def("flip", &rbm_on_gpu::Spins::flip)
+        .def("rotate_left", &rbm_on_gpu::Spins::rotate_left);
 
     py::class_<MonteCarloLoop>(m, "MonteCarloLoop")
         .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())

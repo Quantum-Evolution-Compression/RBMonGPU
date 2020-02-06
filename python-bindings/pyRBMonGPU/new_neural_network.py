@@ -1,4 +1,5 @@
-from pyRBMonGPU import Psi, PsiDeep
+# from pyRBMonGPU import Psi, PsiDeep
+from pyRBMonGPU import PsiDeep
 import numpy as np
 import math
 from itertools import product

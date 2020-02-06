@@ -40,6 +40,7 @@ public:
 
     static constexpr unsigned int max_layers = 3u;
     static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
+    static constexpr unsigned int MAX_PARAMS = 512u;
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {
@@ -125,22 +126,25 @@ public:
     void log_psi_s(complex_t& result, const Spins& spins, Angles& cache) const {
         // CAUTION: 'result' has to be a shared variable.
 
-        this->forward_pass(spins, cache.activations, nullptr);
-        const auto final_layer_size = this->layers[this->num_layers - 1u].size;
+        SINGLE {
+            result = complex_t(0.0, 0.0);
+        }
 
-        #ifdef __CUDA_ARCH__
+        #ifdef TRANSLATIONAL_INVARIANCE
+        for(auto shift = 0u; shift < this->N; shift++) {
+            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
 
-        auto summand = (
-            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x] : complex_t(0.0, 0.0))
-        );
-        // TODO: check if simple atomic add is faster
-        tree_sum(result, final_layer_size, summand);
+            MULTI(j, this->layers[this->num_layers - 1u].size) {
+                generic_atomicAdd(&result, cache.activations[j]);
+            }
+        }
 
         #else
 
-        result = complex_t(0.0, 0.0);
-        for(auto j = 0u; j < final_layer_size; j++) {
-            result += cache.activations[j];
+        this->forward_pass(spins, cache.activations, nullptr);
+
+        MULTI(j, this->layers[this->num_layers - 1u].size) {
+            generic_atomicAdd(&result, cache.activations[j]);
         }
 
         #endif
@@ -150,21 +154,25 @@ public:
     void log_psi_s_real(double& result, const Spins& spins, Angles& cache) const {
         // CAUTION: 'result' has to be a shared variable.
 
-        this->forward_pass(spins, cache.activations, nullptr);
-        const auto final_layer_size = this->layers[this->num_layers - 1u].size;
+        SINGLE {
+            result = 0.0;
+        }
 
-        #ifdef __CUDA_ARCH__
+        #ifdef TRANSLATIONAL_INVARIANCE
+        for(auto shift = 0u; shift < this->N; shift++) {
+            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
 
-        auto summand = (
-            (threadIdx.x < final_layer_size ? cache.activations[threadIdx.x].real() : 0.0)
-        );
-        tree_sum(result, final_layer_size, summand);
+            MULTI(j, this->layers[this->num_layers - 1u].size) {
+                generic_atomicAdd(&result, cache.activations[j].real());
+            }
+        }
 
         #else
 
-        result = 0.0;
-        for(auto j = 0u; j < final_layer_size; j++) {
-            result += cache.activations[j].real();
+        this->forward_pass(spins, cache.activations, nullptr);
+
+        MULTI(j, this->layers[this->num_layers - 1u].size) {
+            generic_atomicAdd(&result, cache.activations[j].real());
         }
 
         #endif
@@ -208,7 +216,27 @@ public:
         #include "cuda_kernel_defines.h"
 
         SHARED complex_t deep_angles[max_deep_angles];
-        this->forward_pass(spins, cache.activations, deep_angles);
+
+        #ifdef TRANSLATIONAL_INVARIANCE
+
+            #ifndef __CUDA_ARCH__
+
+            complex_t O_k_list[MAX_PARAMS];
+            for(auto k = 2 * this->N; k < this->num_params; k++) {
+                O_k_list[k] = complex_t(0.0, 0.0);
+            }
+            #endif
+
+            for(auto shift = 0u; shift < this->N; shift++)
+            {
+
+            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, deep_angles);
+
+        #else
+
+            this->forward_pass(spins, cache.activations, deep_angles);
+
+        #endif
 
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
@@ -266,13 +294,42 @@ public:
                 }
             }
             MULTI(j, layer.size) {
+                #ifdef TRANSLATIONAL_INVARIANCE
+
+                #ifndef __CUDA_ARCH__
+                O_k_list[layer.begin_params + j] += cache.activations[j];
+                #endif
+
+                #else
+
                 function(layer.begin_params + j, cache.activations[j]);
+
+                #endif
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     const auto lhs_unit_idx = layer.lhs_connection(i, j);
                     // TODO: check if shared memory solution is faster
+
+                    const auto k = layer.begin_params + layer.size + i * layer.size + j;
+
+                    #ifdef TRANSLATIONAL_INVARIANCE
+
+                    #ifndef __CUDA_ARCH__
+                    O_k_list[k] += cache.activations[j] * (
+                        layer_idx == 0 ?
+                        complex_t(spins.rotate_left(shift, this->N)[lhs_unit_idx], 0.0) :
+                        my_logcosh(
+                            deep_angles[
+                                this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
+                            ]
+                        )
+                    );
+                    #endif
+
+                    #else
+
                     function(
-                        layer.begin_params + layer.size + i * layer.size + j,
+                        k,
                         cache.activations[j] * (
                             layer_idx == 0 ?
                             complex_t(spins[lhs_unit_idx], 0.0) :
@@ -283,9 +340,22 @@ public:
                             )
                         )
                     );
+
+                    #endif
                 }
             }
         }
+
+        #ifdef TRANSLATIONAL_INVARIANCE
+        }
+
+        #ifndef __CUDA_ARCH__
+        for(auto k = 2 * this->N; k < this->num_params; k++) {
+            function(k, O_k_list[k]);
+        }
+        #endif
+
+        #endif
     }
 
     PsiDeep get_kernel() const {
