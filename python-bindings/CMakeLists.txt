@@ -42,7 +42,7 @@ set(CXX_INCLUDES ${CXX_INCLUDES} ${project_include_dir})
 
 find_package(CUDA REQUIRED)
 set(CXX_INCLUDES ${CXX_INCLUDES} ${CUDA_INCLUDE_DIRS})
-# set(LIBS ${LIBS} ${CUDA_LIBRARIES})
+set(LIBS ${LIBS} ${CUDA_LIBRARIES})
 
 # Find Python
 # ===========

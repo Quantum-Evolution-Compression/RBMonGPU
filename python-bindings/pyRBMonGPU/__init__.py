@@ -10,6 +10,8 @@ from ._pyRBMonGPU import (
     psi_angles,
     activation_function,
     setDevice,
+    start_profiling,
+    stop_profiling,
     PsiClassical,
     PsiDeepMin
 )

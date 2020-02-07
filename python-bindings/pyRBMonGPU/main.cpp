@@ -93,12 +93,12 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const vector<complex_tensor<2u>>&,
             const double,
             const bool,
-            const bool,
             const bool
         >())
         .def("copy", &PsiDeep::copy)
         .def_readwrite("prefactor", &PsiDeep::prefactor)
-        .def_readwrite("symmetrize", &PsiDeep::symmetrize)
+        .def_readwrite("N_i", &PsiDeep::N_i)
+        .def_readwrite("N_j", &PsiDeep::N_j)
         .def_readonly("gpu", &PsiDeep::gpu)
         .def_readonly("N", &PsiDeep::N)
         .def_readonly("num_params", &PsiDeep::num_params)
@@ -168,7 +168,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def(py::init<rbm_on_gpu::Spins::type>())
         .def("array", &rbm_on_gpu::Spins::array)
         .def("flip", &rbm_on_gpu::Spins::flip)
-        .def("rotate_left", &rbm_on_gpu::Spins::rotate_left);
+        .def("rotate_left", &rbm_on_gpu::Spins::rotate_left)
+        .def("shift_2d", &rbm_on_gpu::Spins::shift_2d);
 
     py::class_<MonteCarloLoop>(m, "MonteCarloLoop")
         .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
@@ -279,4 +280,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     });
 
     m.def("setDevice", setDevice);
+    m.def("start_profiling", start_profiling);
+    m.def("stop_profiling", stop_profiling);
 }

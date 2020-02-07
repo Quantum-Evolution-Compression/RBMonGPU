@@ -47,7 +47,6 @@ def new_deep_neural_network(
     beta=0,
     free_quantum_axis=False,
     noise=1e-4,
-    translational_invariance=False,
     gpu=False
 ):
     N_linear = N if dim == 1 else N[0] * N[1]
@@ -120,4 +119,4 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    return PsiDeep(alpha, beta, b, connections, W, 1.0, free_quantum_axis, translational_invariance, gpu)
+    return PsiDeep(alpha, beta, b, connections, W, 1.0, free_quantum_axis, gpu)

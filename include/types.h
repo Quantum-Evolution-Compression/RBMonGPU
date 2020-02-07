@@ -27,6 +27,8 @@ template<unsigned int dim>
 using shape_t = array<long int, dim>;
 
 void setDevice(int device);
+void start_profiling();
+void stop_profiling();
 
 #ifdef __CUDACC__
 
@@ -70,7 +72,7 @@ void generic_atomicAdd(T* address, const T& value) {
 #endif // __CUDACC__
 
 #ifndef MAX_SPINS
-#define MAX_SPINS 64
+#define MAX_SPINS 16
 #endif
 
 constexpr auto MAX_HIDDEN_SPINS = 2 * MAX_SPINS;

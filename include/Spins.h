@@ -92,12 +92,57 @@ struct Spins {
             }
         #endif
     }
+
+    // todo: fix for N = 64
     HDINLINE Spins rotate_left(const unsigned int shift, const unsigned int N) const {
         return Spins(
             (
                 (this->configuration << shift) | (this->configuration >> (N - shift))
-            ) & ((1u << N) - 1)
+            ) & (((type)1 << N) - 1u)
         );
+    }
+
+    HDINLINE Spins shift_vertical(
+        const unsigned int shift, const unsigned int nrows, const unsigned int ncols
+    ) const {
+        return (
+            (this->configuration << (shift * ncols)) | (this->configuration >> ((nrows - shift) * ncols))
+        ) & (((type)1 << (nrows * ncols)) - 1u);
+    }
+
+    HDINLINE Spins select_left_columns(const unsigned int select, const unsigned int nrows, const unsigned int ncols) const {
+        const auto row = ((1u << select) - 1u) << (ncols - select);
+        type mask = 0u;
+        for(auto i = 0u; i < nrows; i++) {
+            mask |= row << (i * ncols);
+        }
+        return this->configuration & mask;
+    }
+
+    HDINLINE Spins select_right_columns(const unsigned int select, const unsigned int nrows, const unsigned int ncols) const {
+        const auto row = (1u << select) - 1u;
+        type mask = 0u;
+        for(auto i = 0u; i < nrows; i++) {
+            mask |= row << (i * ncols);
+        }
+        return this->configuration & mask;
+    }
+
+    HDINLINE Spins shift_horizontal(
+        const unsigned int shift, const unsigned int nrows, const unsigned int ncols
+    ) const {
+        const auto tmp = this->rotate_left(shift, nrows * ncols);
+        return (
+            tmp.select_left_columns(nrows - shift, nrows, ncols).configuration |
+            tmp.select_right_columns(shift, nrows, ncols).shift_vertical(nrows - 1, nrows, ncols).configuration
+        );
+    }
+
+    HDINLINE Spins shift_2d(
+        const unsigned int shift_i, const unsigned int shift_j,
+        const unsigned int nrows, const unsigned int ncols
+    ) const {
+        return this->shift_vertical(shift_i, nrows, ncols).shift_horizontal(shift_j, nrows, ncols);
     }
 
     HDINLINE double operator[](const int position) const {

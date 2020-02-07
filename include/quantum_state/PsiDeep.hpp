@@ -30,6 +30,10 @@
 #endif // __PYTHONCC__
 
 
+// #define TRANSLATIONAL_INVARIANCE
+// #define DIM 1
+
+
 namespace rbm_on_gpu {
 
 namespace kernel {
@@ -74,11 +78,12 @@ public:
     unsigned int   width;                   // size of largest layer
     unsigned int   num_units;
 
+    unsigned int   N_i;
+    unsigned int   N_j;
+
     unsigned int   num_params;
     unsigned int   O_k_length;
     double         prefactor;
-
-    bool           symmetrize;
 
 public:
 
@@ -131,18 +136,41 @@ public:
             result = complex_t(0.0, 0.0);
         }
 
-        for(auto shift = 0u; shift < (this->symmetrize ? this->N : 1u); shift++) {
+        #ifdef TRANSLATIONAL_INVARIANCE
 
-            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
+        #if DIM == 1
+        for(auto shift = 0u; shift < this->N; shift++) {
+        this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
+        #endif
+        #if DIM == 2
+        for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
+            for(auto shift_j = 0u; shift_j < this->N_j; shift_j++) {
+                this->forward_pass(spins.shift_2d(shift_i, shift_j, this->N_i, this->N_j), cache.activations, nullptr);
+        #endif
 
-            MULTI(j, this->layers[this->num_layers - 1u].size) {
-                generic_atomicAdd(&result, cache.activations[j]);
-            }
+        #else
+
+        this->forward_pass(spins, cache.activations, nullptr);
+
+        #endif
+
+        MULTI(j, this->layers[this->num_layers - 1u].size) {
+            generic_atomicAdd(&result, cache.activations[j]);
         }
 
-        if(this->symmetrize) {
-            result *= 1.0 / (this->symmetrize ? this->N : 1u);
+
+        #ifdef TRANSLATIONAL_INVARIANCE
+
+        #if DIM == 1
         }
+        #endif
+        #if DIM == 2
+        }}
+        #endif
+
+        result *= 1.0 / this->N;
+
+        #endif
     }
 
     HDINLINE
@@ -153,18 +181,41 @@ public:
             result = 0.0;
         }
 
-        for(auto shift = 0u; shift < (this->symmetrize ? this->N : 1u); shift++) {
+        #ifdef TRANSLATIONAL_INVARIANCE
 
-            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
+        #if DIM == 1
+        for(auto shift = 0u; shift < this->N; shift++) {
+        this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
+        #endif
+        #if DIM == 2
+        for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
+            for(auto shift_j = 0u; shift_j < this->N_j; shift_j++) {
+                this->forward_pass(spins.shift_2d(shift_i, shift_j, this->N_i, this->N_j), cache.activations, nullptr);
+        #endif
 
-            MULTI(j, this->layers[this->num_layers - 1u].size) {
-                generic_atomicAdd(&result, cache.activations[j].real());
-            }
+        #else
+
+        this->forward_pass(spins, cache.activations, nullptr);
+
+        #endif
+
+        MULTI(j, this->layers[this->num_layers - 1u].size) {
+            generic_atomicAdd(&result, cache.activations[j].real());
         }
 
-        if(this->symmetrize) {
-            result *= 1.0 / (this->symmetrize ? this->N : 1u);
+
+        #ifdef TRANSLATIONAL_INVARIANCE
+
+        #if DIM == 1
         }
+        #endif
+        #if DIM == 2
+        }}
+        #endif
+
+        result *= 1.0 / this->N;
+
+        #endif
     }
 
     HDINLINE void flip_spin_of_jth_angle(
@@ -365,7 +416,7 @@ public:
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), symmetrize(symmetrize), gpu(gpu) {
+    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), gpu(gpu) {
         this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
