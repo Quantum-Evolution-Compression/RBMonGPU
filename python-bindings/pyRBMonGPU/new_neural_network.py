@@ -70,12 +70,7 @@ def new_deep_neural_network(
         beta = beta * np.ones(N_linear)
 
     b = [noise * complex_noise(m) for m in M_linear]
-
     w = noise * complex_noise((C_linear[0], M_linear[0]))
-
-    if translational_invariance:
-        w = noise * np.stack([complex_noise((M_linear[0]))] * N_linear, axis=0)
-
     w[C_linear[0] // 2, :] += initial_value
     W = [w]
 
@@ -125,4 +120,4 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    return PsiDeep(alpha, beta, b, connections, W, 1.0, free_quantum_axis, gpu)
+    return PsiDeep(alpha, beta, b, connections, W, 1.0, free_quantum_axis, translational_invariance, gpu)

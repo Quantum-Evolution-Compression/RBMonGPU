@@ -93,10 +93,12 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const vector<complex_tensor<2u>>&,
             const double,
             const bool,
+            const bool,
             const bool
         >())
         .def("copy", &PsiDeep::copy)
         .def_readwrite("prefactor", &PsiDeep::prefactor)
+        .def_readwrite("symmetrize", &PsiDeep::symmetrize)
         .def_readonly("gpu", &PsiDeep::gpu)
         .def_readonly("N", &PsiDeep::N)
         .def_readonly("num_params", &PsiDeep::num_params)

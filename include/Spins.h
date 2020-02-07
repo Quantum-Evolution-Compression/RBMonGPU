@@ -96,7 +96,7 @@ struct Spins {
         return Spins(
             (
                 (this->configuration << shift) | (this->configuration >> (N - shift))
-            ) & (N - 1)
+            ) & ((1u << N) - 1)
         );
     }
 

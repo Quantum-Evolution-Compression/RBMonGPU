@@ -40,7 +40,6 @@ public:
 
     static constexpr unsigned int max_layers = 3u;
     static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
-    static constexpr unsigned int MAX_PARAMS = 512u;
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {
@@ -78,6 +77,8 @@ public:
     unsigned int   num_params;
     unsigned int   O_k_length;
     double         prefactor;
+
+    bool           symmetrize;
 
 public:
 
@@ -130,8 +131,8 @@ public:
             result = complex_t(0.0, 0.0);
         }
 
-        #ifdef TRANSLATIONAL_INVARIANCE
-        for(auto shift = 0u; shift < this->N; shift++) {
+        for(auto shift = 0u; shift < (this->symmetrize ? this->N : 1u); shift++) {
+
             this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
 
             MULTI(j, this->layers[this->num_layers - 1u].size) {
@@ -139,15 +140,9 @@ public:
             }
         }
 
-        #else
-
-        this->forward_pass(spins, cache.activations, nullptr);
-
-        MULTI(j, this->layers[this->num_layers - 1u].size) {
-            generic_atomicAdd(&result, cache.activations[j]);
+        if(this->symmetrize) {
+            result *= 1.0 / (this->symmetrize ? this->N : 1u);
         }
-
-        #endif
     }
 
     HDINLINE
@@ -158,8 +153,8 @@ public:
             result = 0.0;
         }
 
-        #ifdef TRANSLATIONAL_INVARIANCE
-        for(auto shift = 0u; shift < this->N; shift++) {
+        for(auto shift = 0u; shift < (this->symmetrize ? this->N : 1u); shift++) {
+
             this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
 
             MULTI(j, this->layers[this->num_layers - 1u].size) {
@@ -167,15 +162,9 @@ public:
             }
         }
 
-        #else
-
-        this->forward_pass(spins, cache.activations, nullptr);
-
-        MULTI(j, this->layers[this->num_layers - 1u].size) {
-            generic_atomicAdd(&result, cache.activations[j].real());
+        if(this->symmetrize) {
+            result *= 1.0 / (this->symmetrize ? this->N : 1u);
         }
-
-        #endif
     }
 
     HDINLINE void flip_spin_of_jth_angle(
@@ -217,26 +206,7 @@ public:
 
         SHARED complex_t deep_angles[max_deep_angles];
 
-        #ifdef TRANSLATIONAL_INVARIANCE
-
-            #ifndef __CUDA_ARCH__
-
-            complex_t O_k_list[MAX_PARAMS];
-            for(auto k = 2 * this->N; k < this->num_params; k++) {
-                O_k_list[k] = complex_t(0.0, 0.0);
-            }
-            #endif
-
-            for(auto shift = 0u; shift < this->N; shift++)
-            {
-
-            this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, deep_angles);
-
-        #else
-
-            this->forward_pass(spins, cache.activations, deep_angles);
-
-        #endif
+        this->forward_pass(spins, cache.activations, deep_angles);
 
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
@@ -294,42 +264,14 @@ public:
                 }
             }
             MULTI(j, layer.size) {
-                #ifdef TRANSLATIONAL_INVARIANCE
-
-                #ifndef __CUDA_ARCH__
-                O_k_list[layer.begin_params + j] += cache.activations[j];
-                #endif
-
-                #else
-
                 function(layer.begin_params + j, cache.activations[j]);
-
-                #endif
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     const auto lhs_unit_idx = layer.lhs_connection(i, j);
                     // TODO: check if shared memory solution is faster
 
-                    const auto k = layer.begin_params + layer.size + i * layer.size + j;
-
-                    #ifdef TRANSLATIONAL_INVARIANCE
-
-                    #ifndef __CUDA_ARCH__
-                    O_k_list[k] += cache.activations[j] * (
-                        layer_idx == 0 ?
-                        complex_t(spins.rotate_left(shift, this->N)[lhs_unit_idx], 0.0) :
-                        my_logcosh(
-                            deep_angles[
-                                this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
-                            ]
-                        )
-                    );
-                    #endif
-
-                    #else
-
                     function(
-                        k,
+                        layer.begin_params + layer.size + i * layer.size + j,
                         cache.activations[j] * (
                             layer_idx == 0 ?
                             complex_t(spins[lhs_unit_idx], 0.0) :
@@ -340,22 +282,9 @@ public:
                             )
                         )
                     );
-
-                    #endif
                 }
             }
         }
-
-        #ifdef TRANSLATIONAL_INVARIANCE
-        }
-
-        #ifndef __CUDA_ARCH__
-        for(auto k = 2 * this->N; k < this->num_params; k++) {
-            function(k, O_k_list[k]);
-        }
-        #endif
-
-        #endif
     }
 
     PsiDeep get_kernel() const {
@@ -436,7 +365,7 @@ public:
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), gpu(gpu) {
+    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), symmetrize(symmetrize), gpu(gpu) {
         this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();

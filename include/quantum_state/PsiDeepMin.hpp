@@ -115,16 +115,23 @@ public:
     }
 
     inline
-    complex_std log_psi_s(const vector<int>& spins) const {
+    complex_std log_psi_s(const vector<int>& spins_in) const {
         complex_std activations[max_width];
 
-        this->forward_pass(spins, activations);
-        const auto final_layer_size = this->layers[this->num_layers - 1u].size;
-
         complex_std result (0.0, 0.0);
-        for(auto j = 0u; j < final_layer_size; j++) {
-            result += activations[j];
+        vector<int> spins(spins_in);
+
+        for(auto shift = 0u; shift < this->N; shift++) {
+            this->forward_pass(spins, activations);
+
+            for(auto j = 0u; j < this->layers[this->num_layers - 1u].size; j++) {
+                result += activations[j];
+            }
+
+            rotate(spins.begin(), spins.begin() + 1, spins.end());
         }
+        result /= this->N;
+
         return result + this->log_prefactor;
     }
 
