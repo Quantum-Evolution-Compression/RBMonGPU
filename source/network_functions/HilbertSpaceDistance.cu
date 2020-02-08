@@ -217,8 +217,7 @@ double HilbertSpaceDistance::distance(
 
     // return this->probability_ratio_avg_ar.front();
     return sqrt(
-        1.0 -
-        (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real() / (
+        1.0 - (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real() / (
             this->next_state_norm_avg_ar.front() *this->probability_ratio_avg_ar.front()
         )
     );
@@ -251,6 +250,7 @@ double HilbertSpaceDistance::gradient(
 
     const auto u = (this->omega_avg_ar.front() * conj(this->omega_avg_ar.front())).real();
     const auto v = this->next_state_norm_avg_ar.front() * this->probability_ratio_avg_ar.front();
+    const auto distance = sqrt(1.0 - u / v);
 
     for(auto k = 0u; k < this->num_params; k++) {
         this->omega_O_k_avg_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
@@ -260,13 +260,13 @@ double HilbertSpaceDistance::gradient(
         const auto v_k_prime = this->next_state_norm_avg_ar.front() * this->probability_ratio_O_k_avg_ar[k];
 
         result[k] = (
-            -(u_k_prime * v - u * v_k_prime) / (v * v)
-        ).to_std() / sqrt(1.0 - u / v);
+            -0.5 * (u_k_prime * v - u * v_k_prime) / (v * v)
+        ).to_std() / distance;
 
         // result[k] = 2.0 * v_k_prime.to_std();
     }
 
-    return sqrt(1.0 - u / v);
+    return distance;
     // return v;
 }
 
