@@ -38,7 +38,7 @@ void kernel::HilbertSpaceDistance::compute_averages(
             #include "cuda_kernel_defines.h"
 
             SHARED complex_t local_energy;
-            operator_.local_energy(local_energy, psi_kernel, spins.rotate_left(1, N), log_psi, angles);
+            operator_.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
 
             SHARED typename Psi_t_prime::Angles angles_prime;
             angles_prime.init(psi_prime_kernel, spins);
