@@ -114,6 +114,34 @@ public:
         }
     }
 
+    HDINLINE
+    void diagonal_energy(complex_t& result, const Spins& spins) const {
+        #include "cuda_kernel_defines.h"
+        // CAUTION: 'result' is only updated by the first thread.
+
+        SINGLE {
+            result = complex_t(0.0, 0.0);
+        }
+        SYNC;
+
+        // for(auto n = 0u; n < this->num_strings; n++) {
+        LOOP(n, this->num_strings) {
+            auto string_result = this->coefficients[n];
+
+            for(auto table_index = n * this->max_string_length; true; table_index++) {
+                const auto pauli_index = this->pauli_indices[table_index];
+                if(pauli_index == -1) {
+                    break;
+                }
+
+                string_result *= spins[pauli_index];
+            }
+
+            generic_atomicAdd(&result, string_result);
+        }
+        SYNC;
+    }
+
     template<typename Psi_t, typename Function>
     HDINLINE
     void foreach_E_k_s_prime(

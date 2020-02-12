@@ -3,6 +3,7 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
+#include "quantum_state/PsiHamiltonian.hpp"
 #include "Array.hpp"
 
 
@@ -469,6 +470,8 @@ template complex<double> ExpectationValue::operator()(const Psi& psi, const Oper
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const ExactSummation&) const;
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const MonteCarloLoop&) const;
+
+template complex<double> ExpectationValue::operator()(const PsiHamiltonian& psi, const Operator& operator_, const MonteCarloLoop&) const;
 
 
 template pair<double, complex<double>> ExpectationValue::fluctuation(const Psi&, const Operator&, const ExactSummation&) const;

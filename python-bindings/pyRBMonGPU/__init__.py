@@ -13,7 +13,8 @@ from ._pyRBMonGPU import (
     start_profiling,
     stop_profiling,
     PsiClassical,
-    PsiDeepMin
+    PsiDeepMin,
+    PsiHamiltonian
 )
 
 from .Psi import Psi
@@ -25,3 +26,4 @@ from .new_neural_network import (
 )
 
 from .LearningByGradientDescent import LearningByGradientDescent
+from .L2Regularization import L2Regularization

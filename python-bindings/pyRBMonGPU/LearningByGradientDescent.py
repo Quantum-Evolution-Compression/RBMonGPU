@@ -304,7 +304,7 @@ class LearningByGradientDescent:
                     self.psi_init = psi_init
 
                 self.do_the_gradient_descent(method)
-                if not math.isnan(self.distance_history[-1]) and self.distance_history[-1] < 0.15:
+                if not math.isnan(self.distance_history[-1]) and self.smoothed_distance_history[-1] < 0.3:
                     self.solutions.append(dict(
                         name=method_name,
                         distance_history=self.distance_history,

@@ -3,6 +3,7 @@
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
 #include "quantum_state/PsiDeepMin.hpp"
+#include "quantum_state/PsiHamiltonian.hpp"
 #include "operator/Operator.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "spin_ensembles/MonteCarloLoop.hpp"
@@ -145,6 +146,14 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         // .def_property_readonly("vector", [](const PsiClassical& psi) {return psi_vector(psi).to_pytensor<1u>();})
         .def("log_psi_s", &PsiDeepMin::log_psi_s);
 
+    py::class_<PsiHamiltonian>(m, "PsiHamiltonian")
+        .def(py::init<
+            const unsigned int,
+            const Operator&
+        >())
+        .def_readonly("gpu", &PsiHamiltonian::gpu)
+        .def_readonly("N", &PsiHamiltonian::N);
+
     py::class_<Operator>(m, "Operator")
         .def(py::init<
             const complex_tensor<1u>&,
@@ -192,6 +201,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &ExpectationValue::__call__vector<PsiDeep, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__<PsiDeep, MonteCarloLoop>)
         .def("__call__", &ExpectationValue::__call__vector<PsiDeep, MonteCarloLoop>)
+        .def("__call__", &ExpectationValue::__call__<PsiHamiltonian, MonteCarloLoop>)
         .def("fluctuation", &ExpectationValue::fluctuation<Psi, ExactSummation>)
         .def("fluctuation", &ExpectationValue::fluctuation<Psi, MonteCarloLoop>)
         .def("fluctuation", &ExpectationValue::fluctuation<PsiDeep, ExactSummation>)

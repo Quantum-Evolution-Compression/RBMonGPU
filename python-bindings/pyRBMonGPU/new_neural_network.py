@@ -55,11 +55,11 @@ def new_deep_neural_network(
 
     for n, m, c in zip([N] + M[:-1], M, C):
         if dim == 1:
-            assert m * c % n == 0
+            assert (m * c) % n == 0
             assert c <= n
         elif dim == 2:
-            assert m[0] * c[0] % n[0] == 0
-            assert m[1] * c[1] % n[1] == 0
+            assert (m[0] * c[0]) % n[0] == 0
+            assert (m[1] * c[1]) % n[1] == 0
             assert c[0] <= n[0]
             assert c[1] <= n[1]
 
