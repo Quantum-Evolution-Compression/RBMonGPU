@@ -30,8 +30,8 @@
 #endif // __PYTHONCC__
 
 
-// #define TRANSLATIONAL_INVARIANCE
-// #define DIM 1
+#define TRANSLATIONAL_INVARIANCE
+#define DIM 1
 
 
 namespace rbm_on_gpu {
