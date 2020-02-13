@@ -23,7 +23,12 @@ inline complex_std read_complex(ifstream& infile) {
     return complex_std(value_re, value_im);
 }
 
-complex_std activation_function(const complex_std z) {
+
+namespace rbm_on_gpu {
+
+namespace kernel {
+
+inline complex_std activation_function(const complex_std z) {
     const auto sign = z.real() > 0.0 ? 1.0 : -1.0;
 
     return sign * 0.9003320053750442 * z + (
@@ -33,9 +38,6 @@ complex_std activation_function(const complex_std z) {
     ) - 0.598139;
 }
 
-
-
-namespace kernel {
 
 class PsiDeepMin {
 public:
@@ -328,3 +330,6 @@ private:
         return {move(rhs_connections), move(rhs_weights)};
     }
 };
+
+
+} // namespace rbm_on_gpu

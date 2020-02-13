@@ -1,5 +1,7 @@
 #pragma once
 
+#include "quantum_state/PsiDeepMin.hpp"
+
 #include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -49,7 +51,7 @@ public:
 
     complex_t* W;
 
-    complex_t* psi;
+    complex_t* log_psi_ptr;
 
 // #ifdef __CUDACC__
     using Angles = rbm_on_gpu::PsiClassicalAngles;
@@ -79,24 +81,24 @@ public:
         // }
 
         // // return tempHeff;
-        complex_t varW0 = this->W[this->num_params];
-        complex_t Heff_plaquetteComplex = complex_t(0.0, 0.0);
+        // complex_t varW0 = this->W[this->num_params];
+        // complex_t Heff_plaquetteComplex = complex_t(0.0, 0.0);
 
-        int omega;
-        for (auto j=0u; j<this->N; j++)
-            {
-            omega =   1*(spins[j]*spins[(j+1)%this->N]+1)/2 +        2*(spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2 +  4*(spins[(j+2)%this->N]*spins[(j+3)%this->N]+1)/2 +   8*(spins[(j+3)%this->N]*spins[(j+4)%this->N]+1)/2
-                   + 16*(spins[(j+4)%this->N]*spins[(j+5)%this->N]+1)/2 + 32*(spins[(j+5)%this->N]*spins[(j+6)%this->N]+1)/2 + 64*(spins[(j+6)%this->N]*spins[(j+7)%this->N]+1)/2 ; // 0-127
-            Heff_plaquetteComplex += complex_t(0.0, -1.0) * this->W[omega];
+        // int omega;
+        // for (auto j=0u; j<this->N; j++)
+        //     {
+        //     omega =   1*(spins[j]*spins[(j+1)%this->N]+1)/2 +        2*(spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2 +  4*(spins[(j+2)%this->N]*spins[(j+3)%this->N]+1)/2 +   8*(spins[(j+3)%this->N]*spins[(j+4)%this->N]+1)/2
+        //            + 16*(spins[(j+4)%this->N]*spins[(j+5)%this->N]+1)/2 + 32*(spins[(j+5)%this->N]*spins[(j+6)%this->N]+1)/2 + 64*(spins[(j+6)%this->N]*spins[(j+7)%this->N]+1)/2 ; // 0-127
+        //     Heff_plaquetteComplex += complex_t(0.0, -1.0) * this->W[omega];
 
-            // int omega =   1*(S[0][j][2]*S[0][(j+1)%L][2]+1)/2 +        2*(S[0][(j+1)%L][2]*S[0][(j+2)%L][2]+1)/2 +  4*(S[0][(j+2)%L][2]*S[0][(j+3)%L][2]+1)/2 +   8*(S[0][(j+3)%L][2]*S[0][(j+4)%L][2]+1)/2
-            //         + 16*(S[0][(j+4)%L][2]*S[0][(j+5)%L][2]+1)/2 + 32*(S[0][(j+5)%L][2]*S[0][(j+6)%L][2]+1)/2 + 64*(S[0][(j+6)%L][2]*S[0][(j+7)%L][2]+1)/2 ; // 0-127
-            // Heff_plaquetteComplex += (-I)*varW(omega);
-            }
+        //     // int omega =   1*(S[0][j][2]*S[0][(j+1)%L][2]+1)/2 +        2*(S[0][(j+1)%L][2]*S[0][(j+2)%L][2]+1)/2 +  4*(S[0][(j+2)%L][2]*S[0][(j+3)%L][2]+1)/2 +   8*(S[0][(j+3)%L][2]*S[0][(j+4)%L][2]+1)/2
+        //     //         + 16*(S[0][(j+4)%L][2]*S[0][(j+5)%L][2]+1)/2 + 32*(S[0][(j+5)%L][2]*S[0][(j+6)%L][2]+1)/2 + 64*(S[0][(j+6)%L][2]*S[0][(j+7)%L][2]+1)/2 ; // 0-127
+        //     // Heff_plaquetteComplex += (-I)*varW(omega);
+        //     }
 
-        return varW0+Heff_plaquetteComplex;
+        // return varW0+Heff_plaquetteComplex;
 
-        // return log(this->psi[spins.configuration]);
+        return this->log_psi_ptr[spins.configuration];
     }
 
     // HDINLINE
@@ -187,7 +189,9 @@ public:
 
 class PsiClassical : public kernel::PsiClassical {
 public:
-    Array<complex_t> psi_array;
+    Array<complex_t> log_psi_array;
+
+    PsiDeepMin* psi_neural;
 
     Array<complex_t> W_array;
 
@@ -201,31 +205,51 @@ public:
     // PsiClassical(const PsiClassical& other);
 
 #ifdef __PYTHONCC__
+    // inline PsiClassical(
+    //     const string fname_base,
+    //     const string fname_neural,
+    //     const unsigned int N,
+    //     const unsigned int num_params,
+    //     const bool gpu
+    // ) : psi_array(pow(2, N), false), W_array(num_params+1, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+    //     this->N = N;
+    //     this->num_params = num_params;
+
+    //     this->W_array.clear();
+    //     this->psi_array.clear();
+
+    //     this->init(fname_base, "Re");
+    //     this->init(fname_base, "Im");
+
+    //     this->W_array.update_device();
+    //     this->W = this->W_array.data();
+
+    //     this->prefactor = 1.0;
+
+    //     psi_neural = new PsiDeepMin(fname_neural);
+    //     this->psi_neural_kernel = this->psi_neural_kernel;
+    // }
+
     inline PsiClassical(
+        const xt::pytensor<std::complex<double>, 1u>& log_psi,
         const unsigned int N,
-        const unsigned int num_params,
         const bool gpu
-    ) : psi_array(pow(2, N), false), W_array(num_params+1, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+    ) : log_psi_array(log_psi, gpu), W_array(0, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
         this->N = N;
-        this->num_params = num_params;
 
-        this->W_array.clear();
-        this->psi_array.clear();
-
-        this->init("Re");
-        this->init("Im");
-
-        this->psi_array.update_device();
-        this->psi = this->psi_array.data();
-
-        this->W_array.update_device();
-        this->W = this->W_array.data();
+        this->log_psi_array.update_device();
+        this->log_psi_ptr = this->log_psi_array.data();
 
         this->prefactor = 1.0;
+        this->psi_neural = nullptr;
     }
 
-    void init(const std::string& ReIm) {
-        std::string filenamePos = "a VP_"+ReIm+".csv";
+    inline ~PsiClassical() {
+        delete this->psi_neural;
+    }
+
+    void init(const string& fname_base, const std::string& ReIm) {
+        string filenamePos = fname_base + ReIm+".csv";
         std::ifstream filePos;
         filePos.open (filenamePos.c_str());
 
@@ -243,33 +267,6 @@ public:
         if (ReIm.find("Im") != std::string::npos) this->W_array[this->num_params] += I*atof(temp.c_str());
 
         filePos.close();
-    }
-
-    void init2(const std::string& ReIm) {
-    {
-        string filenamePos = "Wavefunction_"+ReIm+"_0.txt";
-
-        cout << filenamePos << endl;
-
-        ifstream filePos;
-
-        filePos.open (filenamePos.c_str());
-
-        if (filePos.is_open()==true)  cout << "Wavefunction file successfully loaded!" << endl;
-        if (filePos.is_open()==false) cout << "Error! Wavefunction file was not loaded!" << endl;
-
-        int imax=1024;
-        string temp;
-
-        for (int i=0; i<imax; i++)
-            {
-            getline (filePos, temp, ',');
-            if (ReIm.find("Re") != string::npos) this->psi_array[i] += complex_t(atof(temp.c_str()), 0.0);
-            if (ReIm.find("Im") != string::npos) this->psi_array[i] += complex_t(0.0, atof(temp.c_str()));
-            }
-
-        filePos.close();
-        }
     }
 
     // xt::pytensor<complex<double>, 1> as_vector_py() const {
