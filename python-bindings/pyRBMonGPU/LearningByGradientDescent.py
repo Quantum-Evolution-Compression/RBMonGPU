@@ -2,11 +2,11 @@ import numpy as np
 import math
 import pyRBMonGPU
 from pyRBMonGPU import Operator
-import gradient_descent as gd
+from .gradient_descent import *
 from itertools import islice
 from scipy.ndimage import gaussian_filter1d
 from QuantumExpression import PauliExpression
-from HilbertSpaceCorrelations import HilbertSpaceCorrelations
+# from HilbertSpaceCorrelations import HilbertSpaceCorrelations
 from collections import namedtuple
 from pathlib import Path
 import json
@@ -153,7 +153,7 @@ class LearningByGradientDescent:
     def get_gradient_descent_algorithm(self, name):
         psi_init_params = self.psi_init.params
 
-        return getattr(gd, f"{name}_generator")(
+        return globals()[f"{name}_generator"](
             psi_init_params,
             lambda step, params: self.set_params_and_return_gradient(
                 step, params
@@ -271,7 +271,7 @@ class LearningByGradientDescent:
             return gradient
 
         psi = +psi
-        gd.padam(psi.params, 75, gradient, **algorithm_kwargs)
+        padam(psi.params, 75, gradient, **algorithm_kwargs)
         return psi
 
     def optimize_for(

@@ -119,18 +119,17 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("O_k_vector", &PsiDeep::O_k_vector_py);
 
     py::class_<PsiClassical>(m, "PsiClassical")
-        // .def(py::init<
-        //     const string,
-        //     const string,
-        //     const unsigned int,
-        //     const unsigned int,
-        //     const bool
-        // >())
         .def(py::init<
-            const complex_tensor<1u>&,
+            const string,
+            const int,
             const unsigned int,
             const bool
         >())
+        // .def(py::init<
+        //     const complex_tensor<1u>&,
+        //     const unsigned int,
+        //     const bool
+        // >())
         .def_readonly("gpu", &PsiClassical::gpu)
         .def_readonly("N", &PsiClassical::N)
         // .def_property(

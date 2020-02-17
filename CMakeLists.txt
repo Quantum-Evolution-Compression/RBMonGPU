@@ -88,17 +88,17 @@ file(GLOB_RECURSE CUDASRCFILES "${project_source_dir}/*")
 # file(GLOB_RECURSE SRCFILES "${project_source_dir}/*.cpp")
 
 add_library(RBMonGPU SHARED ${CUDASRCFILES})
-add_executable(test ${project_source_dir}/main.cpp)
+# add_executable(test ${project_source_dir}/main.cpp)
 
 target_include_directories(RBMonGPU PRIVATE ${CUDA_INCLUDES})
 target_include_directories(RBMonGPU PRIVATE ${CXX_INCLUDES})
-target_include_directories(test PRIVATE ${CXX_INCLUDES})
+# target_include_directories(test PRIVATE ${CXX_INCLUDES})
 
 target_link_libraries(RBMonGPU ${LIBS})
-target_link_libraries(test ${LIBS})
-target_link_libraries(test RBMonGPU)
+# target_link_libraries(test ${LIBS})
+# target_link_libraries(test RBMonGPU)
 
-add_dependencies(test RBMonGPU)
+# add_dependencies(test RBMonGPU)
 
 # Installation
 # ============

@@ -1,5 +1,5 @@
 from ._pyRBMonGPU import PsiDeep
-from json_numpy import NumpyEncoder, NumpyDecoder
+from .json_numpy import NumpyEncoder, NumpyDecoder
 from QuantumExpression import sigma_x, sigma_y
 import json
 

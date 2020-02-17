@@ -2,6 +2,9 @@
 
 #include "quantum_state/PsiDeepMin.hpp"
 
+#include "quantum_state/PsiClassicalHelper.hpp"
+
+
 #include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -61,45 +64,31 @@ public:
 
 public:
 
+#ifndef __PYTHONCC__
+
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
-        // complex_t tempHeff = complex_t(0.0, 0.0);
+        #ifndef __CUDA_ARCH__
+        std::vector<int> spins_vector(this->N);
+        for(auto i = 0u; i < this->N; i++) {
+            spins_vector[i] = spins[i];
+        }
 
-        // int omega1, omega2, omega3, omega4;
-        // for (int j=0u; j<this->N; j++) {
-        //     omega1 = (spins[j]*spins[(j+1)%this->N]+1)/2; // = 0,1
-        //     tempHeff += this->W[omega1];
+        const auto result = Peter::findHeffComplex(spins_vector);
+        return complex_t(result.real(), result.imag());
 
-        //     omega2 =  2*(spins[j]*spins[(j+1)%this->N]+1)/2 +   (spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2; // 0,1,2,3
-        //     tempHeff += this->W[2+omega2];
+        #else
 
-        //     omega3 =  4*(spins[j]*spins[(j+1)%this->N]+1)/2 + 2*(spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2 + 1*(spins[(j+2)%this->N]*spins[(j+3)%this->N]+1)/2; // 0-7
-        //     tempHeff += this->W[6+omega3];
+        return complex_t(0.0, 0.0);
 
-        //     omega4 =  8*(spins[j]*spins[(j+1)%this->N]+1)/2 + 4*(spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2 + 2*(spins[(j+2)%this->N]*spins[(j+3)%this->N]+1)/2 + 1*(spins[(j+3)%this->N]*spins[(j+4)%this->N]+1)/2; // 0-15
-        //     tempHeff += this->W[14+omega4];
-        // }
+        #endif
 
-        // // return tempHeff;
-        // complex_t varW0 = this->W[this->num_params];
-        // complex_t Heff_plaquetteComplex = complex_t(0.0, 0.0);
 
-        // int omega;
-        // for (auto j=0u; j<this->N; j++)
-        //     {
-        //     omega =   1*(spins[j]*spins[(j+1)%this->N]+1)/2 +        2*(spins[(j+1)%this->N]*spins[(j+2)%this->N]+1)/2 +  4*(spins[(j+2)%this->N]*spins[(j+3)%this->N]+1)/2 +   8*(spins[(j+3)%this->N]*spins[(j+4)%this->N]+1)/2
-        //            + 16*(spins[(j+4)%this->N]*spins[(j+5)%this->N]+1)/2 + 32*(spins[(j+5)%this->N]*spins[(j+6)%this->N]+1)/2 + 64*(spins[(j+6)%this->N]*spins[(j+7)%this->N]+1)/2 ; // 0-127
-        //     Heff_plaquetteComplex += complex_t(0.0, -1.0) * this->W[omega];
+        // return this->log_psi_ptr[spins.configuration];
 
-        //     // int omega =   1*(S[0][j][2]*S[0][(j+1)%L][2]+1)/2 +        2*(S[0][(j+1)%L][2]*S[0][(j+2)%L][2]+1)/2 +  4*(S[0][(j+2)%L][2]*S[0][(j+3)%L][2]+1)/2 +   8*(S[0][(j+3)%L][2]*S[0][(j+4)%L][2]+1)/2
-        //     //         + 16*(S[0][(j+4)%L][2]*S[0][(j+5)%L][2]+1)/2 + 32*(S[0][(j+5)%L][2]*S[0][(j+6)%L][2]+1)/2 + 64*(S[0][(j+6)%L][2]*S[0][(j+7)%L][2]+1)/2 ; // 0-127
-        //     // Heff_plaquetteComplex += (-I)*varW(omega);
-        //     }
-
-        // return varW0+Heff_plaquetteComplex;
-
-        return this->log_psi_ptr[spins.configuration];
     }
+
+
 
     // HDINLINE
     // complex_t log_psi_s_py(const vector<int>& spins) const {
@@ -133,6 +122,8 @@ public:
 
         return exp(log_psi);
     }
+
+#endif // __PYTHONCC__
 
 
     // complex<double> psi_s_std(const Spins& spins) const {
@@ -190,9 +181,6 @@ public:
 class PsiClassical : public kernel::PsiClassical {
 public:
     Array<complex_t> log_psi_array;
-
-    PsiDeepMin* psi_neural;
-
     Array<complex_t> W_array;
 
     Array<double> alpha_array;
@@ -205,47 +193,37 @@ public:
     // PsiClassical(const PsiClassical& other);
 
 #ifdef __PYTHONCC__
-    // inline PsiClassical(
-    //     const string fname_base,
-    //     const string fname_neural,
-    //     const unsigned int N,
-    //     const unsigned int num_params,
-    //     const bool gpu
-    // ) : psi_array(pow(2, N), false), W_array(num_params+1, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
-    //     this->N = N;
-    //     this->num_params = num_params;
-
-    //     this->W_array.clear();
-    //     this->psi_array.clear();
-
-    //     this->init(fname_base, "Re");
-    //     this->init(fname_base, "Im");
-
-    //     this->W_array.update_device();
-    //     this->W = this->W_array.data();
-
-    //     this->prefactor = 1.0;
-
-    //     psi_neural = new PsiDeepMin(fname_neural);
-    //     this->psi_neural_kernel = this->psi_neural_kernel;
-    // }
-
     inline PsiClassical(
-        const xt::pytensor<std::complex<double>, 1u>& log_psi,
+        const string directory,
+        const int index,
         const unsigned int N,
         const bool gpu
-    ) : log_psi_array(log_psi, gpu), W_array(0, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+    ) : log_psi_array(1, false), W_array(1, false), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
         this->N = N;
 
-        this->log_psi_array.update_device();
-        this->log_psi_ptr = this->log_psi_array.data();
+        Peter::loadVP(directory, index, "Re");
+        Peter::loadVP(directory, index, "Im");
+        Peter::Compress_Load(directory, index);
+        Peter::load_neural_network(directory, index);
 
         this->prefactor = 1.0;
-        this->psi_neural = nullptr;
     }
 
+    // inline PsiClassical(
+    //     const xt::pytensor<std::complex<double>, 1u>& log_psi,
+    //     const unsigned int N,
+    //     const bool gpu
+    // ) : log_psi_array(log_psi, gpu), W_array(0, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+    //     this->N = N;
+
+    //     this->log_psi_array.update_device();
+    //     this->log_psi_ptr = this->log_psi_array.data();
+
+    //     this->prefactor = 1.0;
+    //     this->psi_neural = nullptr;
+    // }
+
     inline ~PsiClassical() {
-        delete this->psi_neural;
     }
 
     void init(const string& fname_base, const std::string& ReIm) {

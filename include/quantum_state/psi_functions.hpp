@@ -5,8 +5,16 @@
 
 namespace rbm_on_gpu {
 
+constexpr auto b = 0.0;
+
 HDINLINE
 complex_t my_logcosh(const complex_t z) {
+    // const auto r = abs(z);
+    // if(r < b) {
+    //     return complex_t(0.0, 0.0);
+    // }
+    // return z * (1.0 - b / r);
+
     // const complex_t z2 = z * z;
     // return (1.0 / 180.0) * z2 * (90.0 - 15.0 * z2 + 4.0 * z2 * z2);
 
@@ -50,6 +58,12 @@ complex_t my_logcosh(const complex_t z) {
 
 HDINLINE
 complex_t my_tanh(const complex_t z) {
+    // const auto r = abs(z);
+    // if(r < b) {
+    //     return complex_t(0.0, 0.0);
+    // }
+    // return complex_t(1.0, 0.0) - complex_t(0.5 * b * r, 0.0) / z;
+
     // const complex_t z2 = z * z;
     // return (1.0 / 15.0) * z * (15.0 - 5.0 * z2 + 2.0 * z2 * z2);
 
