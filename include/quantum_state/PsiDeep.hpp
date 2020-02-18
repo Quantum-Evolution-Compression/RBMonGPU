@@ -43,7 +43,7 @@ public:
     using Angles = rbm_on_gpu::PsiDeepAngles;
 
     static constexpr unsigned int max_layers = 3u;
-    static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
+    static constexpr unsigned int max_deep_angles = max_layers * 2 * MAX_SPINS;
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {

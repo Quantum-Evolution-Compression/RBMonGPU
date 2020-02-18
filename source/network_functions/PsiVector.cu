@@ -2,7 +2,6 @@
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
 #include "quantum_state/PsiClassical.hpp"
-#include "quantum_state/PsiDeepMin.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
 
@@ -53,7 +52,6 @@ Array<complex_t> psi_vector(const Psi_t& psi) {
 template void psi_vector(complex<double>* result, const Psi& psi);
 template void psi_vector(complex<double>* result, const PsiDeep& psi);
 template void psi_vector(complex<double>* result, const PsiClassical& psi);
-// template void psi_vector(complex<double>* result, const PsiDeepMin& psi);
 
 template Array<complex_t> psi_vector(const Psi& psi);
 template Array<complex_t> psi_vector(const PsiDeep& psi);

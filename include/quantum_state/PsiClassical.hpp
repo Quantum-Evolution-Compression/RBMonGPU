@@ -83,7 +83,6 @@ public:
 
         #endif
 
-
         // return this->log_psi_ptr[spins.configuration];
 
     }
@@ -220,7 +219,6 @@ public:
     //     this->log_psi_ptr = this->log_psi_array.data();
 
     //     this->prefactor = 1.0;
-    //     this->psi_neural = nullptr;
     // }
 
     inline ~PsiClassical() {

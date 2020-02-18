@@ -62,7 +62,7 @@ complex_t my_tanh(const complex_t z) {
     // if(r < b) {
     //     return complex_t(0.0, 0.0);
     // }
-    // return complex_t(1.0, 0.0) - complex_t(0.5 * b * r, 0.0) / z;
+    // return complex_t(1.0, 0.0);// - complex_t(0.5 * b * r, 0.0) / z;
 
     // const complex_t z2 = z * z;
     // return (1.0 / 15.0) * z * (15.0 - 5.0 * z2 + 2.0 * z2 * z2);

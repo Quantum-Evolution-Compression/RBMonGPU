@@ -15,11 +15,11 @@ namespace Peter {
 int L=10;
 int H=1;
 int const numberOfVarParameters=4;
-int PerturbationTheoryOrder = 1; 
+int PerturbationTheoryOrder = 1;
 
 #define cdouble std::complex<double>
 cdouble I(0.0,1.0);
-vector< vector< vector<int> > > S;     // i,j -- coordinates of the plaquette, only k=2 is used
+vector<vector<vector<int>>> S(H, vector<vector<int>>(L, vector<int>(5)));     // i,j -- coordinates of the plaquette, only k=2 is used
 int const numberOfVarParametrsMax=300000; // before compression Stripe3Order (12321), Square 3Order (12160) // debug:
 int indexVP[numberOfVarParametrsMax][2] = {0}; // initialize with zeros
 
@@ -59,10 +59,10 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     std::string filenamePos = directory + "/a_VP_" + to_string(index) + "_" + ReIm + ".csv";
 	std::ifstream filePos;
 	filePos.open (filenamePos.c_str());
-    
+
     if (filePos.is_open()==true)  cout << filenamePos << " was successfully loaded by loadVP()" << endl;
     if (filePos.is_open()==false) cout << filenamePos << " was NOT loaded by loadVP()" << endl;
-    
+
 	std::string temp;
 
     for (int i=0; i<numberOfVarParameters; i++)
@@ -90,7 +90,7 @@ void Compress_Load(std::string directory, int index)
 
     if (filePos.is_open()==true)  cout << filenamePos << " was successfully loaded by Compress_Load()" << endl;
     if (filePos.is_open()==false) cout << filenamePos << " was NOT loaded by Compress_Load()" << endl;
-    
+
     int indexCompressed=1;
     string temp;
     for (int i=0; i<numberOfVarParametrsMax; i++)
@@ -527,6 +527,7 @@ cdouble findHeffComplex(vector<int> &spins) //
 	cdouble varW0 = varW(numberOfVarParameters);
 
 	return varW0+tempHeff;
+    // return tempHeff;
 	}
 
 

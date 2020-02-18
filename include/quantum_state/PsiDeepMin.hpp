@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <fstream>
+#include <iostream>
 
 #ifndef MAX_SPINS
 #define MAX_SPINS 64
@@ -167,6 +168,11 @@ public:
 
     inline PsiDeepMin(const string data_file_name) : gpu(false) {
         ifstream infile(data_file_name);
+        if(infile.is_open()) {
+            cout << data_file_name << " was successfully loaded." << endl;
+        } else {
+            cout << data_file_name << " was NOT loaded!" << endl;
+        }
 
         // read fixed params
 
