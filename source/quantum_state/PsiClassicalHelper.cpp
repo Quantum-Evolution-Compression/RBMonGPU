@@ -56,7 +56,7 @@ std::complex<double> Classical_wavefunction(std::vector<int> &S, std::vector<std
 
 void loadVP(std::string directory, int index, std::string ReIm) // two calls are necessary: LoadVP("Re",..,..); LoadVP("Im",..,..);
     {
-    std::string filenamePos = directory + "/a_VP_" + to_string(index) + "_" + ReIm + ".csv";
+    std::string filenamePos = directory + "/a_VP_" + to_string(index-1) + "_" + ReIm + ".csv";
 	std::ifstream filePos;
 	filePos.open (filenamePos.c_str());
 
@@ -75,7 +75,8 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     if (ReIm.find("Re") != std::string::npos) varW(numberOfVarParameters) +=   atof(temp.c_str()); // "dumb" variational parameter for normalization
     if (ReIm.find("Im") != std::string::npos) varW(numberOfVarParameters) += I*atof(temp.c_str());
 
-
+	cout << "varW(0)=" << varW(0) << endl;
+    cout << "varW(1)=" << varW(1) << endl;
     filePos.close();
 	}
 
@@ -84,7 +85,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
 void Compress_Load(std::string directory, int index)
     {
 
-    string filenamePos = directory + "/a_indexVP_" + to_string(index) + ".csv";
+    string filenamePos = directory + "/a_indexVP_" + to_string(index-1) + ".csv";
 	ifstream filePos;
 	filePos.open (filenamePos.c_str());
 
@@ -101,6 +102,7 @@ void Compress_Load(std::string directory, int index)
         }
 
     cout << "Number of decompressed variational parameters: " << indexCompressed << endl;
+	cout << "indexVP[0][0],indexVP[1][0],indexVP[2][0]=" << indexVP[0][0] << ", " << indexVP[1][0] << ", " << indexVP[2][0] << endl;
     filePos.close();
     }
 
@@ -109,7 +111,7 @@ cdouble psi_0_local(int i, int j, int fl)
     cdouble psi_0_local_temp=1.0;
 
     vector<int> spins(L);
-    for (int j=0; j<L; j++) spins[j] = S[0][j][2];
+    for (int j=0; j<L; j++) spins[j] = S[0][j][2]; // This is super inefficient. psi_0_local is called very frequently. [Peter, 20.02.2020]
     psi_0_local_temp *= exp(psi_neural->log_psi_s(spins));
     return psi_0_local_temp;
     }
@@ -173,7 +175,12 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
             Heff_plaquetteComplex += (-I)*psi_0_local_ij_flip/psi_0_local_ij*varW(indexVP[2+(1+omega)][0]); // 9 first-ordetr VP; +1 -- for all other variational parameters
             if (CompressionMode==1) for (int j_indt=0; j_indt<j_ind_max; j_indt++)    indexVP[2+(1+omega)][1]+=1;
             // total 1-ord: 2+3 = 5 (0-th is dumb)
-
+			
+			cout << "psi_0_local_ij_flip=" << psi_0_local_ij_flip << endl; // debug
+			cout << "psi_0_local_ij=" << psi_0_local_ij << endl; // debug
+			cout << "omega=" << omega << endl;
+			cout << "indexVP[2+(1+omega)][0]=" << indexVP[2+(1+omega)][0] << endl;
+			cout << "varW(indexVP[2+(1+omega)][0])=" << varW(indexVP[2+(1+omega)][0]) << endl;
             if (PerturbationTheoryOrder==1) return Heff_plaquetteComplex;
             }
 
