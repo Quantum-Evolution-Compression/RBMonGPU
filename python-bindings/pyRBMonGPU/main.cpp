@@ -9,6 +9,7 @@
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "network_functions/ExpectationValue.hpp"
 #include "network_functions/HilbertSpaceDistance.hpp"
+#include "network_functions/KullbackLeibler.hpp"
 #include "network_functions/PsiOkVector.hpp"
 #include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
@@ -119,17 +120,17 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("O_k_vector", &PsiDeep::O_k_vector_py);
 
     py::class_<PsiClassical>(m, "PsiClassical")
-        .def(py::init<
-            const string,
-            const int,
-            const unsigned int,
-            const bool
-        >())
-        // .def(py::init<
-        //     const complex_tensor<1u>&,
-        //     const unsigned int,
-        //     const bool
-        // >())
+         .def(py::init<
+             const string,
+             const int,
+             const unsigned int,
+             const bool
+         >())
+        //.def(py::init<
+        //    const complex_tensor<1u>&,
+        //    const unsigned int,
+        //    const bool
+        //>())
         .def_readonly("gpu", &PsiClassical::gpu)
         .def_readonly("N", &PsiClassical::N)
         // .def_property(
@@ -241,7 +242,17 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
-        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);;
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a);
+
+    py::class_<KullbackLeibler>(m, "KullbackLeibler")
+        .def(py::init<unsigned int, bool>())
+        .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, ExactSummation>)
+        .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("__call__", &KullbackLeibler::value<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a);
 
     m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
         return get_S_matrix(psi, spin_ensemble).to_pytensor<2u>(shape_t<2u>{psi.num_params, psi.num_params});

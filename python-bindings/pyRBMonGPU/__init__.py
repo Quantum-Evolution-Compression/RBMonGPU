@@ -5,6 +5,7 @@ from ._pyRBMonGPU import (
     ExactSummation,
     ExpectationValue,
     HilbertSpaceDistance,
+    KullbackLeibler,
     get_S_matrix,
     get_O_k_vector,
     psi_angles,

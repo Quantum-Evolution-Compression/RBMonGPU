@@ -56,7 +56,7 @@ std::complex<double> Classical_wavefunction(std::vector<int> &S, std::vector<std
 
 void loadVP(std::string directory, int index, std::string ReIm) // two calls are necessary: LoadVP("Re",..,..); LoadVP("Im",..,..);
     {
-    std::string filenamePos = directory + "/a_VP_" + to_string(index) + "_" + ReIm + ".csv";
+    std::string filenamePos = directory + "/a_VP_" + to_string(index-1) + "_" + ReIm + ".csv";
 	std::ifstream filePos;
 	filePos.open (filenamePos.c_str());
 
@@ -84,7 +84,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
 void Compress_Load(std::string directory, int index)
     {
 
-    string filenamePos = directory + "/a_indexVP_" + to_string(index) + ".csv";
+    string filenamePos = directory + "/a_indexVP_" + to_string(index-1) + ".csv";
 	ifstream filePos;
 	filePos.open (filenamePos.c_str());
 

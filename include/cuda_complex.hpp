@@ -756,6 +756,14 @@ operator!=(const _Tp& __x, const complex<_Tp>& __y)
 
 // 26.3.7 values:
 
+template<class _Tp>
+CUDA_CALLABLE_MEMBER
+_Tp
+abs2(const complex<_Tp>& __c)
+{
+    return __c.real() * __c.real() + __c.imag() * __c.imag();
+}
+
 // real
 
 template<class _Tp>

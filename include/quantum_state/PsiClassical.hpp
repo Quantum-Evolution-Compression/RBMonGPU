@@ -68,22 +68,22 @@ public:
 
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
-        #ifndef __CUDA_ARCH__
-        std::vector<int> spins_vector(this->N);
-        for(auto i = 0u; i < this->N; i++) {
-            spins_vector[i] = spins[i];
-        }
+         #ifndef __CUDA_ARCH__
+         std::vector<int> spins_vector(this->N);
+         for(auto i = 0u; i < this->N; i++) {
+             spins_vector[i] = spins[i];
+         }
 
-        const auto result = Peter::findHeffComplex(spins_vector);
-        return complex_t(result.real(), result.imag());
+         const auto result = Peter::findHeffComplex(spins_vector);
+         return complex_t(result.real(), result.imag());
 
-        #else
+         #else
 
-        return complex_t(0.0, 0.0);
+         return complex_t(0.0, 0.0);
 
-        #endif
+         #endif
 
-        // return this->log_psi_ptr[spins.configuration];
+        //return this->log_psi_ptr[spins.configuration];
 
     }
 
@@ -192,34 +192,34 @@ public:
     // PsiClassical(const PsiClassical& other);
 
 #ifdef __PYTHONCC__
-    inline PsiClassical(
-        const string directory,
-        const int index,
-        const unsigned int N,
-        const bool gpu
-    ) : log_psi_array(1, false), W_array(1, false), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
-        this->N = N;
+     inline PsiClassical(
+         const string directory,
+         const int index,
+         const unsigned int N,
+         const bool gpu
+     ) : log_psi_array(1, false), W_array(1, false), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+         this->N = N;
 
-        Peter::loadVP(directory, index, "Re");
-        Peter::loadVP(directory, index, "Im");
-        Peter::Compress_Load(directory, index);
-        Peter::load_neural_network(directory, index);
+         Peter::loadVP(directory, index, "Re");
+         Peter::loadVP(directory, index, "Im");
+         Peter::Compress_Load(directory, index);
+         Peter::load_neural_network(directory, index);
 
-        this->prefactor = 1.0;
+         this->prefactor = 1.0;
     }
 
-    // inline PsiClassical(
-    //     const xt::pytensor<std::complex<double>, 1u>& log_psi,
-    //     const unsigned int N,
-    //     const bool gpu
-    // ) : log_psi_array(log_psi, gpu), W_array(0, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
-    //     this->N = N;
+    /*inline PsiClassical(
+        const xt::pytensor<std::complex<double>, 1u>& log_psi,
+        const unsigned int N,
+        const bool gpu
+    ) : log_psi_array(log_psi, gpu), W_array(0, gpu), alpha_array(1, false), beta_array(1, false), free_quantum_axis(false), gpu(gpu) {
+        this->N = N;
 
-    //     this->log_psi_array.update_device();
-    //     this->log_psi_ptr = this->log_psi_array.data();
+        this->log_psi_array.update_device();
+        this->log_psi_ptr = this->log_psi_array.data();
 
-    //     this->prefactor = 1.0;
-    // }
+        this->prefactor = 1.0;
+    }*/
 
     inline ~PsiClassical() {
     }
