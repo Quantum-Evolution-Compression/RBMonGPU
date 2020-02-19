@@ -59,7 +59,8 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     std::string filenamePos = directory + "/a_VP_" + to_string(index-1) + "_" + ReIm + ".csv";
 	std::ifstream filePos;
 	filePos.open (filenamePos.c_str());
-
+	
+	cout << "index-1=" << index-1 << endl;
     if (filePos.is_open()==true)  cout << filenamePos << " was successfully loaded by loadVP()" << endl;
     if (filePos.is_open()==false) cout << filenamePos << " was NOT loaded by loadVP()" << endl;
 
