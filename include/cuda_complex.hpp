@@ -237,9 +237,9 @@ private:
     value_type __re_;
     value_type __im_;
 public:
-    CUDA_CALLABLE_MEMBER
-    complex(const value_type& __re = value_type(), const value_type& __im = value_type())
-        : __re_(__re), __im_(__im) {}
+
+    complex() = default;
+
     template<class _Xp> CUDA_CALLABLE_MEMBER
     complex(const complex<_Xp>& __c)
         : __re_(__c.real()), __im_(__c.imag()) {}
@@ -301,6 +301,8 @@ public:
     complex() = default;
     /*constexpr*/ CUDA_CALLABLE_MEMBER complex(float __re, float __im)
         : __re_(__re), __im_(__im) {}
+    CUDA_CALLABLE_MEMBER complex(float x)
+        : __re_(x), __im_(x) {}
     CUDA_CALLABLE_MEMBER
     explicit /*constexpr*/ complex(const complex<double>& __c);
 
@@ -365,8 +367,8 @@ public:
     complex() = default;
     /*constexpr*/ CUDA_CALLABLE_MEMBER complex(double __re, double __im)
         : __re_(__re), __im_(__im) {}
-    CUDA_CALLABLE_MEMBER
-    /*constexpr*/ complex(const complex<float>& __c);
+    CUDA_CALLABLE_MEMBER complex(double x)
+        : __re_(x), __im_(x) {}
 
     /*constexpr*/ CUDA_CALLABLE_MEMBER double real() const {return __re_;}
     /*constexpr*/ CUDA_CALLABLE_MEMBER double imag() const {return __im_;}
@@ -418,14 +420,14 @@ public:
 };
 
 //constexpr
-CUDA_CALLABLE_MEMBER
-complex<float>::complex(const complex<double>& __c)
-    : __re_(__c.real()), __im_(__c.imag()) {}
+// CUDA_CALLABLE_MEMBER
+// complex<float>::complex(const complex<double>& __c)
+//     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
-CUDA_CALLABLE_MEMBER
-complex<double>::complex(const complex<float>& __c)
-    : __re_(__c.real()), __im_(__c.imag()) {}
+// //constexpr
+// CUDA_CALLABLE_MEMBER
+// complex<double>::complex(const complex<float>& __c)
+//     : __re_(__c.real()), __im_(__c.imag()) {}
 
 // 26.3.6 operators:
 

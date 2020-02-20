@@ -5,7 +5,7 @@
 
 namespace rbm_on_gpu {
 
-constexpr auto b = 0.0;
+constexpr auto b = 1.0;
 
 HDINLINE
 complex_t my_logcosh(const complex_t z) {
@@ -111,6 +111,15 @@ complex_t my_tanh(const complex_t z) {
                                     6.746450656267947 + sign * 0.9003320053750442 * z
         )))))))
     ) / (denominator * denominator);
+}
+
+
+HDINLINE double my_logcosh(const double& x) {
+    return log(cosh(x));
+}
+
+HDINLINE double my_tanh(const double& x) {
+    return tanh(x);
 }
 
 

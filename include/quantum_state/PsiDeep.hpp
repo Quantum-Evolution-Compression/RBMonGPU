@@ -1,9 +1,5 @@
 #pragma once
 
-#include "spin_ensembles/ExactSummation.hpp"
-#include "network_functions/PsiNorm.hpp"
-#include "network_functions/PsiVector.hpp"
-#include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiDeepCache.hpp"
 #include "Array.hpp"
@@ -41,7 +37,7 @@ namespace kernel {
 template<typename dtype>
 class PsiDeepT {
 public:
-    using Angles = rbm_on_gpu::PsiDeepAngles;
+    using Angles = rbm_on_gpu::PsiDeepAngles<dtype>;
 
     static constexpr unsigned int max_layers = 3u;
     static constexpr unsigned int max_deep_angles = max_layers * 2 * MAX_SPINS;
@@ -108,7 +104,7 @@ public:
             SYNC;
             const Layer& layer = this->layers[layer_idx];
             MULTI(j, layer.size) {
-                activations_out[j] = dtype(0.0, 0.0);
+                activations_out[j] = dtype(0.0);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
                     activations_out[j] += (
@@ -134,7 +130,7 @@ public:
         // CAUTION: 'result' has to be a shared variable.
 
         SINGLE {
-            result = dtype(0.0, 0.0);
+            result = dtype(0.0);
         }
 
         #ifdef TRANSLATIONAL_INVARIANCE
@@ -274,7 +270,7 @@ public:
             } else {
                 // TODO: check if shared memory solution is faster
                 #ifdef __CUDA_ARCH__
-                dtype unit_activation(0.0, 0.0);
+                dtype unit_activation(0.0);
                 #else
                 dtype unit_activation[Angles::max_width];
                 #endif
@@ -282,7 +278,7 @@ public:
                 SYNC;
                 MULTI(i, layer.size) {
                     #ifndef __CUDA_ARCH__
-                    unit_activation[i] = dtype(0.0, 0.0);
+                    unit_activation[i] = dtype(0.0);
                     #endif
 
                     for(auto j = 0u; j < layer.rhs_connectivity; j++) {
