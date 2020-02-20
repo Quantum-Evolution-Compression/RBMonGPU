@@ -208,4 +208,22 @@ struct std_dtype<complex_t> {
 };
 
 
+template<typename dtype, typename value_type>
+inline dtype get_real(const value_type& value);
+
+template<>
+inline complex_t get_real<complex_t>(const double& value) {
+    return complex_t(value, 0.0);
+}
+
+template<>
+inline double get_real<double>(const double& value) {
+    return value;
+}
+
+template<>
+inline double get_real<double>(const complex_t& value) {
+    return value.real();
+}
+
 } // namespace rbm_on_gpu

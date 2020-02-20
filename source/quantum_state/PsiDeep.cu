@@ -116,8 +116,8 @@ Array<dtype> PsiDeepT<dtype>::get_params() const {
     Array<dtype> result(this->num_params, false);
 
     for(auto i = 0u; i < this->N; i++) {
-        result[i]= dtype(this->alpha_array[i], 0.0);
-        result[this->N + i] = dtype(this->beta_array[i], 0.0);
+        result[i]= get_real<dtype>(this->alpha_array[i]);
+        result[this->N + i] = get_real<dtype>(this->beta_array[i]);
     }
     auto it = result.begin() + 2 * this->N;
 
@@ -135,8 +135,8 @@ Array<dtype> PsiDeepT<dtype>::get_params() const {
 template<typename dtype>
 void PsiDeepT<dtype>::set_params(const Array<dtype>& new_params) {
     for(auto i = 0u; i < this->N; i++) {
-        this->alpha_array[i] = new_params[i].real();
-        this->beta_array[i] = new_params[this->N + i].real();
+        this->alpha_array[i] = get_real<double>(new_params[i]);
+        this->beta_array[i] = get_real<double>(new_params[this->N + i]);
     }
     auto it = new_params.begin() + 2 * this->N;
 
@@ -167,5 +167,6 @@ void PsiDeepT<dtype>::set_params(const Array<dtype>& new_params) {
 
 
 template struct PsiDeepT<complex_t>;
+template struct PsiDeepT<double>;
 
 } // namespace rbm_on_gpu

@@ -553,13 +553,6 @@ public:
 
 #endif // __PYTHONCC__
 
-    inline Array<dtype> as_vector() const {
-        return psi_vector(*this);
-    }
-    inline double norm(const ExactSummation& exact_summation) const {
-        return psi_norm(*this, exact_summation);
-    }
-
     Array<dtype> get_params() const;
     void set_params(const Array<dtype>& new_params);
 
