@@ -197,4 +197,15 @@ void log_duration(std::string info, std::chrono::duration<double> duration) {
 
 #endif
 
+template<typename dtype>
+struct std_dtype {
+    using type = dtype;
+};
+
+template<>
+struct std_dtype<complex_t> {
+    using type = std::complex<typename complex_t::value_type>;
+};
+
+
 } // namespace rbm_on_gpu
