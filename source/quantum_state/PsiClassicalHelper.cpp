@@ -24,7 +24,7 @@ int const numberOfVarParametrsMax=300000; // before compression Stripe3Order (12
 int indexVP[numberOfVarParametrsMax][2] = {0}; // initialize with zeros
 
 
-Eigen::VectorXcd varW(numberOfVarParameters); // variational parameters
+Eigen::VectorXcd varW = Eigen::VectorXcd::Zero(numberOfVarParameters+1); // variational parameters; last one is the "dumb" VP for normalization and the global phase
 
 rbm_on_gpu::PsiDeepMin* psi_neural = nullptr;
 
@@ -60,8 +60,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
 	std::ifstream filePos;
 	filePos.open (filenamePos.c_str());
 	
-	cout << "index-1=" << index-1 << endl;
-    if (filePos.is_open()==true)  cout << filenamePos << " was successfully loaded by loadVP()" << endl;
+	if (filePos.is_open()==true)  cout << filenamePos << " was successfully loaded by loadVP()" << endl;
     if (filePos.is_open()==false) cout << filenamePos << " was NOT loaded by loadVP()" << endl;
 
 	std::string temp;
@@ -177,12 +176,7 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
             if (CompressionMode==1) for (int j_indt=0; j_indt<j_ind_max; j_indt++)    indexVP[2+(1+omega)][1]+=1;
             // total 1-ord: 2+3 = 5 (0-th is dumb)
 			
-			cout << "psi_0_local_ij_flip=" << psi_0_local_ij_flip << endl; // debug
-			cout << "psi_0_local_ij=" << psi_0_local_ij << endl; // debug
-			cout << "omega=" << omega << endl;
-			cout << "indexVP[2+(1+omega)][0]=" << indexVP[2+(1+omega)][0] << endl;
-			cout << "varW(indexVP[2+(1+omega)][0])=" << varW(indexVP[2+(1+omega)][0]) << endl;
-            if (PerturbationTheoryOrder==1) return Heff_plaquetteComplex;
+			if (PerturbationTheoryOrder==1) return Heff_plaquetteComplex;
             }
 
         // 2-nd order
