@@ -14,22 +14,6 @@ namespace rbm_on_gpu {
 
 using namespace std;
 
-
-namespace detail {
-
-template<typename T>
-struct std_type {
-    using type = T;
-};
-
-template<>
-struct std_type<complex_t> {
-    using type = std::complex<double>;
-};
-
-} // namespace detail
-
-
 namespace kernel {
 
 template<typename T>
@@ -92,6 +76,8 @@ struct Array : public vector<T>, public kernel::Array<T> {
 
 #ifdef __PYTHONCC__
 
+    using std_T = typename std_dtype<T>::type;
+
     template<long unsigned int dim>
     inline Array<T>& operator=(const xt::pytensor<std::complex<double>, dim>& python_vec) {
         static_assert(is_same<T, complex_t>::value);
@@ -117,13 +103,22 @@ struct Array : public vector<T>, public kernel::Array<T> {
         (*this) = python_vec;
     }
 
-    template<unsigned int dim>
-    inline xt::pytensor<typename detail::std_type<T>::type, dim> to_pytensor(shape_t<dim> shape={}) const {
-        if(shape == shape_t<dim>()) {
+    inline xt::pytensor<std_T, 1u> to_pytensor_1d(shape_t<1u> shape={}) const {
+        if(shape == shape_t<1u>()) {
             shape[0] = (long int)this->size();
         }
 
-        xt::pytensor<typename detail::std_type<T>::type, dim> result(shape);
+        xt::pytensor<std_T, 1u> result(shape);
+        memcpy(result.data(), this->host_data(), sizeof(T) * this->size());
+        return result;
+    }
+
+    inline xt::pytensor<std_T, 2u> to_pytensor_2d(shape_t<2u> shape={}) const {
+        if(shape == shape_t<2u>()) {
+            shape[0] = (long int)this->size();
+        }
+
+        xt::pytensor<std_T, 2u> result(shape);
         memcpy(result.data(), this->host_data(), sizeof(T) * this->size());
         return result;
     }

@@ -1,3 +1,5 @@
+#ifdef ENABLE_PSI_DEEP
+
 #include "quantum_state/PsiDeep.hpp"
 
 #include <complex>
@@ -170,3 +172,6 @@ template struct PsiDeepT<complex_t>;
 template struct PsiDeepT<double>;
 
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_PSI_DEEP

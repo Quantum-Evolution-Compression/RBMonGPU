@@ -20,6 +20,7 @@ from ._pyRBMonGPU import (
 
 from .Psi import Psi
 from .PsiDeep import PsiDeep
+from .PsiPair import PsiPair
 
 from .new_neural_network import (
     new_neural_network,

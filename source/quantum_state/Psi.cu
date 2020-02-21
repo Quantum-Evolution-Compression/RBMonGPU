@@ -1,3 +1,5 @@
+#ifdef ENABLE_PSI
+
 #include "quantum_state/Psi.hpp"
 #include "network_functions/PsiVector.hpp"
 #include "network_functions/PsiNorm.hpp"
@@ -136,3 +138,6 @@ void Psi::set_params(const complex<double>* new_params) {
 }
 
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_PSI

@@ -1,3 +1,5 @@
+#ifdef ENABLE_EXACT_SUMMATION
+
 #include "spin_ensembles/ExactSummation.hpp"
 #include "quantum_state/Psi.hpp"
 #include "types.h"
@@ -43,3 +45,6 @@ void ExactSummation::set_total_z_symmetry(const int sector) {
 }
 
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_EXACT_SUMMATION

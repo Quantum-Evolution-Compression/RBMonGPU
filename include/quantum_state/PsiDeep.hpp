@@ -322,7 +322,7 @@ public:
                         layer.begin_params + layer.size + i * layer.size + j,
                         cache.activations[j] * (
                             layer_idx == 0 ?
-                            dtype(spins[lhs_unit_idx], 0.0) :
+                            get_real<dtype>(spins[lhs_unit_idx]) :
                             my_logcosh(
                                 deep_angles[
                                     this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
@@ -474,7 +474,7 @@ public:
         // cout << endl;
 
         // for(auto layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
-        //     const auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        //     const auto& kernel_layer = kernel::PsiDeepT<dtype>::layers[layer_idx];
         //     const auto& layer = *next(this->layers.begin(), layer_idx);
 
         //     cout << "Layer: " << layer_idx << endl;
@@ -513,21 +513,21 @@ public:
         return psi_O_k_vector_py(*this, spins);
     }
 
-    inline vector<xt::pytensor<complex<double>, 1>> get_b() const {
-        vector<xt::pytensor<complex<double>, 1>> result;
+    inline vector<xt::pytensor<typename std_dtype<dtype>::type, 1u>> get_b() const {
+        vector<xt::pytensor<typename std_dtype<dtype>::type, 1u>> result;
 
         for(const auto& layer : this->layers) {
-            result.push_back(layer.biases.to_pytensor<1u>());
+            result.push_back(layer.biases.to_pytensor_1d());
         }
 
         return result;
     }
 
-    inline vector<xt::pytensor<complex<double>, 2>> get_W() const {
-        vector<xt::pytensor<complex<double>, 2>> result;
+    inline vector<xt::pytensor<typename std_dtype<dtype>::type, 2u>> get_W() const {
+        vector<xt::pytensor<typename std_dtype<dtype>::type, 2u>> result;
 
         for(const auto& layer : this->layers) {
-            result.push_back(layer.lhs_weights.to_pytensor<2u>(shape_t<2u>{
+            result.push_back(layer.lhs_weights.to_pytensor_2d(shape_t<2u>{
                 (long int)layer.lhs_connectivity, (long int)layer.size
             }));
         }
@@ -539,7 +539,7 @@ public:
         vector<xt::pytensor<unsigned int, 2>> result;
 
         for(const auto& layer : this->layers) {
-            result.push_back(layer.lhs_connections.to_pytensor<2u>(shape_t<2u>{
+            result.push_back(layer.lhs_connections.to_pytensor_2d(shape_t<2u>{
                 (long int)layer.lhs_connectivity, (long int)layer.size
             }));
         }

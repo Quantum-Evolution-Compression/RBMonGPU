@@ -81,13 +81,62 @@ if(MAX_SPINS)
     add_compile_definitions(MAX_SPINS=${MAX_SPINS})
 endif()
 
+# Set target
+# ==========
+
+file(GLOB_RECURSE CUDASRCFILES "${project_source_dir}/*")
+add_library(RBMonGPU SHARED ${CUDASRCFILES})
+
+# User options
+# ==============
+
+option(ENABLE_MONTE_CARLO "enable monte-carlo" ON)
+if (ENABLE_MONTE_CARLO)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_MONTE_CARLO)
+endif()
+
+option(ENABLE_EXACT_SUMMATION "enable exact summation" ON)
+if (ENABLE_EXACT_SUMMATION)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_EXACT_SUMMATION)
+endif()
+
+option(ENABLE_PSI "enable Psi" ON)
+if (ENABLE_PSI)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI)
+endif()
+
+option(ENABLE_PSI_DEEP "enable PsiDeep" ON)
+if (ENABLE_PSI_DEEP)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI_DEEP)
+endif()
+
+option(ENABLE_PSI_DEEP_MIN "enable PsiDeepMin" ON)
+if (ENABLE_PSI_DEEP_MIN)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI_DEEP_MIN)
+endif()
+
+option(ENABLE_PSI_HAMILTONIAN "enable PsiHamiltonian" ON)
+if (ENABLE_PSI_HAMILTONIAN)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI_HAMILTONIAN)
+endif()
+
+option(ENABLE_PSI_CLASSICAL "enable PsiClassical" ON)
+if (ENABLE_PSI_CLASSICAL)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI_CLASSICAL)
+endif()
+
+option(ENABLE_PSI_PAIR "enable PsiPair" ON)
+if (ENABLE_PSI_PAIR)
+  target_compile_definitions(RBMonGPU PRIVATE ENABLE_PSI_PAIR)
+endif()
+
 # Compile and link RBMonGPU
 # =========================
 
-file(GLOB_RECURSE CUDASRCFILES "${project_source_dir}/*")
+
 # file(GLOB_RECURSE SRCFILES "${project_source_dir}/*.cpp")
 
-add_library(RBMonGPU SHARED ${CUDASRCFILES})
+
 # add_executable(test ${project_source_dir}/main.cpp)
 
 target_include_directories(RBMonGPU PRIVATE ${CUDA_INCLUDES})

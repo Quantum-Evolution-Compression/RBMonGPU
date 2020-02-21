@@ -1,3 +1,6 @@
+#ifdef ENABLE_PSI_PAIR
+
+
 #include "quantum_state/PsiPair.hpp"
 
 #include <complex>
@@ -73,3 +76,6 @@ void PsiPair::set_params(const Array<complex_t>& new_params) {
 }
 
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_PSI_PAIR

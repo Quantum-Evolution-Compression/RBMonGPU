@@ -22,6 +22,7 @@
 #ifdef __PYTHONCC__
     #define FORCE_IMPORT_ARRAY
     #include "xtensor-python/pytensor.hpp"
+    #include "xtensor/xcomplex.hpp"
 
     using namespace std::complex_literals;
 #endif // __PYTHONCC__
@@ -40,6 +41,8 @@ struct PsiPair{
 
     PsiDeep psi_real;
     PsiDeep psi_imag;
+
+#ifdef __CUDACC__
 
     HDINLINE
     void log_psi_s(complex_t& result, const Spins& spins, Angles& cache) const {
@@ -86,34 +89,46 @@ struct PsiPair{
         );
     }
 
+#endif
+
+    HDINLINE
+    double probability_s(const double log_psi_s_real) const {
+        return exp(2.0 * (log(this->prefactor) + log_psi_s_real));
+    }
+
     HDINLINE
     unsigned int get_num_spins() const {
-        return this->psi_real.N;
+        return this->psi_real.get_num_spins();
     }
 
     HDINLINE
     unsigned int get_num_params() const {
-        return this->psi_real.num_params;
+        return this->psi_real.get_num_params();
     }
 
     HDINLINE
     unsigned int get_width() const {
-        return this->psi_real.width;
+        return this->psi_real.get_width();
     }
 
     HDINLINE
     unsigned int get_num_angles() const {
-        return this->psi_real.layers[0].size;
+        return this->psi_real.get_num_angles();
     }
 
     HDINLINE
     unsigned int get_num_units() const {
-        return this->psi_real.num_units;
+        return this->psi_real.get_num_units();
     }
 
     HDINLINE
     unsigned int get_O_k_length() const {
-        return this->psi_real.O_k_length;
+        return this->psi_real.get_O_k_length();
+    }
+
+    HDINLINE
+    PsiPair get_kernel() const {
+        return *this;
     }
 };
 
@@ -124,20 +139,20 @@ namespace detail {
 
 #ifdef __PYTHONCC__
 
-template<int dim>
-inline vector<xt::pytensor<double, dim>> extract_real(const vector<xt::pytensor<double, dim>>& x_vector) {
+template<unsigned int dim>
+inline vector<xt::pytensor<double, dim>> extract_real(const vector<xt::pytensor<std::complex<double>, dim>>& x_vector) {
     vector<xt::pytensor<double, dim>> result;
     for(const auto& x : x_vector) {
-        result.push_back(x.real());
+        result.push_back(xt::real(x));
     }
     return result;
 }
 
-template<int dim>
-inline vector<xt::pytensor<double, dim>> extract_imag(const vector<xt::pytensor<double, dim>>& x_vector) {
+template<unsigned int dim>
+inline vector<xt::pytensor<double, dim>> extract_imag(const vector<xt::pytensor<std::complex<double>, dim>>& x_vector) {
     vector<xt::pytensor<double, dim>> result;
     for(const auto& x : x_vector) {
-        result.push_back(x.imag());
+        result.push_back(xt::imag(x));
     }
     return result;
 }
@@ -177,9 +192,9 @@ struct PsiPair : public kernel::PsiPair {
         psi_real(
             alpha,
             beta,
-            detail::extract_real(biases_list),
+            detail::extract_real<1u>(biases_list),
             lhs_connections_list,
-            detail::extract_real(lhs_weights_list),
+            detail::extract_real<2u>(lhs_weights_list),
             prefactor,
             free_quantum_axis,
             gpu
@@ -187,9 +202,9 @@ struct PsiPair : public kernel::PsiPair {
         psi_imag(
             alpha,
             beta,
-            detail::extract_imag(biases_list),
+            detail::extract_imag<1u>(biases_list),
             lhs_connections_list,
-            detail::extract_imag(lhs_weights_list),
+            detail::extract_imag<2u>(lhs_weights_list),
             prefactor,
             free_quantum_axis,
             gpu
@@ -197,7 +212,7 @@ struct PsiPair : public kernel::PsiPair {
         gpu(gpu)
     {
         this->prefactor = prefactor;
-        void update_kernel();
+        this->update_kernel();
     }
 
     PsiPair copy() const {

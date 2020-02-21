@@ -1,8 +1,6 @@
 #include "network_functions/KullbackLeibler.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
-#include "spin_ensembles/MonteCarloLoop.hpp"
-#include "quantum_state/PsiDeep.hpp"
-#include "quantum_state/PsiClassical.hpp"
+#include "spin_ensembles.hpp"
+#include "quantum_states.hpp"
 
 #include <cstring>
 #include <math.h>
@@ -140,35 +138,82 @@ double KullbackLeibler::gradient(
 }
 
 
-template double KullbackLeibler::value(
-    const PsiDeep& psi, const PsiDeep& psi_prime,
-    const ExactSummation& spin_ensemble
-);
-template double KullbackLeibler::value(
-    const PsiDeep& psi, const PsiDeep& psi_prime,
-    const MonteCarloLoop& spin_ensemble
-);
+#ifdef ENABLE_MONTE_CARLO
 
-template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI)
+
+template double KullbackLeibler::value(
+    const PsiClassical& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
 );
 
+#endif
 
-template double KullbackLeibler::value(
-    const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
-);
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
+
 template double KullbackLeibler::value(
     const PsiClassical& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
-);
-
-template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
 );
 template double KullbackLeibler::gradient(
     complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
 );
+
+#endif
+
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_PAIR)
+
+template double KullbackLeibler::value(
+    const PsiClassical& psi, const PsiPair& psi_prime, const MonteCarloLoop& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const MonteCarloLoop& spin_ensemble
+);
+
+#endif
+
+
+#endif
+
+
+#ifdef ENABLE_EXACT_SUMMATION
+
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI)
+
+template double KullbackLeibler::value(
+    const PsiClassical& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
+);
+
+#endif
+
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
+
+template double KullbackLeibler::value(
+    const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+);
+
+#endif
+
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_PAIR)
+
+template double KullbackLeibler::value(
+    const PsiClassical& psi, const PsiPair& psi_prime, const ExactSummation& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const ExactSummation& spin_ensemble
+);
+
+#endif
+
+
+#endif
+
 
 } // namespace rbm_on_gpu

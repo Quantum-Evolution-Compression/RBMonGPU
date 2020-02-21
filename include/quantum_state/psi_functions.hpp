@@ -115,11 +115,21 @@ complex_t my_tanh(const complex_t z) {
 
 
 HDINLINE double my_logcosh(const double& x) {
-    return log(cosh(x));
+    // if (x > 0.0) {
+    //     return x;
+    // }
+    // return 0.0;
+    return tanh(x);
 }
 
 HDINLINE double my_tanh(const double& x) {
-    return tanh(x);
+    // return tanh(x);
+    const auto y = cosh(x);
+    return 1.0 / (y * y);
+    // if (x > 0.0) {
+    //     return 1.0;
+    // }
+    // return 0.0;
 }
 
 
