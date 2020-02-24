@@ -1,5 +1,13 @@
 # from pyRBMonGPU import Psi, PsiDeep
-from pyRBMonGPU import PsiDeep, PsiPair
+try:
+    from pyRBMonGPU import PsiDeep
+except ImportError:
+    pass
+
+try:
+    from pyRBMonGPU import PsiDeep
+except ImportError:
+    pass
 import numpy as np
 import math
 from itertools import product

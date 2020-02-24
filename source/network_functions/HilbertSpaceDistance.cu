@@ -291,14 +291,14 @@ template double HilbertSpaceDistance::gradient(complex<double>* result, const Ps
 
 #endif
 
-#ifdef defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
 
 template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
 template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
 
 #endif
 
-#ifdef defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_PAIR)
+#if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_PAIR)
 
 template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
 template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);

@@ -53,8 +53,8 @@ def test_distance1(psi_all, hamiltonian, gpu):
 #     assert distance_test == approx(distance_ref, rel=1e-1, abs=1e-8)
 
 
-def test_gradient(psi_all, hamiltonian, gpu):
-    psi = psi_all(gpu)
+def test_gradient(psi_deep, hamiltonian, gpu):
+    psi = psi_deep(gpu)
 
     N = psi.N
     H = hamiltonian(N)

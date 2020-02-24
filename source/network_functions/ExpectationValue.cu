@@ -465,7 +465,7 @@ vector<complex<double>> ExpectationValue::operator() (
 
 #ifdef ENABLE_MONTE_CARLO
 
-#ifdef ENBALE_PSI
+#ifdef ENABLE_PSI
 
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const Psi&, const Operator&, const MonteCarloLoop&) const;
@@ -478,7 +478,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 
 #endif
 
-#ifdef ENBALE_PSI_DEEP
+#ifdef ENABLE_PSI_DEEP
 
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
@@ -489,7 +489,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 
 #endif
 
-#ifdef ENBALE_PSI_PAIR
+#ifdef ENABLE_PSI_PAIR
 
 template complex<double> ExpectationValue::operator()(const PsiPair& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const MonteCarloLoop&) const;
@@ -509,7 +509,7 @@ template complex<double> ExpectationValue::operator()(const PsiHamiltonian& psi,
 
 #ifdef ENABLE_EXACT_SUMMATION
 
-#ifdef ENBALE_PSI
+#ifdef ENABLE_PSI
 
 template complex<double> ExpectationValue::operator()(const Psi& psi, const Operator& operator_, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const Psi&, const Operator&, const ExactSummation&) const;
@@ -522,7 +522,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 
 #endif
 
-#ifdef ENBALE_PSI_DEEP
+#ifdef ENABLE_PSI_DEEP
 
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const ExactSummation&) const;
@@ -533,7 +533,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 
 #endif
 
-#ifdef ENBALE_PSI_PAIR
+#ifdef ENABLE_PSI_PAIR
 
 template complex<double> ExpectationValue::operator()(const PsiPair& psi, const Operator& operator_, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const ExactSummation&) const;

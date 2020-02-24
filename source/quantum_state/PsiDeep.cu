@@ -1,4 +1,4 @@
-#ifdef ENABLE_PSI_DEEP
+#if defined(ENABLE_PSI_DEEP) || defined(ENABLE_PSI_PAIR)
 
 #include "quantum_state/PsiDeep.hpp"
 
