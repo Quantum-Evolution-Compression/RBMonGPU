@@ -8,10 +8,11 @@ namespace rbm_on_gpu {
 
 // #ifdef __CUDACC__
 
+template<typename dtype>
 struct PsiDeepAngles {
     static constexpr unsigned int max_width = 2 * MAX_SPINS;
 
-    complex_t activations[max_width];
+    dtype activations[max_width];
 
     PsiDeepAngles() = default;
 

@@ -1,6 +1,7 @@
 #include "network_functions/PsiVector.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
+#include "quantum_state/PsiPair.hpp"
 #include "quantum_state/PsiClassical.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
@@ -10,7 +11,7 @@ namespace rbm_on_gpu {
 
 template<typename Psi_t>
 void psi_vector(complex<double>* result, const Psi_t& psi) {
-    ExactSummation exact_summation(psi.N, psi.gpu);
+    ExactSummation exact_summation(psi.get_num_spins(), psi.gpu);
 
     complex_t* result_ptr;
     MALLOC(result_ptr, sizeof(complex_t) * exact_summation.get_num_steps(), psi.gpu);
@@ -42,7 +43,7 @@ void psi_vector(complex<double>* result, const Psi_t& psi) {
 
 template<typename Psi_t>
 Array<complex_t> psi_vector(const Psi_t& psi) {
-    Array<complex_t> result(1 << psi.N, false);
+    Array<complex_t> result(1 << psi.get_num_spins(), false);
     psi_vector(reinterpret_cast<complex<double>*>(result.data()), psi);
 
     return result;
@@ -51,10 +52,12 @@ Array<complex_t> psi_vector(const Psi_t& psi) {
 
 template void psi_vector(complex<double>* result, const Psi& psi);
 template void psi_vector(complex<double>* result, const PsiDeep& psi);
+template void psi_vector(complex<double>* result, const PsiPair& psi);
 template void psi_vector(complex<double>* result, const PsiClassical& psi);
 
 template Array<complex_t> psi_vector(const Psi& psi);
 template Array<complex_t> psi_vector(const PsiDeep& psi);
+template Array<complex_t> psi_vector(const PsiPair& psi);
 template Array<complex_t> psi_vector(const PsiClassical& psi);
 
 } // namespace rbm_on_gpu

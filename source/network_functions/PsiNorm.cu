@@ -1,6 +1,7 @@
 #include "network_functions/PsiNorm.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
+#include "quantum_state/PsiPair.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
 
@@ -43,5 +44,6 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
 
 template double psi_norm(const Psi& psi, const ExactSummation&);
 template double psi_norm(const PsiDeep& psi, const ExactSummation&);
+template double psi_norm(const PsiPair& psi, const ExactSummation&);
 
 } // namespace rbm_on_gpu

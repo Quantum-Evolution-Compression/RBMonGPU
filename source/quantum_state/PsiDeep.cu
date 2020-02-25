@@ -1,3 +1,5 @@
+#if defined(ENABLE_PSI_DEEP) || defined(ENABLE_PSI_PAIR)
+
 #include "quantum_state/PsiDeep.hpp"
 
 #include <complex>
@@ -10,8 +12,8 @@
 
 namespace rbm_on_gpu {
 
-
-PsiDeep::PsiDeep(const PsiDeep& other)
+template<typename dtype>
+PsiDeepT<dtype>::PsiDeepT(const PsiDeepT<dtype>& other)
     :
     alpha_array(other.alpha_array),
     beta_array(other.beta_array),
@@ -29,12 +31,13 @@ PsiDeep::PsiDeep(const PsiDeep& other)
 }
 
 
-void PsiDeep::init_kernel() {
+template<typename dtype>
+void PsiDeepT<dtype>::init_kernel() {
     this->num_params = 2 * this->N; // alpha and beta
     auto angle_idx = 0u;
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         const auto& layer = *next(this->layers.begin(), layer_idx);
-        auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        auto& kernel_layer = kernel::PsiDeepT<dtype>::layers[layer_idx];
         kernel_layer.size = layer.size;
         kernel_layer.lhs_connectivity = layer.lhs_connectivity;
 
@@ -45,8 +48,8 @@ void PsiDeep::init_kernel() {
         angle_idx += layer.size;
     }
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
-        auto& layer = kernel::PsiDeep::layers[layer_idx];
-        auto next_layer = kernel::PsiDeep::layers + layer_idx + 1;
+        auto& layer = kernel::PsiDeepT<dtype>::layers[layer_idx];
+        auto next_layer = kernel::PsiDeepT<dtype>::layers + layer_idx + 1;
 
         layer.rhs_connectivity = (
             layer_idx + 1 < this->num_layers ?
@@ -60,10 +63,11 @@ void PsiDeep::init_kernel() {
 }
 
 
-void PsiDeep::update_kernel() {
+template<typename dtype>
+void PsiDeepT<dtype>::update_kernel() {
     for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         Layer& layer = *next(this->layers.begin(), layer_idx);
-        auto& kernel_layer = kernel::PsiDeep::layers[layer_idx];
+        auto& kernel_layer = kernel::PsiDeepT<dtype>::layers[layer_idx];
 
         kernel_layer.lhs_connections = layer.lhs_connections.data();
         kernel_layer.rhs_connections = layer.rhs_connections.data();
@@ -74,17 +78,18 @@ void PsiDeep::update_kernel() {
 }
 
 
-pair<Array<unsigned int>, Array<complex_t>> PsiDeep::compile_rhs_connections_and_weights(
+template<typename dtype>
+pair<Array<unsigned int>, Array<dtype>> PsiDeepT<dtype>::compile_rhs_connections_and_weights(
     const unsigned int prev_size,
     const unsigned int size,
     const unsigned int lhs_connectivity,
     const Array<unsigned int>& lhs_connections,
-    const Array<complex_t>& lhs_weights
+    const Array<dtype>& lhs_weights
 ) {
     const auto rhs_connectivity = size * lhs_connectivity / prev_size;
 
     Array<unsigned int> rhs_connections(prev_size * rhs_connectivity, this->gpu);
-    Array<complex_t> rhs_weights(prev_size * rhs_connectivity, this->gpu);
+    Array<dtype> rhs_weights(prev_size * rhs_connectivity, this->gpu);
 
     vector<unsigned int> lhs_num_connections;
     lhs_num_connections.assign(prev_size, 0u);
@@ -108,12 +113,13 @@ pair<Array<unsigned int>, Array<complex_t>> PsiDeep::compile_rhs_connections_and
 }
 
 
-Array<complex_t> PsiDeep::get_params() const {
-    Array<complex_t> result(this->num_params, false);
+template<typename dtype>
+Array<dtype> PsiDeepT<dtype>::get_params() const {
+    Array<dtype> result(this->num_params, false);
 
     for(auto i = 0u; i < this->N; i++) {
-        result[i]= complex_t(this->alpha_array[i], 0.0);
-        result[this->N + i] = complex_t(this->beta_array[i], 0.0);
+        result[i]= get_real<dtype>(this->alpha_array[i]);
+        result[this->N + i] = get_real<dtype>(this->beta_array[i]);
     }
     auto it = result.begin() + 2 * this->N;
 
@@ -128,10 +134,11 @@ Array<complex_t> PsiDeep::get_params() const {
 }
 
 
-void PsiDeep::set_params(const Array<complex_t>& new_params) {
+template<typename dtype>
+void PsiDeepT<dtype>::set_params(const Array<dtype>& new_params) {
     for(auto i = 0u; i < this->N; i++) {
-        this->alpha_array[i] = new_params[i].real();
-        this->beta_array[i] = new_params[this->N + i].real();
+        this->alpha_array[i] = get_real<double>(new_params[i]);
+        this->beta_array[i] = get_real<double>(new_params[this->N + i]);
     }
     auto it = new_params.begin() + 2 * this->N;
 
@@ -160,4 +167,11 @@ void PsiDeep::set_params(const Array<complex_t>& new_params) {
     this->update_kernel();
 }
 
+
+template struct PsiDeepT<complex_t>;
+template struct PsiDeepT<double>;
+
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_PSI_DEEP

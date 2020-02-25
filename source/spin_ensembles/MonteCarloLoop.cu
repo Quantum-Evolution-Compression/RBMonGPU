@@ -1,3 +1,5 @@
+#ifdef ENABLE_MONTE_CARLO
+
 #include "spin_ensembles/MonteCarloLoop.hpp"
 #include "quantum_state/Psi.hpp"
 
@@ -71,3 +73,6 @@ void MonteCarloLoop::allocate_memory() {
 }
 
 } // namespace rbm_on_gpu
+
+
+#endif  // ENABLE_MONTE_CARLO

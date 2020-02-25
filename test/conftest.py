@@ -1,4 +1,4 @@
-from pyRBMonGPU import new_neural_network, new_deep_neural_network, MonteCarloLoop, ExactSummation
+from pyRBMonGPU import new_neural_network, new_deep_neural_network, ExactSummation
 import quantum_tools as qt
 
 
@@ -25,11 +25,19 @@ def pytest_generate_tests(metafunc):
 
     if 'psi_deep' in metafunc.fixturenames:
         psi_list = [
-            lambda gpu: new_deep_neural_network(2, [2], [2], gpu=gpu),
+            # lambda gpu: new_deep_neural_network(2, [2], [2], gpu=gpu),
             # lambda gpu: new_deep_neural_network(3, [9, 6], [1, 3], noise=1e-2, gpu=gpu),
             # lambda gpu: new_deep_neural_network(8, [16, 8, 4], [4, 2, 4], noise=1e-2, gpu=gpu),
         ]
         metafunc.parametrize("psi_deep", psi_list)
+
+    if 'psi_pair' in metafunc.fixturenames:
+        psi_list = [
+            # lambda gpu: new_deep_neural_network(2, [2], [2], pair=True, gpu=gpu),
+            lambda gpu: new_deep_neural_network(3, [9, 6], [1, 3], noise=1e-2, pair=True, gpu=gpu),
+            # lambda gpu: new_deep_neural_network(8, [16, 8, 4], [4, 2, 4], noise=1e-2, pair=True, gpu=gpu),
+        ]
+        metafunc.parametrize("psi_pair", psi_list)
 
     if 'psi_all' in metafunc.fixturenames:
         psi_list = [
