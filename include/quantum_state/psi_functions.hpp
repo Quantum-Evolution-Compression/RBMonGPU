@@ -120,9 +120,11 @@ HDINLINE double my_logcosh(const double& x) {
     // }
     // return 0.0;
     return tanh(x);
+    // return x;
 }
 
 HDINLINE double my_tanh(const double& x) {
+    // return 1.0;
     // return tanh(x);
     const auto y = cosh(x);
     return 1.0 / (y * y);

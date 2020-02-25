@@ -64,7 +64,7 @@ void PsiPair::set_params(const Array<complex_t>& new_params) {
     Array<double> real_params(num_params, false);
     Array<double> imag_params(num_params, false);
 
-    for(auto k = 2u * N; k < this->psi_real.num_params; k++) {
+    for(auto k = 2u * N; k < num_params; k++) {
         real_params[k] = new_params[k].real();
         imag_params[k] = new_params[k].imag();
     }

@@ -73,20 +73,6 @@ struct PsiPair{
     template<typename Function>
     HDINLINE
     void foreach_O_k(const Spins& spins, Angles& cache, Function function) const {
-        this->psi_real.foreach_O_k(
-            spins,
-            cache,
-            [&](const unsigned int k, const double& O_k_element) {
-                function(k, complex_t(O_k_element, 0.0));
-            }
-        );
-        this->psi_imag.foreach_O_k(
-            spins,
-            cache,
-            [&](const unsigned int k, const double& O_k_element) {
-                function(k, complex_t(0.0, O_k_element));
-            }
-        );
     }
 
 #endif

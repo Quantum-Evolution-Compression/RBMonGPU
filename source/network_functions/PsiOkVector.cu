@@ -1,8 +1,6 @@
 #include "network_functions/PsiOkVector.hpp"
-#include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiDeep.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
-#include "spin_ensembles/MonteCarloLoop.hpp"
+#include "quantum_states.hpp"
+#include "spin_ensembles.hpp"
 #include "types.h"
 
 namespace rbm_on_gpu {
@@ -14,7 +12,9 @@ void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spin
     auto O_k_length = psi.get_num_params();
     auto psi_kernel = psi.get_kernel();
 
+    // printf("O_k_length: %d\n", O_k_length);
     MALLOC(result_ptr, sizeof(complex_t) * O_k_length, psi.gpu);
+    // MEMSET(result_ptr, 0, sizeof(complex_t) * O_k_length, psi.gpu);
 
     const auto functor = [=] __host__ __device__ () {
         #include "cuda_kernel_defines.h"
@@ -26,6 +26,7 @@ void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spin
             spins,
             angles,
             [&](const unsigned int k, const complex_t& O_k_element) {
+                // printf("%d, %f, %f\n", k, O_k_element.real(), O_k_element.imag());
                 result_ptr[k] = O_k_element;
             }
         );
@@ -142,20 +143,17 @@ pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi_t& psi, const Spi
     return {result, result_std};
 }
 
-
+#ifdef ENABLE_PSI
 template void psi_O_k_vector(complex<double>* result, const Psi& psi, const Spins& spins);
+#endif // ENABLE_PSI
+
+#ifdef ENABLE_PSI_DEEP
 template void psi_O_k_vector(complex<double>* result, const PsiDeep& psi, const Spins& spins);
+#endif // ENABLE_PSI_DEEP
 
+#ifdef ENABLE_PSI_PAIR
+// template void psi_O_k_vector(complex<double>* result, const PsiPair& psi, const Spins& spins);
+#endif // ENABLE_PSI_PAIR
 
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const ExactSummation& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi& psi, const MonteCarloLoop& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const ExactSummation& spin_ensemble);
-template void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
-
-
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const ExactSummation& spin_ensemble);
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi& psi, const MonteCarloLoop& spin_ensemble);
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const ExactSummation& spin_ensemble);
-template pair<Array<complex_t>, Array<double>> psi_O_k_vector(const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
 
 } // namespace rbm_on_gpu

@@ -483,6 +483,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const MonteCarloLoop&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
+template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiDeep& psi, const vector<Operator>& operator_, const MonteCarloLoop&
 ) const;
@@ -492,8 +493,8 @@ template vector<complex<double>> ExpectationValue::operator()(
 #ifdef ENABLE_PSI_PAIR
 
 template complex<double> ExpectationValue::operator()(const PsiPair& psi, const Operator& operator_, const MonteCarloLoop&) const;
-template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const MonteCarloLoop&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const PsiPair&, const Operator&, const MonteCarloLoop&) const;
+// template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const MonteCarloLoop&) const;
+// template complex<double> ExpectationValue::gradient(complex<double>*, const PsiPair&, const Operator&, const MonteCarloLoop&) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiPair& psi, const vector<Operator>& operator_, const MonteCarloLoop&
 ) const;
@@ -527,6 +528,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const ExactSummation&) const;
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;
+template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiDeep& psi, const vector<Operator>& operator_, const ExactSummation&
 ) const;
@@ -536,8 +538,9 @@ template vector<complex<double>> ExpectationValue::operator()(
 #ifdef ENABLE_PSI_PAIR
 
 template complex<double> ExpectationValue::operator()(const PsiPair& psi, const Operator& operator_, const ExactSummation&) const;
-template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const ExactSummation&) const;
-template complex<double> ExpectationValue::gradient(complex<double>*, const PsiPair&, const Operator&, const ExactSummation&) const;
+// template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiPair&, const Operator&, const ExactSummation&) const;
+// template complex<double> ExpectationValue::gradient(complex<double>*, const PsiPair&, const Operator&, const ExactSummation&) const;
+// template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiPair&, const Operator&, const ExactSummation&) const;
 template vector<complex<double>> ExpectationValue::operator()(
     const PsiPair& psi, const vector<Operator>& operator_, const ExactSummation&
 ) const;

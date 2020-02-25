@@ -357,7 +357,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_PAIR
 #endif // ENABLE_MONTE_CARLO
@@ -379,44 +379,57 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_PAIR
 #endif // ENABLE_EXACT_SUMMATION
     ;
 
+
+#ifdef ENABLE_PSI
+    m.def("psi_O_k_vector", psi_O_k_vector_py<Psi>);
+#endif
+
+#ifdef ENABLE_PSI_DEEP
+    m.def("psi_O_k_vector", psi_O_k_vector_py<PsiDeep>);
+#endif
+
+#ifdef ENABLE_PSI_PAIR
+    // m.def("psi_O_k_vector", psi_O_k_vector_py<PsiPair>);
+#endif
+
     m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
         return get_S_matrix(psi, spin_ensemble).to_pytensor_2d(shape_t<2u>{psi.num_params, psi.num_params});
     });
 
-    m.def("get_O_k_vector", [](const Psi& psi, const ExactSummation& spin_ensemble) {
-        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
-    m.def("get_O_k_vector", [](const Psi& psi, const MonteCarloLoop& spin_ensemble) {
-        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
-    m.def("get_O_k_vector", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
-        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
-    m.def("get_O_k_vector", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
-        auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
+    // m.def("get_O_k_vector", [](const Psi& psi, const ExactSummation& spin_ensemble) {
+    //     auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
+    // m.def("get_O_k_vector", [](const Psi& psi, const MonteCarloLoop& spin_ensemble) {
+    //     auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
+    // m.def("get_O_k_vector", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
+    //     auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
+    // m.def("get_O_k_vector", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
+    //     auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
 
     m.def("psi_angles", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
         auto result_and_result_std = psi_angles(psi, spin_ensemble);

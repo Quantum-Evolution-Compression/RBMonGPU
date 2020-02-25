@@ -1,6 +1,8 @@
 #pragma once
 
 #include "operator/Operator.hpp"
+#include "quantum_state/PsiClassical.hpp"
+#include "quantum_state/PsiPair.hpp"
 #include "Spins.h"
 #include "Array.hpp"
 #include "types.h"
@@ -37,6 +39,12 @@ public:
     template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     void compute_averages(
         const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
+        const bool is_unitary, const SpinEnsemble& spin_ensemble
+    ) const;
+
+    template<bool compute_gradient, bool real_gradient, typename Psi_t, typename SpinEnsemble>
+    void compute_averages2(
+        const Psi_t& psi, const PsiPair& psi_prime, const Operator& operator_,
         const bool is_unitary, const SpinEnsemble& spin_ensemble
     ) const;
 
@@ -86,6 +94,12 @@ public:
     template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double gradient(
         complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
+        const SpinEnsemble& spin_ensemble
+    );
+
+    template<typename Psi_t, typename SpinEnsemble>
+    double gradient(
+        complex<double>* result, const Psi_t& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary,
         const SpinEnsemble& spin_ensemble
     );
 

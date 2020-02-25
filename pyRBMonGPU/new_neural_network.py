@@ -5,7 +5,7 @@ except ImportError:
     pass
 
 try:
-    from pyRBMonGPU import PsiDeep
+    from pyRBMonGPU import PsiPair
 except ImportError:
     pass
 import numpy as np
