@@ -26,8 +26,8 @@
 #endif // __PYTHONCC__
 
 
-#define TRANSLATIONAL_INVARIANCE
-#define DIM 1
+// #define TRANSLATIONAL_INVARIANCE
+// #define DIM 1
 
 
 namespace rbm_on_gpu {
@@ -51,9 +51,9 @@ public:
         unsigned int  rhs_connectivity;     // number of connections to the rhs per unit
         unsigned int* lhs_connections;      // connectivity matrix to the lhs: lhs-connectivity x size
         unsigned int* rhs_connections;      // connectivity matrix to the rhs: size x rhs-connectivity
-        dtype*    lhs_weights;          // weight matrix to the lhs: lhs-connectivity x size
-        dtype*    rhs_weights;          // weight matrix to the rhs: size x rhs-connectivity
-        dtype*    biases;               // bias factors
+        dtype*    lhs_weights;          // weight matrix to the lhs: lhs-connectivity x size, var.parameters
+        dtype*    rhs_weights;          // weight matrix to the rhs: size x rhs-connectivity, var.parameters
+        dtype*    biases;               // bias factors, var.parameters
 
         HDINLINE unsigned int lhs_connection(const unsigned int i, const unsigned int j) const {
             return this->lhs_connections[i * this->size + j];

@@ -20,5 +20,5 @@ from .new_neural_network import (
     new_deep_neural_network
 )
 
-from .LearningByGradientDescent import LearningByGradientDescent
+from .LearningByGradientDescent import LearningByGradientDescent, DidNotConverge
 from .L2Regularization import L2Regularization

@@ -72,7 +72,7 @@ void generic_atomicAdd(T* address, const T& value) {
 #endif // __CUDACC__
 
 #ifndef MAX_SPINS
-#define MAX_SPINS 16
+#define MAX_SPINS 64
 #endif
 
 constexpr auto MAX_HIDDEN_SPINS = 2 * MAX_SPINS;

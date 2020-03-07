@@ -1,6 +1,7 @@
 #pragma once
 
 #include "operator/Operator.hpp"
+#include "Array.hpp"
 #include "types.h"
 
 #ifdef __PYTHONCC__
@@ -19,12 +20,18 @@ private:
     bool        gpu;
     complex_t*  result;
 
+    Array<complex_t> A_local;
+    Array<double> A_local_abs2;
+
 public:
     ExpectationValue(const bool gpu);
     ~ExpectationValue() noexcept(false);
 
     template<typename Psi_t, typename SpinEnsemble>
     complex<double> operator()(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+
+    template<typename Psi_t, typename SpinEnsemble>
+    pair<complex<double>, double> corrected(const Psi_t& psi, const Operator& operator_, const Operator& operator2, const SpinEnsemble& spin_ensemble);
 
     template<typename Psi_t, typename SpinEnsemble>
     vector<complex<double>> operator()(const Psi_t& psi, const vector<Operator>& operator_list_host, const SpinEnsemble& spin_ensemble) const;

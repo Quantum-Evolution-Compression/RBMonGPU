@@ -30,9 +30,6 @@ set(LIBS ${LIBS} ${CUDA_LIBRARIES})
 # Find Python
 # ===========
 
-if(DEFINED ENV{PYTHONHOME})
-    list(APPEND CMAKE_PREFIX_PATH "$ENV{PYTHONHOME}")
-endif()
 find_package(PythonLibs REQUIRED)
 set(CXX_INCLUDES ${CXX_INCLUDES} ${PYTHON_INCLUDE_DIR})
 

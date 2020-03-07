@@ -6,7 +6,7 @@
 
 namespace rbm_on_gpu {
 
-ExpectationValue::ExpectationValue(const bool gpu) : gpu(gpu) {
+ExpectationValue::ExpectationValue(const bool gpu) : A_local(1, gpu), A_local_abs2(1, gpu), gpu(gpu) {
     MALLOC(this->result, sizeof(complex_t), this->gpu);
 }
 
@@ -71,6 +71,61 @@ complex<double> ExpectationValue::operator()(
 
     return result_host;
 }
+
+
+template<typename Psi_t, typename SpinEnsemble>
+pair<complex<double>, double> ExpectationValue::corrected(
+    const Psi_t& psi, const Operator& operator_, const Operator& operator2, const SpinEnsemble& spin_ensemble
+) {
+
+    this->A_local.clear();
+    this->A_local_abs2.clear();
+
+    auto A_local_kernel = this->A_local.data();
+    auto A_local_abs2_kernel = this->A_local_abs2.data();
+
+    const auto psi_kernel = psi.get_kernel();
+    const auto operator_kernel = operator_.get_kernel();
+    const auto operator2_kernel = operator2.get_kernel();
+
+    spin_ensemble.foreach(
+        psi,
+        [=] __device__ __host__ (
+            const unsigned int spin_index,
+            const Spins spins,
+            const complex_t log_psi,
+            const typename Psi_t::Angles& angles,
+            const double weight
+        ) {
+            #include "cuda_kernel_defines.h"
+
+            SHARED complex_t local_energy;
+            operator_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
+
+            SHARED complex_t local_energy2;
+            operator_kernel.local_energy(local_energy2, psi_kernel, spins, log_psi, angles);
+
+            SINGLE {
+                generic_atomicAdd(A_local_kernel, weight * local_energy);
+                generic_atomicAdd(A_local_abs2_kernel, weight * exp(
+                    2 * local_energy.imag() + (local_energy * local_energy - local_energy2).real()
+                ));
+            }
+        }
+    );
+
+    this->A_local.update_host();
+    this->A_local_abs2.update_host();
+
+    this->A_local.front() /= spin_ensemble.get_num_steps();
+    this->A_local_abs2.front() /= spin_ensemble.get_num_steps();
+
+    return {
+        this->A_local.front().to_std() / this->A_local_abs2.front(),
+        this->A_local_abs2.front()
+    };
+}
+
 
 template<typename Psi_t, typename SpinEnsemble>
 pair<double, complex<double>> ExpectationValue::fluctuation(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const {
@@ -481,6 +536,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 #ifdef ENABLE_PSI_DEEP
 
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const MonteCarloLoop&) const;
+template pair<complex<double>, double> ExpectationValue::corrected(const PsiDeep& psi, const Operator& operator_, const Operator& operator2, const MonteCarloLoop&);
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const MonteCarloLoop&) const;
@@ -526,6 +582,7 @@ template vector<complex<double>> ExpectationValue::operator()(
 #ifdef ENABLE_PSI_DEEP
 
 template complex<double> ExpectationValue::operator()(const PsiDeep& psi, const Operator& operator_, const ExactSummation&) const;
+template pair<complex<double>, double> ExpectationValue::corrected(const PsiDeep& psi, const Operator& operator_, const Operator& operator2, const ExactSummation&);
 template pair<double, complex<double>> ExpectationValue::fluctuation(const PsiDeep&, const Operator&, const ExactSummation&) const;
 template complex<double> ExpectationValue::gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;
 template void ExpectationValue::fluctuation_gradient(complex<double>*, const PsiDeep&, const Operator&, const ExactSummation&) const;

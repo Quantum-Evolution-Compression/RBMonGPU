@@ -223,6 +223,7 @@ public:
     inline ~PsiClassical() {
     }
 
+    inline
     void init(const string& fname_base, const std::string& ReIm) {
         string filenamePos = fname_base + ReIm+".csv";
         std::ifstream filePos;

@@ -261,6 +261,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &ExpectationValue::__call__<PsiDeep, MonteCarloLoop>)
         .def("__call__", &ExpectationValue::__call__vector<PsiDeep, MonteCarloLoop>)
+        .def("corrected", &ExpectationValue::corrected<PsiDeep, MonteCarloLoop>)
         .def("gradient", &ExpectationValue::gradient_py<PsiDeep, MonteCarloLoop>)
         .def("fluctuation", &ExpectationValue::fluctuation<PsiDeep, MonteCarloLoop>)
         .def("fluctuation_gradient", &ExpectationValue::fluctuation_gradient_py<PsiDeep, MonteCarloLoop>)
@@ -281,6 +282,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &ExpectationValue::__call__<PsiDeep, ExactSummation>)
         .def("__call__", &ExpectationValue::__call__vector<PsiDeep, ExactSummation>)
+        .def("corrected", &ExpectationValue::corrected<PsiDeep, ExactSummation>)
         .def("gradient", &ExpectationValue::gradient_py<PsiDeep, ExactSummation>)
         .def("fluctuation", &ExpectationValue::fluctuation<PsiDeep, ExactSummation>)
         .def("fluctuation_gradient", &ExpectationValue::fluctuation_gradient_py<PsiDeep, ExactSummation>)
@@ -303,6 +305,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
 #ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_DEEP
@@ -323,6 +326,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
 #ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_DEEP
