@@ -40,7 +40,8 @@ public:
     using Angles = rbm_on_gpu::PsiDeepAngles<dtype>;
 
     static constexpr unsigned int max_layers = 3u;
-    static constexpr unsigned int max_deep_angles = max_layers * 2 * MAX_SPINS;
+    static constexpr unsigned int max_deep_angles = 2u * MAX_SPINS;
+    static constexpr unsigned int max_width = Angles::max_width;
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {
@@ -89,39 +90,41 @@ public:
     HDINLINE
     void forward_pass(
         const Spins& spins,
-        dtype* activations_in, /* once this functions has finished, this holds the *output*-activations of the last layer */
+        dtype* activations, /* once this functions has finished, this holds the *output*-activations of the last layer */
         dtype* deep_angles) const
     {
         #include "cuda_kernel_defines.h"
 
-        SHARED dtype activations_out[Angles::max_width];
-
         MULTI(i, this->get_num_spins()) {
-            activations_in[i] = spins[i];
+            activations[i] = spins[i];
         }
 
-        for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
-            SYNC;
+        // for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
+        SHARED_MEM_LOOP_START(layer_idx, this->num_layers) {
+            // SYNC;
             const Layer& layer = this->layers[layer_idx];
+            dtype REGISTER(activation, max_width);
             MULTI(j, layer.size) {
-                activations_out[j] = dtype(0.0);
+                REGISTER(activation, j) = dtype(0.0);
+                // activations_out[j] = dtype(0.0);
 
                 for(auto i = 0u; i < layer.lhs_connectivity; i++) {
-                    activations_out[j] += (
+                    REGISTER(activation, j) += (
                         layer.lhs_weight(i, j) *
-                        activations_in[layer.lhs_connection(i, j)]
+                        activations[layer.lhs_connection(i, j)]
                     );
                 }
-                activations_out[j] += layer.biases[j];
+                REGISTER(activation, j) += layer.biases[j];
 
                 if(deep_angles != nullptr) {
-                    deep_angles[layer.begin_angles + j] = activations_out[j];
+                    deep_angles[layer.begin_angles + j] = REGISTER(activation, j);
                 }
             }
             SYNC;
             MULTI(k, layer.size) {
-                activations_in[k] = my_logcosh(activations_out[k]);
+                activations[k] = my_logcosh(REGISTER(activation, k));
             }
+            SHARED_MEM_LOOP_END(layer_idx);
         }
     }
 

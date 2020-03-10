@@ -1,5 +1,10 @@
 # from pyRBMonGPU import Psi, PsiDeep
 try:
+    from pyRBMonGPU import Psi
+except ImportError:
+    pass
+
+try:
     from pyRBMonGPU import PsiDeep
 except ImportError:
     pass
@@ -82,7 +87,7 @@ def new_deep_neural_network(
     w[C_linear[0] // 2, :] += initial_value
     W = [w]
 
-    for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [1]):
+    for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [2]):
         w = (
             math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
             # 1j * math.sqrt(6 / (c + next_c)) / 1e2 * real_noise((c, m)) +

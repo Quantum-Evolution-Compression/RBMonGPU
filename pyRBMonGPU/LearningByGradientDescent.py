@@ -11,6 +11,7 @@ from collections import namedtuple
 from pathlib import Path
 import json
 import os
+import datetime
 
 
 # list of actions
@@ -69,7 +70,7 @@ class LearningByGradientDescent:
     @property
     def is_descending(self):
         graph = self.graph[-50:]
-        return graph[-1] - graph[0] < -0.025
+        return graph[-1] - graph[0] < -0.05
 
     @property
     def is_learning_poorly(self):
@@ -105,9 +106,12 @@ class LearningByGradientDescent:
             self.psi.normalize(self.spin_ensemble)
 
         if self.mode == modes.unitary_evolution:
+            # a = datetime.datetime.now()
             gradient, distance = self.hilbert_space_distance.gradient(
-                self.psi_0, self.psi, self.operator, self.is_unitary, self.spin_ensemble
+                self.psi_0, self.psi, self.operator, self.is_unitary, self.spin_ensemble, 0.0
             )
+            # b = datetime.datetime.now()
+            # print("gradient time:", (b - a).microseconds // 1000, "ms")
             distance -= self.distance_0
             if distance < 0:
                 gradient *= -1
@@ -244,6 +248,8 @@ class LearningByGradientDescent:
             list(islice(algorithm, 200))
             num_steps += 200
 
+        print(algorithm_name, num_steps, self.smoothed_distance_history[-1])
+
         # if self.is_learning_poorly:
         #     raise PoorLearning()
 
@@ -291,7 +297,7 @@ class LearningByGradientDescent:
         self.is_unitary = is_unitary
         self.mode = modes.unitary_evolution
 
-        for n_tries in range(3):
+        for n_tries in range(2):
 
             self.solutions = []
             for method_name in methods:
@@ -304,7 +310,7 @@ class LearningByGradientDescent:
                     self.psi_init = psi_init
 
                 self.do_the_gradient_descent(method)
-                if not math.isnan(self.distance_history[-1]) and self.smoothed_distance_history[-1] < 0.3:
+                if not math.isnan(self.distance_history[-1]) and self.smoothed_distance_history[-1] < 0.2:
                     self.solutions.append(dict(
                         name=method_name,
                         distance_history=self.distance_history,
@@ -317,7 +323,7 @@ class LearningByGradientDescent:
             print(f"lower learning-rate eta to {self.algorithm_kwargs['eta']:.3g}")
 
         if not self.solutions:
-            raise RuntimeError("did not converge")
+            raise DidNotConverge("did not converge")
 
         self.best_solution = min(self.solutions, key=lambda solution: solution["distance_history"][-1])
         self.distance_history = self.best_solution["distance_history"]

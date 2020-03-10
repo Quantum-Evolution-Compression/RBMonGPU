@@ -167,18 +167,22 @@ public:
     template<bool total_z_symmetry, typename Psi_t>
     HDINLINE
     void mc_update(const Psi_t& psi, Spins& spins, double& log_psi_real, void* local_random_state, typename Psi_t::Angles& angles) const {
+        #include "cuda_kernel_defines.h"
+
         #ifdef __CUDA_ARCH__
 
-        __shared__ int position;
-        __shared__ int second_position;
+        SHARED int position;
+        SHARED int second_position;
 
-        if(threadIdx.x == 0) {
+        SINGLE {
             position = curand((curandState_t*)local_random_state) % psi.get_num_spins();
             spins = spins.flip(position);
         }
-        __syncthreads();
+        SYNC;
 
-        psi.flip_spin_of_jth_angle(threadIdx.x, position, spins, angles);
+        MULTI(j, psi.get_num_angles()) {
+            psi.flip_spin_of_jth_angle(j, position, spins, angles);
+        }
 
         if(total_z_symmetry) {
             __syncthreads();
@@ -196,12 +200,12 @@ public:
             psi.flip_spin_of_jth_angle(threadIdx.x, second_position, spins, angles);
         }
 
-        __shared__ double next_log_psi_real;
+        SHARED double next_log_psi_real;
         psi.log_psi_s_real(next_log_psi_real, spins, angles);
 
-        __shared__ bool spin_flip;
+        SHARED bool spin_flip;
 
-        if(threadIdx.x == 0) {
+        SINGLE {
             const auto ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
 
             if(ratio > 1.0 || curand_uniform((curandState_t*)local_random_state) <= ratio) {
@@ -212,16 +216,18 @@ public:
                 spin_flip = false;
             }
         }
-        __syncthreads();
+        SYNC;
 
         if(!spin_flip) {
             // flip back spin(s)
 
-            if(threadIdx.x == 0) {
+            SINGLE {
                 spins = spins.flip(position);
             }
-            __syncthreads();
-            psi.flip_spin_of_jth_angle(threadIdx.x, position, spins, angles);
+            SYNC;
+            MULTI(j, psi.get_num_angles()) {
+                psi.flip_spin_of_jth_angle(j, position, spins, angles);
+            }
 
             if(total_z_symmetry) {
                 if(threadIdx.x == 0) {

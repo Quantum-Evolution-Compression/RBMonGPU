@@ -20,16 +20,13 @@ set(project_include_dir "${CMAKE_CURRENT_LIST_DIR}/include")
 set(project_source_dir "${CMAKE_CURRENT_LIST_DIR}/source")
 set(project_bin_dir "${CMAKE_CURRENT_LIST_DIR}/bin")
 
-# Find Cuda
-# =========
-
-find_package(CUDA REQUIRED)
-set(CXX_INCLUDES ${CXX_INCLUDES} ${CUDA_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${CUDA_LIBRARIES})
 
 # Find Python
 # ===========
 
+if(DEFINED ENV{PYTHONHOME})
+    list(APPEND CMAKE_PREFIX_PATH "$ENV{PYTHONHOME}")
+endif()
 find_package(PythonLibs REQUIRED)
 set(CXX_INCLUDES ${CXX_INCLUDES} ${PYTHON_INCLUDE_DIR})
 
@@ -40,6 +37,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake" BEFORE)
 
 find_package(NumPy REQUIRED)
 set(CXX_INCLUDES ${CXX_INCLUDES} ${NUMPY_INCLUDE_DIRS})
+
+# Find Cuda
+# =========
+
+find_package(CUDA REQUIRED)
+set(CXX_INCLUDES ${CXX_INCLUDES} ${CUDA_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${CUDA_LIBRARIES})
 
 # Project's includes
 # ==================
@@ -135,7 +139,6 @@ target_include_directories(RBMonGPU PRIVATE ${CUDA_INCLUDES})
 target_include_directories(RBMonGPU PRIVATE ${CXX_INCLUDES})
 
 target_link_libraries(RBMonGPU ${LIBS})
-
 
 # Python bindings
 # ===============
