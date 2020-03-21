@@ -128,6 +128,7 @@ public:
 
     HDINLINE
     void log_psi_s(dtype& result, const Spins& spins, Angles& cache) const {
+        #include "cuda_kernel_defines.h"
         // CAUTION: 'result' has to be a shared variable.
 
         SINGLE {
@@ -137,7 +138,6 @@ public:
         SHARED Spins shifted_spins;
 
         SHARED_MEM_LOOP_START(shift, (this->translational_invariance ? this->N : 1u)) {
-        // for(auto shift = 0u; shift < (this->translational_invariance ? this->N : 1u); shift++) {
             SINGLE {
                 shifted_spins = spins.rotate_left(shift, this->N);
             }
@@ -168,47 +168,35 @@ public:
 
     HDINLINE
     void log_psi_s_real(double& result, const Spins& spins, Angles& cache) const {
+        #include "cuda_kernel_defines.h"
         // CAUTION: 'result' has to be a shared variable.
 
         SINGLE {
             result = 0.0;
         }
 
-        #ifdef TRANSLATIONAL_INVARIANCE
+        SHARED Spins shifted_spins;
 
-        #if DIM == 1
-        for(auto shift = 0u; shift < this->N; shift++) {
-        this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
-        #endif
-        #if DIM == 2
-        for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
-            for(auto shift_j = 0u; shift_j < this->N_j; shift_j++) {
-                this->forward_pass(spins.shift_2d(shift_i, shift_j, this->N_i, this->N_j), cache.activations, nullptr);
-        #endif
+        SHARED_MEM_LOOP_START(shift, (this->translational_invariance ? this->N : 1u)) {
+            SINGLE {
+                shifted_spins = spins.rotate_left(shift, this->N);
+            }
+            SYNC;
+            this->forward_pass(shifted_spins, cache.activations, nullptr);
+            SYNC;
 
-        #else
-
-        this->forward_pass(spins, cache.activations, nullptr);
-
-        #endif
-
-        MULTI(j, this->layers[this->num_layers - 1u].size) {
-            generic_atomicAdd(&result, cache.activations[j].real());
+            MULTI(j, this->layers[this->num_layers - 1u].size) {
+                generic_atomicAdd(&result, cache.activations[j].real());
+            }
+            SHARED_MEM_LOOP_END(shift);
         }
 
-
-        #ifdef TRANSLATIONAL_INVARIANCE
-
-        #if DIM == 1
+        SINGLE {
+            if(this->translational_invariance) {
+                result *= 1.0 / this->N;
+            }
+            result *= this->stretch;
         }
-        #endif
-        #if DIM == 2
-        }}
-        #endif
-
-        result *= 1.0 / this->N;
-
-        #endif
     }
 
     HDINLINE
@@ -336,6 +324,12 @@ public:
     }
 
 #endif // __CUDACC__
+
+    HDINLINE
+    unsigned int get_width() const {
+        return this->width;
+    }
+
 
     HDINLINE unsigned int get_num_units() const {
         return this->num_units;

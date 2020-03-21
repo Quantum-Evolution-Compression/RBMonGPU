@@ -317,6 +317,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
 #endif // ENABLE_PSI_CLASSICAL
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &HilbertSpaceDistance::distance<PsiExact, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiExact, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_PAIR
         .def("__call__", &HilbertSpaceDistance::distance<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
@@ -337,6 +341,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &HilbertSpaceDistance::distance<PsiExact, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
+        .def("gradient", &HilbertSpaceDistance::gradient_py<PsiExact, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_PAIR

@@ -24,6 +24,7 @@ PsiDeepT<dtype>::PsiDeepT(const PsiDeepT<dtype>& other)
     this->num_layers = other.num_layers;
     this->width = other.width;
     this->num_units = other.num_units;
+    this->translational_invariance = other.translational_invariance;
 
     this->init_kernel();
 }
