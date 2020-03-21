@@ -25,19 +25,6 @@
 
 namespace rbm_on_gpu {
 
-struct PsiExactAngles {
-    PsiExactAngles() = default;
-
-    template<typename Psi_t>
-    HDINLINE void init(const Psi_t& psi, const PsiExactAngles& other) {
-    }
-
-    template<typename Psi_t>
-    HDINLINE void init(const Psi_t& psi, const Spins& spins) {
-    }
-
-};
-
 namespace kernel {
 
 struct PsiExact : public PsiBase {

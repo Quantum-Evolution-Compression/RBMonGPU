@@ -28,7 +28,6 @@
 #endif // __PYTHONCC__
 
 
-// #define TRANSLATIONAL_INVARIANCE
 // #define DIM 1
 
 
@@ -78,6 +77,8 @@ struct PsiDeepT : public PsiBase {
 
     unsigned int   N_i;
     unsigned int   N_j;
+
+    bool           translational_invariance;
 
 public:
 
@@ -133,55 +134,36 @@ public:
             result = dtype(0.0);
         }
 
-        #ifdef TRANSLATIONAL_INVARIANCE
-
         SHARED Spins shifted_spins;
 
-        #if DIM == 1
-        for(auto shift = 0u; shift < this->N; shift++) {
-        SINGLE {
-            shifted_spins = spins.rotate_left(shift, this->N);
+        SHARED_MEM_LOOP_START(shift, (this->translational_invariance ? this->N : 1u)) {
+        // for(auto shift = 0u; shift < (this->translational_invariance ? this->N : 1u); shift++) {
+            SINGLE {
+                shifted_spins = spins.rotate_left(shift, this->N);
+            }
+            SYNC;
+            this->forward_pass(shifted_spins, cache.activations, nullptr);
+            SYNC;
+
+            MULTI(j, this->layers[this->num_layers - 1u].size) {
+                generic_atomicAdd(&result, cache.activations[j]);
+            }
+            SHARED_MEM_LOOP_END(shift);
         }
-        SYNC;
-        this->forward_pass(shifted_spins, cache.activations, nullptr);
-        SYNC;
-        #endif
-        #if DIM == 2
-        for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
-            for(auto shift_j = 0u; shift_j < this->N_j; shift_j++) {
-                this->forward_pass(spins.shift_2d(shift_i, shift_j, this->N_i, this->N_j), cache.activations, nullptr);
-        #endif
-
-        #else
-
-        this->forward_pass(spins, cache.activations, nullptr);
-
-        #endif
-
-        MULTI(j, this->layers[this->num_layers - 1u].size) {
-            generic_atomicAdd(&result, cache.activations[j]);
-        }
-        SYNC;
-
-
-        #ifdef TRANSLATIONAL_INVARIANCE
-
-        #if DIM == 1
-        }
-        #endif
-        #if DIM == 2
-        }}
-        #endif
 
         SINGLE {
-            result *= 1.0 / this->N;
-        }
-
-        #endif
-
-        SINGLE {
+            if(this->translational_invariance) {
+                result *= 1.0 / this->N;
+            }
             result *= this->stretch;
         }
+
+        // #if DIM == 2
+        //     for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
+        //         for(auto shift_j = 0u; shift_j < this->N_j; shift_j++) {
+        //             this->forward_pass(spins.shift_2d(shift_i, shift_j, this->N_i, this->N_j), cache.activations, nullptr);
+        // #endif
+
     }
 
     HDINLINE
@@ -402,6 +384,7 @@ struct PsiDeepT : public kernel::PsiDeepT<dtype>, public PsiBase {
         this->width = this->N;
         this->num_units = 0u;
         this->stretch = 1.0;
+        this->translational_invariance = false;
 
         Array<unsigned int> rhs_connections_array(0, false);
         Array<dtype> rhs_weights_array(0, false);
