@@ -109,7 +109,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
         }
 
         xt::pytensor<std_T, 1u> result(shape);
-        memcpy(result.data(), this->host_data(), sizeof(T) * this->size());
+        memcpy(result.data(), reinterpret_cast<const std_T*>(this->host_data()), sizeof(T) * this->size());
         return result;
     }
 
@@ -119,7 +119,7 @@ struct Array : public vector<T>, public kernel::Array<T> {
         }
 
         xt::pytensor<std_T, 2u> result(shape);
-        memcpy(result.data(), this->host_data(), sizeof(T) * this->size());
+        memcpy(result.data(), reinterpret_cast<const std_T*>(this->host_data()), sizeof(T) * this->size());
         return result;
     }
 #endif // __PYTHONCC__

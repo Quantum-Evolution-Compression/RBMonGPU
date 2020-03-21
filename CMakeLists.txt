@@ -126,6 +126,11 @@ if (ENABLE_PSI_CLASSICAL)
   target_compile_definitions(RBMonGPU PUBLIC ENABLE_PSI_CLASSICAL)
 endif()
 
+option(ENABLE_PSI_EXACT "enable PsiExact" ON)
+if (ENABLE_PSI_EXACT)
+  target_compile_definitions(RBMonGPU PUBLIC ENABLE_PSI_EXACT)
+endif()
+
 option(ENABLE_PSI_PAIR "enable PsiPair" ON)
 if (ENABLE_PSI_PAIR)
   target_compile_definitions(RBMonGPU PUBLIC ENABLE_PSI_PAIR)

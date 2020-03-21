@@ -50,6 +50,7 @@ def transform(self, operator, threshold=1e-10):
 
 
 def normalize(self, exact_summation):
+    self.prefactor = 1
     self.prefactor /= self.norm(exact_summation)
 
 
@@ -72,9 +73,15 @@ def vector(self):
     return result
 
 
+@property
+def first_layer_params_slice(self):
+    return slice(2 * self.N, 2 * self.N + self.W[0].size + self.b[0].size)
+
+
 setattr(PsiDeep, "to_json", to_json)
 setattr(PsiDeep, "from_json", from_json)
 setattr(PsiDeep, "transform", transform)
 setattr(PsiDeep, "normalize", normalize)
 setattr(PsiDeep, "__pos__", __pos__)
 setattr(PsiDeep, "vector", vector)
+setattr(PsiDeep, "first_layer_params_slice", first_layer_params_slice)

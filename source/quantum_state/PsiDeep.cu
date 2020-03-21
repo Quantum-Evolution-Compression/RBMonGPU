@@ -15,14 +15,12 @@ namespace rbm_on_gpu {
 template<typename dtype>
 PsiDeepT<dtype>::PsiDeepT(const PsiDeepT<dtype>& other)
     :
-    alpha_array(other.alpha_array),
-    beta_array(other.beta_array),
-    layers(other.layers),
-    free_quantum_axis(other.free_quantum_axis),
-    gpu(other.gpu)
+    rbm_on_gpu::PsiBase(other.alpha_array, other.beta_array, bool(other.free_quantum_axis), bool(other.gpu)),
+    layers(other.layers)
 {
     this->N = other.N;
     this->prefactor = other.prefactor;
+    this->stretch = other.stretch;
     this->num_layers = other.num_layers;
     this->width = other.width;
     this->num_units = other.num_units;

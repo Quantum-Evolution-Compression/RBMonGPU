@@ -3,6 +3,7 @@ import math
 import pyRBMonGPU
 from pyRBMonGPU import Operator
 from .gradient_descent import *
+from .L2Regularization import L2Regularization
 from itertools import islice
 from scipy.ndimage import gaussian_filter1d
 from QuantumExpression import PauliExpression
@@ -11,7 +12,6 @@ from collections import namedtuple
 from pathlib import Path
 import json
 import os
-import datetime
 
 
 # list of actions
@@ -118,9 +118,9 @@ class LearningByGradientDescent:
 
             gradient *= self.gradient_prefactor
             if self.regularization is not None:
-                gradient += self.regularization.gradient(step, self.psi)
-                complexity = self.regularization.cost(step, self.psi)
-                distance += complexity
+                gradient[self.psi.first_layer_params_slice] += (
+                    self.regularization.gradient(step, self.psi.params[self.psi.first_layer_params_slice])
+                )
 
             self.distance_history.append(distance)
         elif self.mode == modes.groundstate:
@@ -281,8 +281,8 @@ class LearningByGradientDescent:
         return psi
 
     def optimize_for(
-        self, psi_0, psi_init, operator, is_unitary=False, regularization=None, psi_init_getter=None, distance_0=0,
-        methods=["padam", "nag", "padam_0"],
+        self, psi_0, psi_init, operator, is_unitary=False, regularization=None, distance_0=0,
+        methods=["padam", "padam_0"],
         **algorithm_kwargs
     ):
         self.psi_0 = psi_0
@@ -297,20 +297,23 @@ class LearningByGradientDescent:
         self.is_unitary = is_unitary
         self.mode = modes.unitary_evolution
 
-        for n_tries in range(2):
+        for eta in [algorithm_kwargs["eta"], 0.1, 0.01]:
+            algorithm_kwargs["eta"] = eta
+            print(f"eta = {eta}")
 
             self.solutions = []
             for method_name in methods:
-
                 if method_name.endswith('0'):
                     method = method_name[:-2]
-                    self.psi_init = psi_init_getter()
+                    self.regularization = L2Regularization(1e-2, 0.96)
+                    self.psi_init = psi_init
                 else:
                     method = method_name
+                    self.regularization = None
                     self.psi_init = psi_init
 
                 self.do_the_gradient_descent(method)
-                if not math.isnan(self.distance_history[-1]) and self.smoothed_distance_history[-1] < 0.2:
+                if not math.isnan(self.distance_history[-1]) and self.smoothed_distance_history[-1] < 0.4:
                     self.solutions.append(dict(
                         name=method_name,
                         distance_history=self.distance_history,
@@ -319,8 +322,7 @@ class LearningByGradientDescent:
             if self.solutions:
                 break
 
-            self.algorithm_kwargs["eta"] /= 10
-            print(f"lower learning-rate eta to {self.algorithm_kwargs['eta']:.3g}")
+            print("Try again using different learning rate")
 
         if not self.solutions:
             raise DidNotConverge("did not converge")

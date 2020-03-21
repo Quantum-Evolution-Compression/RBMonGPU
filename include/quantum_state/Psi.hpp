@@ -2,6 +2,7 @@
 
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiCache.hpp"
+#include "quantum_state/PsiBase.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "Array.hpp"
 #include "Spins.h"
@@ -28,28 +29,17 @@ namespace rbm_on_gpu {
 
 namespace kernel {
 
-class Psi {
-public:
-    unsigned int N;
+struct Psi : public PsiBase {
     unsigned int M;
 
-    static constexpr unsigned int  max_N = MAX_SPINS;
     static constexpr unsigned int  max_M = MAX_HIDDEN_SPINS;
-
-    unsigned int   num_params;
-    unsigned int   O_k_length;
-    double         prefactor;
 
     complex_t* b;
     complex_t* W;
 
-// #ifdef __CUDACC__
     using Angles = rbm_on_gpu::PsiAngles;
     using Derivatives = rbm_on_gpu::PsiDerivatives;
 
-// #endif
-
-public:
 
     HDINLINE
     complex_t angle(const unsigned int j, const Spins& spins) const {
@@ -141,27 +131,9 @@ public:
 
 #endif // __CUDACC__
 
-    // complex<double> psi_s_std(const Spins& spins) const {
-    //     return this->psi_s(spins).to_std();
-    // }
-
-    // HDINLINE
-    // double probability_s(const Spins& spins, const Angles& angles) const {
-    //     return exp(2.0 * (log(this->prefactor) + this->log_psi_s(spins, angles).real()));
-    // }
-
-    // double probability_s_py(const Spins& spins) const {
-    //     return this->probability_s(spins);
-    // }
-
     HDINLINE
     double probability_s(const double log_psi_s_real) const {
         return exp(2.0 * (log(this->prefactor) + log_psi_s_real));
-    }
-
-    HDINLINE
-    unsigned int get_num_spins() const {
-        return this->N;
     }
 
     HDINLINE
@@ -180,11 +152,6 @@ public:
     }
 
     HDINLINE
-    static constexpr unsigned int get_max_spins() {
-        return max_N;
-    }
-
-    HDINLINE
     static constexpr unsigned int get_max_hidden_spins() {
         return max_M;
     }
@@ -193,21 +160,6 @@ public:
     static constexpr unsigned int get_max_angles() {
         return max_M;
     }
-
-    HDINLINE
-    unsigned int get_num_params() const {
-        return this->num_params;
-    }
-
-    HDINLINE
-    unsigned int get_O_k_length() const {
-        return this->O_k_length;
-    }
-
-    // HDINLINE
-    // static unsigned int get_num_params(const unsigned int N, const unsigned int M) {
-    //     return 2 * N + M + N * M;
-    // }
 
 #ifdef __CUDACC__
 
@@ -260,17 +212,10 @@ public:
 } // namespace kernel
 
 
-class Psi : public kernel::Psi {
-public:
-    Array<double> alpha_array;
-    Array<double> beta_array;
+struct Psi : public kernel::Psi, public PsiBase {
     Array<complex_t> b_array;
     Array<complex_t> W_array;
 
-    const bool  free_quantum_axis;
-    bool gpu;
-
-public:
     Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool free_quantum_axis, const bool gpu);
     Psi(const Psi& other);
 
@@ -283,12 +228,13 @@ public:
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(alpha, false), b_array(b, gpu), W_array(W, gpu), free_quantum_axis(free_quantum_axis), gpu(gpu) {
+    ) : rbm_on_gpu::PsiBase(alpha, beta, free_quantum_axis, gpu), b_array(b, gpu), W_array(W, gpu) {
         this->N = alpha.shape()[0];
         this->M = b.shape()[0];
-        this->prefactor = prefactor;
         this->num_params = 2 * N + M + N * M;
         this->O_k_length = M + N * M;
+
+        this->prefactor = prefactor;
 
         this->update_kernel();
     }

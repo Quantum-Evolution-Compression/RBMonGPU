@@ -8,10 +8,6 @@ class L2Regularization:
 
     def gradient(self, step, params):
         params_real = params.real
-        params_imag = params.imag
         params_real[abs(params_real) < 1e-3] = 0
-        params_imag[abs(params_imag) < 1e-3] = 0
 
-        return (
-            self.lambda_(step) * 2 * (params_real + 1j * params_imag)
-        )
+        return self.lambda_(step) * 2 * params_real

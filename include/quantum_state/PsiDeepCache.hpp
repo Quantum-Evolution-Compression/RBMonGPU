@@ -10,7 +10,7 @@ namespace rbm_on_gpu {
 
 template<typename dtype>
 struct PsiDeepAngles {
-    static constexpr unsigned int max_width = 2 * MAX_SPINS;
+    static constexpr unsigned int max_width = 1 * MAX_SPINS;
 
     dtype activations[max_width];
 

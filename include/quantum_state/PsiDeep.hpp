@@ -2,6 +2,8 @@
 
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiDeepCache.hpp"
+#include "quantum_state/PsiBase.hpp"
+
 #include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -35,8 +37,7 @@ namespace rbm_on_gpu {
 namespace kernel {
 
 template<typename dtype>
-class PsiDeepT {
-public:
+struct PsiDeepT : public PsiBase {
     using Angles = rbm_on_gpu::PsiDeepAngles<dtype>;
 
     static constexpr unsigned int max_layers = 3u;
@@ -70,7 +71,6 @@ public:
         }
     };
 
-    unsigned int   N;
     Layer          layers[max_layers];
     unsigned int   num_layers;
     unsigned int   width;                   // size of largest layer
@@ -78,10 +78,6 @@ public:
 
     unsigned int   N_i;
     unsigned int   N_j;
-
-    unsigned int   num_params;
-    unsigned int   O_k_length;
-    double         prefactor;
 
 public:
 
@@ -98,10 +94,11 @@ public:
         MULTI(i, this->get_num_spins()) {
             activations[i] = spins[i];
         }
+        SYNC;
 
         // for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         SHARED_MEM_LOOP_START(layer_idx, this->num_layers) {
-            // SYNC;
+            SYNC;
             const Layer& layer = this->layers[layer_idx];
             dtype REGISTER(activation, max_width);
             MULTI(j, layer.size) {
@@ -138,9 +135,16 @@ public:
 
         #ifdef TRANSLATIONAL_INVARIANCE
 
+        SHARED Spins shifted_spins;
+
         #if DIM == 1
         for(auto shift = 0u; shift < this->N; shift++) {
-        this->forward_pass(spins.rotate_left(shift, this->N), cache.activations, nullptr);
+        SINGLE {
+            shifted_spins = spins.rotate_left(shift, this->N);
+        }
+        SYNC;
+        this->forward_pass(shifted_spins, cache.activations, nullptr);
+        SYNC;
         #endif
         #if DIM == 2
         for(auto shift_i = 0u; shift_i < this->N_i; shift_i++) {
@@ -157,6 +161,7 @@ public:
         MULTI(j, this->layers[this->num_layers - 1u].size) {
             generic_atomicAdd(&result, cache.activations[j]);
         }
+        SYNC;
 
 
         #ifdef TRANSLATIONAL_INVARIANCE
@@ -168,9 +173,15 @@ public:
         }}
         #endif
 
-        result *= 1.0 / this->N;
+        SINGLE {
+            result *= 1.0 / this->N;
+        }
 
         #endif
+
+        SINGLE {
+            result *= this->stretch;
+        }
     }
 
     HDINLINE
@@ -218,11 +229,6 @@ public:
         #endif
     }
 
-    HDINLINE void flip_spin_of_jth_angle(
-        const unsigned int j, const unsigned int position, const Spins& new_spins, Angles& cache
-    ) const {
-    }
-
     HDINLINE
     dtype psi_s(const Spins& spins, Angles& cache) const {
         #include "cuda_kernel_defines.h"
@@ -231,6 +237,11 @@ public:
         this->log_psi_s(log_psi, spins, cache);
 
         return exp(log(this->prefactor) + log_psi);
+    }
+
+    HDINLINE void flip_spin_of_jth_angle(
+        const unsigned int j, const unsigned int position, const Spins& new_spins, Angles& angles
+    ) const {
     }
 
     template<typename Function>
@@ -344,66 +355,33 @@ public:
 
 #endif // __CUDACC__
 
+    HDINLINE unsigned int get_num_units() const {
+        return this->num_units;
+    }
+
     HDINLINE
     double probability_s(const double log_psi_s_real) const {
         return exp(2.0 * (log(this->prefactor) + log_psi_s_real));
     }
 
-    HDINLINE
-    unsigned int get_num_spins() const {
-        return this->N;
-    }
-
-    HDINLINE
-    unsigned int get_num_params() const {
-        return this->num_params;
-    }
-
-    HDINLINE
-    unsigned int get_width() const {
-        return this->width;
-    }
-
-    HDINLINE
-    unsigned int get_num_angles() const {
-        return this->layers[0].size;
-    }
-
-    HDINLINE
-    unsigned int get_num_units() const {
-        return this->num_units;
-    }
-
-    HDINLINE
-    unsigned int get_O_k_length() const {
-        return this->O_k_length;
-    }
 };
 
 } // namespace kernel
 
 
 template<typename dtype>
-class PsiDeepT : public kernel::PsiDeepT<dtype> {
-public:
-    Array<double> alpha_array;
-    Array<double> beta_array;
-    const bool    free_quantum_axis;
-
+struct PsiDeepT : public kernel::PsiDeepT<dtype>, public PsiBase {
     struct Layer {
         unsigned int        size;
         unsigned int        lhs_connectivity;
         Array<unsigned int> lhs_connections;
         Array<unsigned int> rhs_connections;
-        Array<dtype>    lhs_weights;
-        Array<dtype>    rhs_weights;
-        Array<dtype>    biases;
+        Array<dtype>        lhs_weights;
+        Array<dtype>        rhs_weights;
+        Array<dtype>        biases;
     };
     list<Layer> layers;
 
-    bool gpu;
-
-public:
     PsiDeepT(const PsiDeepT& other);
 
 #ifdef __PYTHONCC__
@@ -417,12 +395,13 @@ public:
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
-    ) : alpha_array(alpha, false), beta_array(beta, false), free_quantum_axis(free_quantum_axis), gpu(gpu) {
+    ) : rbm_on_gpu::PsiBase(alpha, beta, free_quantum_axis, gpu) {
         this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
         this->width = this->N;
         this->num_units = 0u;
+        this->stretch = 1.0;
 
         Array<unsigned int> rhs_connections_array(0, false);
         Array<dtype> rhs_weights_array(0, false);
@@ -558,7 +537,6 @@ public:
     void init_kernel();
     void update_kernel();
 
-private:
     pair<Array<unsigned int>, Array<dtype>> compile_rhs_connections_and_weights(
         const unsigned int prev_size,
         const unsigned int size,

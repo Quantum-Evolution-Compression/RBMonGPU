@@ -110,7 +110,7 @@ double KullbackLeibler::value(
 
 template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 double KullbackLeibler::gradient(
-    complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const SpinEnsemble& spin_ensemble
+    complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const SpinEnsemble& spin_ensemble, const double nu
 ) {
     this->clear();
     this->compute_averages<true>(psi, psi_prime, spin_ensemble);
@@ -124,6 +124,7 @@ double KullbackLeibler::gradient(
     this->log_ratio_abs2_ar.front() /= spin_ensemble.get_num_steps();
 
     const auto value = sqrt(this->log_ratio_abs2_ar.front() - abs2(this->log_ratio_ar.front()));
+    const auto factor = pow(value, nu);
 
     for(auto k = 0u; k < this->num_params; k++) {
         this->O_k_ar.at(k) *= 1.0 / spin_ensemble.get_num_steps();
@@ -131,7 +132,7 @@ double KullbackLeibler::gradient(
 
         result[k] = (
             this->log_ratio_O_k_ar[k] - this->log_ratio_ar.front() * this->O_k_ar[k]
-        ).to_std() / value;
+        ).to_std() / factor;
     }
 
     return value;
@@ -146,7 +147,7 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const MonteCarloLoop& spin_ensemble, const double nu
 );
 
 #endif
@@ -157,7 +158,18 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble, const double nu
+);
+
+#endif
+
+#if defined(ENABLE_PSI_EXACT) && defined(ENABLE_PSI_DEEP)
+
+template double KullbackLeibler::value(
+    const PsiExact& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const MonteCarloLoop& spin_ensemble, const double nu
 );
 
 #endif
@@ -168,7 +180,7 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const PsiPair& psi_prime, const MonteCarloLoop& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const MonteCarloLoop& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const MonteCarloLoop& spin_ensemble, const double nu
 );
 
 #endif
@@ -185,7 +197,7 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const Psi& psi_prime, const ExactSummation& spin_ensemble, const double nu
 );
 
 #endif
@@ -196,7 +208,18 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble, const double nu
+);
+
+#endif
+
+#if defined(ENABLE_PSI_EXACT) && defined(ENABLE_PSI_DEEP)
+
+template double KullbackLeibler::value(
+    const PsiExact& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble
+);
+template double KullbackLeibler::gradient(
+    complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const ExactSummation& spin_ensemble, const double nu
 );
 
 #endif
@@ -207,7 +230,7 @@ template double KullbackLeibler::value(
     const PsiClassical& psi, const PsiPair& psi_prime, const ExactSummation& spin_ensemble
 );
 template double KullbackLeibler::gradient(
-    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const ExactSummation& spin_ensemble
+    complex<double>* result, const PsiClassical& psi, const PsiPair& psi_prime, const ExactSummation& spin_ensemble, const double nu
 );
 
 #endif

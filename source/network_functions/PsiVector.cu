@@ -1,8 +1,5 @@
 #include "network_functions/PsiVector.hpp"
-#include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiDeep.hpp"
-#include "quantum_state/PsiPair.hpp"
-#include "quantum_state/PsiClassical.hpp"
+#include "quantum_states.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
 
@@ -53,11 +50,11 @@ Array<complex_t> psi_vector(const Psi_t& psi) {
 template void psi_vector(complex<double>* result, const Psi& psi);
 template void psi_vector(complex<double>* result, const PsiDeep& psi);
 template void psi_vector(complex<double>* result, const PsiPair& psi);
-template void psi_vector(complex<double>* result, const PsiClassical& psi);
+template void psi_vector(complex<double>* result, const PsiExact& psi);
 
 template Array<complex_t> psi_vector(const Psi& psi);
 template Array<complex_t> psi_vector(const PsiDeep& psi);
 template Array<complex_t> psi_vector(const PsiPair& psi);
-template Array<complex_t> psi_vector(const PsiClassical& psi);
+template Array<complex_t> psi_vector(const PsiExact& psi);
 
 } // namespace rbm_on_gpu

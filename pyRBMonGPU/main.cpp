@@ -101,6 +101,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         >())
         .def("copy", &PsiDeep::copy)
         .def_readwrite("prefactor", &PsiDeep::prefactor)
+        .def_readwrite("stretch", &PsiDeep::stretch)
         .def_readwrite("N_i", &PsiDeep::N_i)
         .def_readwrite("N_j", &PsiDeep::N_j)
         .def_readonly("gpu", &PsiDeep::gpu)
@@ -156,32 +157,39 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 
 #ifdef ENABLE_PSI_CLASSICAL
     py::class_<PsiClassical>(m, "PsiClassical")
-         // .def(py::init<
-         //     const string,
-         //     const int,
-         //     const unsigned int,
-         //     const bool
-         // >())
-        .def(py::init<
-           const complex_tensor<1u>&,
-           const unsigned int,
-           const bool
-        >())
+         .def(py::init<
+             const string,
+             const int,
+             const unsigned int,
+             const bool
+         >())
         .def_readonly("gpu", &PsiClassical::gpu)
         .def_readonly("N", &PsiClassical::N)
-        // .def_property(
-        //     "W",
-        //     [](const PsiClassical& psi){return psi.W_array.to_pytensor_2d(shape_t<2u>{psi.N, psi.M});},
-        //     [](PsiClassical& psi, const complex_tensor<2u>& input) {psi.W_array = input; psi.update_kernel();}
-        //
-        // .def("log_psi_s", &PsiClassical::log_psi_s)
         .def_property_readonly("vector", [](const PsiClassical& psi) {return psi_vector(psi).to_pytensor_1d();})
-        // .def("log_psi_s", &PsiClassical::log_psi_s)
         .def_readonly("num_params", &PsiClassical::num_params)
         .def_property_readonly("free_quantum_axis", [](const PsiClassical& psi) {return psi.free_quantum_axis;})
         .def_property_readonly("num_angles", &PsiClassical::get_num_angles);
 
 #endif // ENABLE_PSI_CLASSICAL
+
+#ifdef ENABLE_PSI_EXACT
+    py::class_<PsiExact>(m, "PsiExact")
+        .def(py::init<
+           const complex_tensor<1u>&,
+           const unsigned int,
+           const bool
+        >())
+        .def_readonly("gpu", &PsiExact::gpu)
+        .def_readonly("N", &PsiExact::N)
+        .def_property_readonly("vector", [](const PsiExact& psi) {return psi_vector(psi).to_pytensor_1d();})
+        .def_readonly("num_params", &PsiExact::num_params)
+        .def_readwrite("prefactor", &PsiExact::prefactor)
+        .def_readwrite("stretch", &PsiExact::stretch)
+        .def_property_readonly("free_quantum_axis", [](const PsiExact& psi) {return psi.free_quantum_axis;})
+        .def("norm", [](const PsiExact& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
+        .def_property_readonly("num_angles", &PsiExact::get_num_angles);
+
+#endif // ENABLE_PSI_EXACT
 
 #ifdef ENABLE_PSI_DEEP_MIN
     py::class_<PsiDeepMin>(m, "PsiDeepMin")
@@ -341,53 +349,61 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     ;
 
 
-//     py::class_<KullbackLeibler>(m, "KullbackLeibler")
-//         .def(py::init<unsigned int, bool>())
-// #ifdef ENABLE_MONTE_CARLO
-// #ifdef ENABLE_PSI
-//         // .def("__call__", &KullbackLeibler::value<Psi, Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<Psi, Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI
-// #ifdef ENABLE_PSI_DEEP
-//         // .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #ifdef ENABLE_PSI_CLASSICAL
-//         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI_CLASSICAL
-// #endif // ENABLE_PSI_DEEP
-// #ifdef ENABLE_PSI_PAIR
-//         // .def("__call__", &KullbackLeibler::value<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #ifdef ENABLE_PSI_CLASSICAL
-//         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI_CLASSICAL
-// #endif // ENABLE_PSI_PAIR
-// #endif // ENABLE_MONTE_CARLO
-// #ifdef ENABLE_EXACT_SUMMATION
-// #ifdef ENABLE_PSI
-//         // .def("__call__", &KullbackLeibler::value<Psi, Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<Psi, Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI
-// #ifdef ENABLE_PSI_DEEP
-//         // .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #ifdef ENABLE_PSI_CLASSICAL
-//         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI_CLASSICAL
-// #endif // ENABLE_PSI_DEEP
-// #ifdef ENABLE_PSI_PAIR
-//         // .def("__call__", &KullbackLeibler::value<PsiPair, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #ifdef ENABLE_PSI_CLASSICAL
-//         .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-//         // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
-// #endif // ENABLE_PSI_CLASSICAL
-// #endif // ENABLE_PSI_PAIR
-// #endif // ENABLE_EXACT_SUMMATION
-//     ;
+    py::class_<KullbackLeibler>(m, "KullbackLeibler")
+        .def(py::init<unsigned int, bool>())
+#ifdef ENABLE_MONTE_CARLO
+#ifdef ENABLE_PSI
+        // .def("__call__", &KullbackLeibler::value<Psi, Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<Psi, Psi, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+#endif // ENABLE_PSI
+#ifdef ENABLE_PSI_DEEP
+        // .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+#ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &KullbackLeibler::value<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &KullbackLeibler::value<PsiExact, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiExact, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_EXACT
+#endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_PAIR
+        // .def("__call__", &KullbackLeibler::value<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
+#endif // ENABLE_PSI_PAIR
+#endif // ENABLE_MONTE_CARLO
+#ifdef ENABLE_EXACT_SUMMATION
+#ifdef ENABLE_PSI
+        // .def("__call__", &KullbackLeibler::value<Psi, Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<Psi, Psi, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI
+#ifdef ENABLE_PSI_DEEP
+        // .def("__call__", &KullbackLeibler::value<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &KullbackLeibler::value<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &KullbackLeibler::value<PsiExact, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        .def("gradient", &KullbackLeibler::gradient_py<PsiExact, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_EXACT
+#endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_PAIR
+        // .def("__call__", &KullbackLeibler::value<PsiPair, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiPair, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#ifdef ENABLE_PSI_CLASSICAL
+        .def("__call__", &KullbackLeibler::value<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a)
+        // .def("gradient", &KullbackLeibler::gradient_py<PsiClassical, PsiPair, ExactSummation>, "psi"_a, "psi_prime"_a, "spin_ensemble"_a, "nu"_a)
+#endif // ENABLE_PSI_CLASSICAL
+#endif // ENABLE_PSI_PAIR
+#endif // ENABLE_EXACT_SUMMATION
+    ;
 
 
 #ifdef ENABLE_PSI

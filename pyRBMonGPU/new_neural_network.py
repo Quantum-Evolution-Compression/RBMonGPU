@@ -61,7 +61,8 @@ def new_deep_neural_network(
     free_quantum_axis=False,
     noise=1e-4,
     gpu=False,
-    pair=False
+    pair=False,
+    noise_modulation="auto"
 ):
     N_linear = N if dim == 1 else N[0] * N[1]
     M_linear = M if dim == 1 else [m[0] * m[1] for m in M]
@@ -87,9 +88,16 @@ def new_deep_neural_network(
     w[C_linear[0] // 2, :] += initial_value
     W = [w]
 
-    for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [2]):
+    if noise_modulation == "auto":
+        noise_modulation = []
+        for c, m, next_c in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [1]):
+            noise_modulation.append(math.sqrt(6 / (c + next_c)))
+        print(repr(noise_modulation))
+
+    for c, m, next_c, nm in zip(C_linear[1:], M_linear[1:], C_linear[2:] + [1], noise_modulation):
         w = (
-            math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
+            # math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
+            nm * math.sqrt(6 / (c + next_c)) * real_noise((c, m)) +
             # 1j * math.sqrt(6 / (c + next_c)) / 1e2 * real_noise((c, m)) +
             noise * complex_noise((c, m))
         )
