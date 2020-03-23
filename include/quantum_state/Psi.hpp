@@ -3,7 +3,6 @@
 #include "quantum_state/psi_functions.hpp"
 #include "quantum_state/PsiCache.hpp"
 #include "quantum_state/PsiBase.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
 #include "Array.hpp"
 #include "Spins.h"
 #include "types.h"
@@ -239,24 +238,6 @@ struct Psi : public kernel::Psi, public PsiBase {
         this->update_kernel();
     }
 
-    xt::pytensor<complex<double>, 1> as_vector_py() const {
-        auto result = xt::pytensor<complex<double>, 1>(
-            std::array<long int, 1>({static_cast<long int>(pow(2, this->N))})
-        );
-        this->as_vector(result.data());
-
-        return result;
-    }
-
-    xt::pytensor<complex<double>, 1> O_k_vector_py(const Spins& spins) const {
-        auto result = xt::pytensor<complex<double>, 1>(
-            std::array<long int, 1>({static_cast<long int>(this->O_k_length)})
-        );
-        this->O_k_vector(result.data(), spins);
-
-        return result;
-    }
-
     Psi copy() const {
         return *this;
     }
@@ -280,9 +261,6 @@ struct Psi : public kernel::Psi, public PsiBase {
 
 #endif // __PYTHONCC__
 
-    void as_vector(complex<double>* result) const;
-    void O_k_vector(complex<double>* result, const Spins& spins) const;
-    double norm_function(const ExactSummation& exact_summation) const;
     complex<double> log_psi_s_std(const Spins& spins);
 
     void get_params(complex<double>* result) const;

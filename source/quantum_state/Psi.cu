@@ -4,7 +4,6 @@
 #include "network_functions/PsiVector.hpp"
 #include "network_functions/PsiNorm.hpp"
 #include "network_functions/PsiOkVector.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
 
 #include <complex>
 #include <vector>
@@ -65,18 +64,6 @@ Psi::Psi(const Psi& other)
 void Psi::update_kernel() {
     this->b = this->b_array.data();
     this->W = this->W_array.data();
-}
-
-void Psi::as_vector(complex<double>* result) const {
-    psi_vector(result, *this);
-}
-
-double Psi::norm_function(const ExactSummation& exact_summation) const {
-    return psi_norm(*this, exact_summation);
-}
-
-void Psi::O_k_vector(complex<double>* result, const Spins& spins) const {
-    psi_O_k_vector(result, *this, spins);
 }
 
 std::complex<double> Psi::log_psi_s_std(const Spins& spins) {

@@ -39,6 +39,10 @@ struct Spins {
      : configuration_first(configuration_first), configuration_second(configuration_second) {}
     #endif
 
+    HDINLINE type truncated_configuration(const unsigned int num_spins) const {
+        return this->configuration & ((1u << num_spins) - 1u);
+    }
+
 #ifdef __PYTHONCC__
 
      decltype(auto) array(const unsigned int num_spins) const {

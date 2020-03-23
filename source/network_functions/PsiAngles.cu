@@ -1,7 +1,6 @@
 #include "network_functions/PsiAngles.hpp"
-#include "quantum_state/PsiDeep.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
-#include "spin_ensembles/MonteCarloLoop.hpp"
+#include "quantum_states.hpp"
+#include "spin_ensembles.hpp"
 #include "types.h"
 
 namespace rbm_on_gpu {
@@ -59,7 +58,16 @@ pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, const Spin
 }
 
 
+#ifdef ENABLE_PSI_DEEP
+
+#ifdef ENABLE_EXACT_SUMMATION
 template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, const ExactSummation& spin_ensemble);
+#endif // ENABLE_EXACT_SUMMATION
+
+#ifdef ENABLE_MONTE_CARLO
 template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
+#endif // ENABLE_MONTE_CARLO
+
+#endif // ENABLE_PSI_DEEP
 
 } // namespace rbm_on_gpu

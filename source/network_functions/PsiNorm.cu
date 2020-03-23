@@ -1,10 +1,11 @@
+#ifdef ENABLE_EXACT_SUMMATION
+
+
 #include "network_functions/PsiNorm.hpp"
-#include "quantum_state/Psi.hpp"
-#include "quantum_state/PsiDeep.hpp"
-#include "quantum_state/PsiPair.hpp"
-#include "quantum_state/PsiExact.hpp"
+#include "quantum_states.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
+
 
 namespace rbm_on_gpu {
 
@@ -43,9 +44,22 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
 }
 
 
+#ifdef ENABLE_PSI
 template double psi_norm(const Psi& psi, const ExactSummation&);
+#endif // ENABLE_PSI
+
+#ifdef ENABLE_PSI_DEEP
 template double psi_norm(const PsiDeep& psi, const ExactSummation&);
+#endif // ENABLE_PSI_DEEP
+
+#ifdef ENABLE_PSI_PAIR
 template double psi_norm(const PsiPair& psi, const ExactSummation&);
+#endif // ENABLE_PSI_PAIR
+
+#ifdef ENABLE_PSI_EXACT
 template double psi_norm(const PsiExact& psi, const ExactSummation&);
+#endif // ENABLE_PSI_EXACT
 
 } // namespace rbm_on_gpu
+
+#endif // ENABLE_EXACT_SUMMATION

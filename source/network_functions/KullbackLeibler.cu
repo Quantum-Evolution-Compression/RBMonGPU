@@ -15,10 +15,7 @@ template<bool compute_gradient, typename Psi_t, typename Psi_t_prime, typename S
 void kernel::KullbackLeibler::compute_averages(
     const Psi_t& psi, const Psi_t_prime& psi_prime, const SpinEnsemble& spin_ensemble
 ) const {
-    const auto num_params = psi_prime.get_num_params();
-
     const auto this_ = *this;
-    const auto psi_kernel = psi.get_kernel();
     const auto psi_prime_kernel = psi_prime.get_kernel();
 
     spin_ensemble.foreach(

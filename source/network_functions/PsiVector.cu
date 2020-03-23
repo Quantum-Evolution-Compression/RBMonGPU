@@ -1,7 +1,11 @@
+#ifdef ENABLE_EXACT_SUMMATION
+
+
 #include "network_functions/PsiVector.hpp"
 #include "quantum_states.hpp"
 #include "spin_ensembles/ExactSummation.hpp"
 #include "types.h"
+
 
 namespace rbm_on_gpu {
 
@@ -47,14 +51,32 @@ Array<complex_t> psi_vector(const Psi_t& psi) {
 }
 
 
+#ifdef ENABLE_PSI
 template void psi_vector(complex<double>* result, const Psi& psi);
-template void psi_vector(complex<double>* result, const PsiDeep& psi);
-template void psi_vector(complex<double>* result, const PsiPair& psi);
-template void psi_vector(complex<double>* result, const PsiExact& psi);
-
 template Array<complex_t> psi_vector(const Psi& psi);
+#endif // ENABLE_PSI
+
+#ifdef ENABLE_PSI_DEEP
+template void psi_vector(complex<double>* result, const PsiDeep& psi);
 template Array<complex_t> psi_vector(const PsiDeep& psi);
+#endif // ENABLE_PSI_DEEP
+
+#ifdef ENABLE_PSI_PAIR
+template void psi_vector(complex<double>* result, const PsiPair& psi);
 template Array<complex_t> psi_vector(const PsiPair& psi);
+#endif // ENABLE_PSI_PAIR
+
+#ifdef ENABLE_PSI_CLASSICAL
+template void psi_vector(complex<double>* result, const PsiClassical& psi);
+template Array<complex_t> psi_vector(const PsiClassical& psi);
+#endif // ENABLE_PSI_CLASSICAL
+
+#ifdef ENABLE_PSI_EXACT
+template void psi_vector(complex<double>* result, const PsiExact& psi);
 template Array<complex_t> psi_vector(const PsiExact& psi);
+#endif // ENABLE_PSI_EXACT
 
 } // namespace rbm_on_gpu
+
+
+#endif // ENABLE_EXACT_SUMMATION

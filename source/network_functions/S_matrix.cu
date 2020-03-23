@@ -1,8 +1,7 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "quantum_state/Psi.hpp"
 #include "quantum_state/PsiDeep.hpp"
-#include "spin_ensembles/ExactSummation.hpp"
-#include "spin_ensembles/MonteCarloLoop.hpp"
+#include "spin_ensembles.hpp"
 #include "types.h"
 
 namespace rbm_on_gpu {
@@ -54,6 +53,8 @@ Array<complex_t> get_S_matrix(const Psi_t& psi, const SpinEnsemble& spin_ensembl
 }
 
 
+#if defined(ENABLE_PSI) && defined(ENABLE_EXACT_SUMMATION)
 template Array<complex_t> get_S_matrix(const Psi&, const ExactSummation&);
+#endif
 
 } // namespace rbm_on_gpu

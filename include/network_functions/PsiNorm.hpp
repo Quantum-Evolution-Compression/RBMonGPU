@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef ENABLE_EXACT_SUMMATION
+
 #include "spin_ensembles/ExactSummation.hpp"
 
 
@@ -9,3 +11,5 @@ template<typename Psi_t>
 double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation);
 
 } // namespace rbm_on_gpu
+
+#endif // ENABLE_EXACT_SUMMATION

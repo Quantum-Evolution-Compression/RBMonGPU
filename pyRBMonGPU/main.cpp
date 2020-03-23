@@ -53,9 +53,10 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const bool
         >())
         .def("copy", &Psi::copy)
-        .def_property_readonly("_vector", &Psi::as_vector_py)
-        .def("norm", &Psi::norm_function)
-        .def("O_k_vector", &Psi::O_k_vector_py)
+    #ifdef ENABLE_EXACT_SUMMATION
+        .def_property_readonly("vector", [](const Psi& psi) {return psi_vector_py(psi);})
+        .def("norm", [](const Psi& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
+    #endif // ENABLE_EXACT_SUMMATION
         .def_readwrite("prefactor", &Psi::prefactor)
         .def_readonly("gpu", &Psi::gpu)
         .def_readonly("N", &Psi::N)
@@ -118,10 +119,11 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("b", &PsiDeep::get_b)
         .def_property_readonly("connections", &PsiDeep::get_connections)
         .def_property_readonly("W", &PsiDeep::get_W)
+    #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("_vector", [](const PsiDeep& psi) {return psi_vector_py(psi);})
-        .def_property_readonly("free_quantum_axis", [](const PsiDeep& psi) {return psi.free_quantum_axis;})
         .def("norm", [](const PsiDeep& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
-        .def("O_k_vector", &PsiDeep::O_k_vector_py);
+    #endif // ENABLE_EXACT_SUMMATION
+        .def_property_readonly("free_quantum_axis", [](const PsiDeep& psi) {return psi.free_quantum_axis;});
 
 #endif // ENABLE_PSI_DEEP
 
@@ -151,9 +153,11 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         )
         .def_property_readonly("alpha", [](const PsiPair& psi) {return psi.alpha_array.to_pytensor_1d();})
         .def_property_readonly("beta", [](const PsiPair& psi) {return psi.beta_array.to_pytensor_1d();})
+    #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("_vector", [](const PsiPair& psi) {return psi_vector_py(psi);})
-        .def_property_readonly("free_quantum_axis", [](const PsiPair& psi) {return psi.free_quantum_axis;})
-        .def("norm", [](const PsiPair& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);});
+        .def("norm", [](const PsiPair& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
+    #endif // ENABLE_EXACT_SUMMATION
+        .def_property_readonly("free_quantum_axis", [](const PsiPair& psi) {return psi.free_quantum_axis;});
 
 #endif // ENABLE_PSI_PAIR
 
@@ -167,7 +171,9 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
          >())
         .def_readonly("gpu", &PsiClassical::gpu)
         .def_readonly("N", &PsiClassical::N)
+    #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("vector", [](const PsiClassical& psi) {return psi_vector(psi).to_pytensor_1d();})
+    #endif // ENABLE_EXACT_SUMMATION
         .def_readonly("num_params", &PsiClassical::num_params)
         .def_property_readonly("free_quantum_axis", [](const PsiClassical& psi) {return psi.free_quantum_axis;})
         .def_property_readonly("num_angles", &PsiClassical::get_num_angles);
@@ -183,11 +189,13 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         >())
         .def_readonly("gpu", &PsiExact::gpu)
         .def_readonly("N", &PsiExact::N)
+    #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("vector", [](const PsiExact& psi) {return psi_vector(psi).to_pytensor_1d();})
+        .def("norm", [](const PsiExact& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
+    #endif // ENABLE_EXACT_SUMMATION
         .def_readonly("num_params", &PsiExact::num_params)
         .def_readwrite("prefactor", &PsiExact::prefactor)
         .def_property_readonly("free_quantum_axis", [](const PsiExact& psi) {return psi.free_quantum_axis;})
-        .def("norm", [](const PsiExact& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
         .def_property_readonly("num_angles", &PsiExact::get_num_angles);
 
 #endif // ENABLE_PSI_EXACT
@@ -427,9 +435,11 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     // m.def("psi_O_k_vector", psi_O_k_vector_py<PsiPair>);
 #endif
 
+#if defined(ENABLE_PSI) && defined(ENABLE_EXACT_SUMMATION)
     m.def("get_S_matrix", [](const Psi& psi, const ExactSummation& spin_ensemble){
         return get_S_matrix(psi, spin_ensemble).to_pytensor_2d(shape_t<2u>{psi.num_params, psi.num_params});
     });
+#endif
 
     // m.def("get_O_k_vector", [](const Psi& psi, const ExactSummation& spin_ensemble) {
     //     auto result_and_result_std = psi_O_k_vector(psi, spin_ensemble);
@@ -460,20 +470,20 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     //     );
     // });
 
-    m.def("psi_angles", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
-        auto result_and_result_std = psi_angles(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
-    m.def("psi_angles", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
-        auto result_and_result_std = psi_angles(psi, spin_ensemble);
-        return make_pair(
-            result_and_result_std.first.to_pytensor_1d(),
-            result_and_result_std.second.to_pytensor_1d()
-        );
-    });
+    // m.def("psi_angles", [](const PsiDeep& psi, const ExactSummation& spin_ensemble) {
+    //     auto result_and_result_std = psi_angles(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
+    // m.def("psi_angles", [](const PsiDeep& psi, const MonteCarloLoop& spin_ensemble) {
+    //     auto result_and_result_std = psi_angles(psi, spin_ensemble);
+    //     return make_pair(
+    //         result_and_result_std.first.to_pytensor_1d(),
+    //         result_and_result_std.second.to_pytensor_1d()
+    //     );
+    // });
 
     m.def("activation_function", [](const complex<double>& x) {
         return my_logcosh(complex_t(x.real(), x.imag())).to_std();
