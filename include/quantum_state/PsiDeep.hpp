@@ -71,6 +71,8 @@ struct PsiDeepT : public PsiBase {
     };
 
     Layer          layers[max_layers];
+    dtype*         final_weights;
+    unsigned int   num_final_weights;
     unsigned int   num_layers;
     unsigned int   width;                   // size of largest layer
     unsigned int   num_units;
@@ -84,10 +86,12 @@ public:
 
 #ifdef __CUDACC__
 
+    template<typename result_dtype>
     HDINLINE
     void forward_pass(
+        result_dtype& result,  /* CAUTION: this parameter is assumed to be initialized */
         const Spins& spins,
-        dtype* activations, /* once this functions has finished, this holds the *output*-activations of the last layer */
+        dtype* activations,
         dtype* deep_angles) const
     {
         #include "cuda_kernel_defines.h"
@@ -97,7 +101,6 @@ public:
         }
         SYNC;
 
-        // for(auto layer_idx = 0u; layer_idx < this->num_layers; layer_idx++) {
         SHARED_MEM_LOOP_START(layer_idx, this->num_layers) {
             SYNC;
             const Layer& layer = this->layers[layer_idx];
@@ -124,15 +127,19 @@ public:
             }
             SHARED_MEM_LOOP_END(layer_idx);
         }
+        MULTI(j, this->num_final_weights) {
+            generic_atomicAdd(&result, favour_real<result_dtype>(activations[j] * this->final_weights[j]));
+        }
     }
 
+    template<typename result_dtype>
     HDINLINE
-    void log_psi_s(dtype& result, const Spins& spins, Angles& cache) const {
+    void log_psi_s_generic(result_dtype& result, const Spins& spins, Angles& cache) const {
         #include "cuda_kernel_defines.h"
         // CAUTION: 'result' has to be a shared variable.
 
         SINGLE {
-            result = dtype(0.0);
+            result = result_dtype(0.0);
         }
 
         SHARED Spins shifted_spins;
@@ -142,12 +149,8 @@ public:
                 shifted_spins = spins.rotate_left(shift, this->N);
             }
             SYNC;
-            this->forward_pass(shifted_spins, cache.activations, nullptr);
-            SYNC;
+            this->forward_pass(result, shifted_spins, cache.activations, nullptr);
 
-            MULTI(j, this->layers[this->num_layers - 1u].size) {
-                generic_atomicAdd(&result, cache.activations[j]);
-            }
             SHARED_MEM_LOOP_END(shift);
         }
 
@@ -155,7 +158,6 @@ public:
             if(this->translational_invariance) {
                 result *= 1.0 / this->N;
             }
-            result *= this->stretch;
         }
 
         // #if DIM == 2
@@ -167,36 +169,13 @@ public:
     }
 
     HDINLINE
+    void log_psi_s(dtype& result, const Spins& spins, Angles& cache) const {
+        log_psi_s_generic(result, spins, cache);
+    }
+
+    HDINLINE
     void log_psi_s_real(double& result, const Spins& spins, Angles& cache) const {
-        #include "cuda_kernel_defines.h"
-        // CAUTION: 'result' has to be a shared variable.
-
-        SINGLE {
-            result = 0.0;
-        }
-
-        SHARED Spins shifted_spins;
-
-        SHARED_MEM_LOOP_START(shift, (this->translational_invariance ? this->N : 1u)) {
-            SINGLE {
-                shifted_spins = spins.rotate_left(shift, this->N);
-            }
-            SYNC;
-            this->forward_pass(shifted_spins, cache.activations, nullptr);
-            SYNC;
-
-            MULTI(j, this->layers[this->num_layers - 1u].size) {
-                generic_atomicAdd(&result, cache.activations[j].real());
-            }
-            SHARED_MEM_LOOP_END(shift);
-        }
-
-        SINGLE {
-            if(this->translational_invariance) {
-                result *= 1.0 / this->N;
-            }
-            result *= this->stretch;
-        }
+        log_psi_s_generic(result, spins, cache);
     }
 
     HDINLINE
@@ -220,7 +199,8 @@ public:
         #include "cuda_kernel_defines.h"
 
         SHARED dtype deep_angles[max_deep_angles];
-        this->forward_pass(spins, cache.activations, deep_angles);
+        SHARED complex_t log_psi;
+        this->forward_pass(log_psi, spins, cache.activations, deep_angles);
 
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
@@ -237,8 +217,13 @@ public:
         #include "cuda_kernel_defines.h"
 
         SHARED dtype deep_angles[max_deep_angles];
+        SHARED complex_t log_psi;
+        SINGLE {
+            log_psi = dtype(0.0);
+        }
+        SYNC;
 
-        this->forward_pass(spins, cache.activations, deep_angles);
+        this->forward_pass(log_psi, spins, cache.activations, deep_angles);
 
         for(int layer_idx = int(this->num_layers) - 1; layer_idx >= 0; layer_idx--) {
             const Layer& layer = this->layers[layer_idx];
@@ -247,52 +232,32 @@ public:
             // here, these are the back-propagated derivatives.
             if(layer_idx == this->num_layers - 1) {
                 MULTI(j, layer.size) {
-                    cache.activations[j] = my_tanh(deep_angles[
+                    cache.activations[j] = this->final_weights[j] * my_tanh(deep_angles[
                         layer.begin_angles + j
                     ]);
                 }
             } else {
-                // TODO: check if shared memory solution is faster
-                #ifdef __CUDA_ARCH__
-                dtype unit_activation(0.0);
-                #else
-                dtype unit_activation[Angles::max_width];
-                #endif
+                // TODO: check if shared memory solution is faster (most likely not)
+                dtype REGISTER(unit_activation, max_width);
 
                 SYNC;
                 MULTI(i, layer.size) {
-                    #ifndef __CUDA_ARCH__
-                    unit_activation[i] = dtype(0.0);
-                    #endif
+                    REGISTER(unit_activation, i) = dtype(0.0);
 
                     for(auto j = 0u; j < layer.rhs_connectivity; j++) {
-                        #ifdef __CUDA_ARCH__
-                        unit_activation +=
-                        #else
-                        unit_activation[i] +=
-                        #endif
-                        (
+                        REGISTER(unit_activation, i) += (
                             layer.rhs_weight(i, j) * cache.activations[
                                 layer.rhs_connection(i, j)
                             ]
                         );
                     }
-                    #ifdef __CUDA_ARCH__
-                    unit_activation *=
-                    #else
-                    unit_activation[i] *=
-                    #endif
-                    (
+                    REGISTER(unit_activation, i) *= (
                         my_tanh(deep_angles[layer.begin_angles + i])
                     );
                 }
                 SYNC;
                 MULTI(j, layer.size) {
-                    #ifdef __CUDA_ARCH__
-                    cache.activations[j] = unit_activation;
-                    #else
-                    cache.activations[j] = unit_activation[j];
-                    #endif
+                    cache.activations[j] = REGISTER(unit_activation, j);
                 }
             }
             MULTI(j, layer.size) {
@@ -307,7 +272,7 @@ public:
                         cache.activations[j] * (
                             layer_idx == 0 ?
                             get_real<dtype>(spins[lhs_unit_idx]) :
-                            my_logcosh(
+                            my_logcosh(  // TODO: reverse for-loop such that logcosh is only evaluated once
                                 deep_angles[
                                     this->layers[layer_idx - 1].begin_angles + lhs_unit_idx
                                 ]
@@ -316,6 +281,14 @@ public:
                     );
                 }
             }
+        }
+        MULTI(j, this->num_final_weights) {
+            function(
+                this->num_params - this->num_final_weights + j,
+                log_psi * my_logcosh(
+                    deep_angles[this->layers[this->num_layers - 1].begin_angles + j]
+                )
+            );
         }
     }
 
@@ -357,6 +330,7 @@ struct PsiDeepT : public kernel::PsiDeepT<dtype>, public PsiBase {
         Array<dtype>        biases;
     };
     list<Layer> layers;
+    Array<dtype> final_weights;
 
     PsiDeepT(const PsiDeepT& other);
 
@@ -368,16 +342,16 @@ struct PsiDeepT : public kernel::PsiDeepT<dtype>, public PsiBase {
         const vector<xt::pytensor<typename std_dtype<dtype>::type, 1u>> biases_list,
         const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<typename std_dtype<dtype>::type, 2u>>& lhs_weights_list,
+        const xt::pytensor<typename std_dtype<dtype>::type, 1u>& final_weights,
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
-    ) : rbm_on_gpu::PsiBase(alpha, beta, free_quantum_axis, gpu) {
+    ) : rbm_on_gpu::PsiBase(alpha, beta, free_quantum_axis, gpu), final_weights(final_weights, gpu) {
         this->N = alpha.shape()[0];
         this->prefactor = prefactor;
         this->num_layers = lhs_weights_list.size();
         this->width = this->N;
         this->num_units = 0u;
-        this->stretch = 1.0;
         this->translational_invariance = false;
 
         Array<unsigned int> rhs_connections_array(0, false);

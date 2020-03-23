@@ -16,15 +16,16 @@ template<typename dtype>
 PsiDeepT<dtype>::PsiDeepT(const PsiDeepT<dtype>& other)
     :
     rbm_on_gpu::PsiBase(other.alpha_array, other.beta_array, bool(other.free_quantum_axis), bool(other.gpu)),
-    layers(other.layers)
+    layers(other.layers),
+    final_weights(other.final_weights)
 {
     this->N = other.N;
     this->prefactor = other.prefactor;
-    this->stretch = other.stretch;
     this->num_layers = other.num_layers;
     this->width = other.width;
     this->num_units = other.num_units;
     this->translational_invariance = other.translational_invariance;
+    this->num_final_weights = other.num_final_weights;
 
     this->init_kernel();
 }
@@ -56,6 +57,9 @@ void PsiDeepT<dtype>::init_kernel() {
             0u
         );
     }
+    this->num_final_weights = this->layers.back().size;
+    this->num_params += this->num_final_weights;
+
     this->O_k_length = this->num_params - 2 * this->N;
 
     this->update_kernel();
@@ -74,6 +78,7 @@ void PsiDeepT<dtype>::update_kernel() {
         kernel_layer.rhs_weights = layer.rhs_weights.data();
         kernel_layer.biases = layer.biases.data();
     }
+    kernel::PsiDeepT<dtype>::final_weights = PsiDeepT<dtype>::final_weights.data();
 }
 
 
@@ -128,6 +133,8 @@ Array<dtype> PsiDeepT<dtype>::get_params() const {
         copy(layer.lhs_weights.begin(), layer.lhs_weights.end(), it);
         it += layer.lhs_weights.size();
     }
+    copy(this->final_weights.begin(), this->final_weights.end(), it);
+    it += this->num_final_weights;
 
     return result;
 }
@@ -162,6 +169,9 @@ void PsiDeepT<dtype>::set_params(const Array<dtype>& new_params) {
             ).second;
         }
     }
+    copy(it, it + this->num_final_weights, this->final_weights.begin());
+    this->final_weights.update_device();
+    it += this->num_final_weights;
 
     this->update_kernel();
 }

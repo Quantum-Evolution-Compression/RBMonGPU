@@ -35,7 +35,7 @@ struct PsiExact : public PsiBase {
 
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
-        return this->stretch * this->log_psi_ptr[spins.configuration];
+        return this->log_psi_ptr[spins.configuration];
     }
 
     HDINLINE
@@ -105,7 +105,6 @@ public:
         this->log_psi_ptr = this->log_psi_array.data();
 
         this->prefactor = 1.0;
-        this->stretch = 1.0;
     }
 
     unsigned int get_num_params_py() const {

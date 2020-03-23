@@ -49,7 +49,6 @@ public:
     unsigned int    O_k_length;
 
     double          prefactor;
-    double          stretch;
 
     using Angles = rbm_on_gpu::PsiBaseAngles;
 

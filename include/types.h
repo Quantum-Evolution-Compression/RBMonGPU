@@ -226,6 +226,25 @@ HDINLINE double get_real<double>(const complex_t& value) {
     return value.real();
 }
 
+template<typename target_type, typename input_type>
+HDINLINE target_type favour_real(const input_type& x);
+
+template<>
+HDINLINE complex_t favour_real<complex_t>(const complex_t& x) {
+    return x;
+}
+
+template<>
+HDINLINE double favour_real<double>(const complex_t& x) {
+    return x.real();
+}
+
+template<>
+HDINLINE double favour_real<double>(const double& x) {
+    return x;
+}
+
+
 template<unsigned int x>
 struct Dim {
     static constexpr unsigned int value = x;

@@ -169,6 +169,7 @@ struct PsiPair : public kernel::PsiPair {
         const vector<xt::pytensor<std::complex<double>, 1u>> biases_list,
         const vector<xt::pytensor<unsigned int, 2u>>& lhs_connections_list,
         const vector<xt::pytensor<std::complex<double>, 2u>>& lhs_weights_list,
+        const xt::pytensor<std::complex<double>, 1u>& final_weights,
         const double prefactor,
         const bool free_quantum_axis,
         const bool gpu
@@ -181,6 +182,7 @@ struct PsiPair : public kernel::PsiPair {
             detail::extract_real<1u>(biases_list),
             lhs_connections_list,
             detail::extract_real<2u>(lhs_weights_list),
+            xt::real(final_weights),
             prefactor,
             free_quantum_axis,
             gpu
@@ -191,6 +193,7 @@ struct PsiPair : public kernel::PsiPair {
             detail::extract_imag<1u>(biases_list),
             lhs_connections_list,
             detail::extract_imag<2u>(lhs_weights_list),
+            xt::imag(final_weights),
             prefactor,
             free_quantum_axis,
             gpu

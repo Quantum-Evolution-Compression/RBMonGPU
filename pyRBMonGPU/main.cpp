@@ -95,13 +95,13 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const vector<complex_tensor<1u>>&,
             const vector<xt::pytensor<unsigned int, 2u>>&,
             const vector<complex_tensor<2u>>&,
+            const complex_tensor<1u>&,
             const double,
             const bool,
             const bool
         >())
         .def("copy", &PsiDeep::copy)
         .def_readwrite("prefactor", &PsiDeep::prefactor)
-        .def_readwrite("stretch", &PsiDeep::stretch)
         .def_readwrite("translational_invariance", &PsiDeep::translational_invariance)
         .def_readwrite("N_i", &PsiDeep::N_i)
         .def_readwrite("N_j", &PsiDeep::N_j)
@@ -134,6 +134,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const vector<complex_tensor<1u>>&,
             const vector<xt::pytensor<unsigned int, 2u>>&,
             const vector<complex_tensor<2u>>&,
+            const complex_tensor<1u>&,
             const double,
             const bool,
             const bool
@@ -185,7 +186,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("vector", [](const PsiExact& psi) {return psi_vector(psi).to_pytensor_1d();})
         .def_readonly("num_params", &PsiExact::num_params)
         .def_readwrite("prefactor", &PsiExact::prefactor)
-        .def_readwrite("stretch", &PsiExact::stretch)
         .def_property_readonly("free_quantum_axis", [](const PsiExact& psi) {return psi.free_quantum_axis;})
         .def("norm", [](const PsiExact& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})
         .def_property_readonly("num_angles", &PsiExact::get_num_angles);
