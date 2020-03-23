@@ -160,8 +160,8 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
             }
 
         // 0th order. 0-th parameter for "misses"
-        double Es = -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
-        Heff_plaquetteComplex += (-I)*Es*varW(indexVP[1][0]);
+        //double Es = -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
+        //Heff_plaquetteComplex += (-I)*Es*varW(indexVP[1][0]); // shouldn't be included since we use the interaction representation
         if (CompressionMode==1) for (int j_indt=0; j_indt<j_ind_max; j_indt++) indexVP[1][1]+=1;
         if (PerturbationTheoryOrder==0) return Heff_plaquetteComplex;
 
