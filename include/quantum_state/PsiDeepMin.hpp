@@ -7,6 +7,7 @@
 #include <cassert>
 #include <utility>
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -43,8 +44,8 @@ inline complex_std activation_function(const complex_std z) {
 class PsiDeepMin {
 public:
     static constexpr unsigned int max_layers = 3u;
-    static constexpr unsigned int max_width = 2 * MAX_SPINS;
-    static constexpr unsigned int max_deep_angles = max_layers * MAX_SPINS;
+    static constexpr unsigned int max_deep_angles = 2u * MAX_SPINS;
+    static constexpr unsigned int max_width = 2u * MAX_SPINS;
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {
@@ -74,6 +75,8 @@ public:
 
     unsigned int   N;
     Layer          layers[max_layers];
+    complex_std*   final_weights;
+    unsigned int   num_final_weights;
     unsigned int   num_layers;
 
     unsigned int   num_params;
@@ -86,8 +89,9 @@ public:
 
     inline
     void forward_pass(
+        complex_std& result,
         const vector<int>& spins,
-        complex_std* activations_in /* once this functions has finished, this holds the *output*-activations of the last layer */
+        complex_std* activations_in
     ) const
     {
         complex_std activations_out[max_width];
@@ -115,6 +119,9 @@ public:
                 activations_in[k] = activation_function(activations_out[k]);
             }
         }
+        for(auto j = 0u; j < this->num_final_weights; j++) {
+            result += activations_in[j] * this->final_weights[j];
+        }
     }
 
     inline
@@ -125,11 +132,7 @@ public:
         vector<int> spins(spins_in);
 
         for(auto shift = 0u; shift < this->N; shift++) {
-            this->forward_pass(spins, activations);
-
-            for(auto j = 0u; j < this->layers[this->num_layers - 1u].size; j++) {
-                result += activations[j];
-            }
+            this->forward_pass(result, spins, activations);
 
             rotate(spins.begin(), spins.begin() + 1, spins.end());
         }
@@ -163,6 +166,7 @@ public:
         vector<complex_std>    biases;
     };
     list<Layer> layers;
+    vector<complex_std> final_weights;
 
     bool gpu;
 
@@ -236,6 +240,7 @@ public:
         for(auto i = 0u; i < this->num_params; i++) {
             dynamical_params[i] = read_complex(infile);
         }
+
         infile.close();
 
         this->set_params(dynamical_params);
@@ -263,6 +268,8 @@ public:
                 ).second;
             }
         }
+        copy(it, it + this->num_final_weights, back_inserter(this->final_weights));
+        it += this->num_final_weights;
 
         this->update_kernel();
     }
@@ -289,6 +296,8 @@ public:
                 0u
             );
         }
+        this->num_final_weights = this->layers.back().size;
+        this->num_params += this->num_final_weights;
         this->update_kernel();
     }
 
@@ -303,6 +312,7 @@ public:
             kernel_layer.rhs_weights = layer.rhs_weights.data();
             kernel_layer.biases = layer.biases.data();
         }
+        kernel::PsiDeepMin::final_weights = PsiDeepMin::final_weights.data();
     }
 
 private:
