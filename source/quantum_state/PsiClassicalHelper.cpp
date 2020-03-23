@@ -16,6 +16,8 @@ int L=10;
 int H=1;
 int const numberOfVarParameters=4;
 int PerturbationTheoryOrder = 1;
+double time_current;
+double time_epoch;
 
 #define cdouble std::complex<double>
 cdouble I(0.0,1.0);
@@ -74,9 +76,16 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     getline (filePos, temp);
     if (ReIm.find("Re") != std::string::npos) varW(numberOfVarParameters) +=   atof(temp.c_str()); // "dumb" variational parameter for normalization
     if (ReIm.find("Im") != std::string::npos) varW(numberOfVarParameters) += I*atof(temp.c_str());
+	
+	getline (filePos, temp);
+	if (ReIm.find("Re") != std::string::npos) time_current = atof(temp.c_str()); // reading the current time
+    if (ReIm.find("Im") != std::string::npos) time_epoch   = atof(temp.c_str()); // reading the duration of the epoch time
 
 	cout << "varW(0)=" << varW(0) << endl;
     cout << "varW(1)=" << varW(1) << endl;
+	if (ReIm.find("Re") != std::string::npos) cout << "time_current=" <<  time_current << endl;
+	if (ReIm.find("Im") != std::string::npos) cout << "time_epoch="   <<  time_epoch   << endl;
+	
     filePos.close();
 	}
 
@@ -106,13 +115,19 @@ void Compress_Load(std::string directory, int index)
     filePos.close();
     }
 
-cdouble psi_0_local(int i, int j, int fl)
+cdouble psi_0_local(int i, int j, int fl) // in Heisenber representation
     {
     cdouble psi_0_local_temp=1.0;
 
     vector<int> spins(L);
-    for (int j=0; j<L; j++) spins[j] = S[0][j][2]; // This is super inefficient. psi_0_local is called very frequently. [Peter, 20.02.2020]
-    psi_0_local_temp *= exp(psi_neural->log_psi_s(spins));
+	double Es_total=0;
+    for (int j=0; j<L; j++) 
+		{
+		spins[j] =   S[0][j][2]; // This is super inefficient. psi_0_local is called very frequently. [Peter, 20.02.2020]
+		Es_total += -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
+		}
+	
+	psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total + psi_neural->log_psi_s(spins));
     return psi_0_local_temp;
     }
 
@@ -133,7 +148,7 @@ int if_Flippable(int i, int j)
 	}
 
 cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't take into account the factor of 2
-	{
+	{																
 	//for (int x=0; x<L; x++) S[0][x][2] = S_1D[x];
 
 	int CompressionMode=0;
@@ -160,8 +175,8 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
             }
 
         // 0th order. 0-th parameter for "misses"
-        //double Es = -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
-        //Heff_plaquetteComplex += (-I)*Es*varW(indexVP[1][0]); // shouldn't be included since we use the interaction representation
+        double Es = -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
+        Heff_plaquetteComplex += (-I)*Es*varW(indexVP[1][0]);
         if (CompressionMode==1) for (int j_indt=0; j_indt<j_ind_max; j_indt++) indexVP[1][1]+=1;
         if (PerturbationTheoryOrder==0) return Heff_plaquetteComplex;
 
@@ -506,14 +521,19 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
 	}
 
 
-cdouble findHeffComplex(vector<int> &spins) //
+cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the interaction representation
 	{
 
     cdouble tempHeff = 0;
-
-	for (int j=0; j<L; j++)  S[0][j][2] = spins[j];
+	double Es_total = 0;
+	for (int j=0; j<L; j++)  
+		{
+		S[0][j][2] = spins[j];
+		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
+		}
 	tempHeff += psi_neural->log_psi_s(spins);
-
+	tempHeff += (+I)*Es*time_current;  // "rotation" to obtain the interaction representation
+		
 
     int i,j;
 	for (i=0; i<H; i++)
