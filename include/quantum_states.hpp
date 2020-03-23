@@ -5,5 +5,5 @@
 #include "quantum_state/PsiDeepMin.hpp"
 #include "quantum_state/PsiPair.hpp"
 #include "quantum_state/PsiHamiltonian.hpp"
-// #include "quantum_state/PsiClassical.hpp"
+#include "quantum_state/PsiClassical.hpp"
 #include "quantum_state/PsiExact.hpp"
