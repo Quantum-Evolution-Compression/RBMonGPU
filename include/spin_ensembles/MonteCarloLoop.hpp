@@ -68,16 +68,17 @@ public:
             if(threadIdx.x == 0) {
                 local_random_state = this->random_states[markov_index];
                 if(total_z_symmetry) {
-                    spins = Spins({
+                    spins = Spins(
                         random_n_over_k_bitstring(
                             psi.get_num_spins(),
                             (this->symmetry_sector + psi.get_num_spins()) / 2,
                             &local_random_state
-                        )
-                    });
+                        ),
+                        psi.get_num_spins()
+                    );
                 }
                 else {
-                    spins = Spins::random(&local_random_state);
+                    spins = Spins::random(&local_random_state, psi.get_num_spins());
                 }
             }
             __syncthreads();
@@ -96,16 +97,17 @@ public:
             std::mt19937 local_random_state = this->random_state_host[markov_index];
             Spins spins;
             if(total_z_symmetry) {
-                spins = Spins({
+                spins = Spins(
                     random_n_over_k_bitstring(
                         psi.get_num_spins(),
                         (this->symmetry_sector + psi.get_num_spins()) / 2,
                         &local_random_state
-                    )
-                });
+                    ),
+                    psi.get_num_spins()
+                );
             }
             else {
-                spins = Spins::random(&local_random_state);
+                spins = Spins::random(&local_random_state, psi.get_num_spins());
             }
 
             typename Psi_t::Angles angles;

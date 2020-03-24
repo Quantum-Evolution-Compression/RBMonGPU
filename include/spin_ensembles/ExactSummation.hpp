@@ -55,10 +55,10 @@ public:
         #endif
         {
             if(this->has_total_z_symmetry) {
-                spins = this->allowed_spin_configurations[spin_index];
+                spins = Spins(this->allowed_spin_configurations[spin_index]);
             }
             else {
-                spins = {(Spins::type)spin_index};
+                spins = Spins(spin_index, psi.get_num_spins());
             }
 
             SHARED typename Psi_t::Angles angles;

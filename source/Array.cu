@@ -74,7 +74,8 @@ void Array<T>::clear() {
     if(this->gpu) {
         MEMSET(this->device, 0, sizeof(T) * this->size(), this->gpu);
     }
-    fill(this->begin(), this->end(), 0);
+    // fill(this->begin(), this->end(), 0);
+    std::memset(this->host_data(), 0, sizeof(T) * this->size());
 }
 
 template<typename T>

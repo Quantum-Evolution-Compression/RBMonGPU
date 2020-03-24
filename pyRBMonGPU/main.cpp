@@ -242,7 +242,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("pauli_indices", &Operator::get_pauli_indices_py);
 
     py::class_<rbm_on_gpu::Spins>(m, "Spins")
-        .def(py::init<rbm_on_gpu::Spins::type>())
+        .def(py::init<rbm_on_gpu::Spins::type, const unsigned int>())
         .def("array", &rbm_on_gpu::Spins::array)
         .def("flip", &rbm_on_gpu::Spins::flip)
         .def("rotate_left", &rbm_on_gpu::Spins::rotate_left)

@@ -35,7 +35,7 @@ struct PsiExact : public PsiBase {
 
     HDINLINE
     complex_t log_psi_s(const Spins& spins) const {
-        return this->log_psi_ptr[spins.truncated_configuration(this->N)];
+        return this->log_psi_ptr[spins.configuration];
     }
 
     HDINLINE

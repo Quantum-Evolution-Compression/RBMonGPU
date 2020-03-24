@@ -33,15 +33,19 @@ struct Spins {
     Spins() = default;
 
     #if MAX_SPINS <= 64
-    HDINLINE Spins(type configuration) : configuration(configuration) {}
-    #elif MAX_SPINS <= 128
-    HDINLINE Spins(type configuration_first, type configuration_second)
-     : configuration_first(configuration_first), configuration_second(configuration_second) {}
-    #endif
-
-    HDINLINE type truncated_configuration(const unsigned int num_spins) const {
-        return this->configuration & ((1u << num_spins) - 1u);
+    HDINLINE Spins(type configuration, const unsigned int num_spins)
+    {
+        if(num_spins == 64u) {
+            this->configuration = configuration;
+        }
+        else {
+            this->configuration = configuration & (((type)1u << num_spins) - 1u);
+        }
     }
+    #elif MAX_SPINS <= 128
+    // HDINLINE Spins(type configuration_first, type configuration_second)
+    //  : configuration_first(configuration_first), configuration_second(configuration_second) {}
+    #endif
 
 #ifdef __PYTHONCC__
 
@@ -56,62 +60,34 @@ struct Spins {
 
 #endif // __CUDACC__
 
-    HDINLINE static Spins random(void* random_state) {
+    HDINLINE static Spins random(void* random_state, const unsigned int num_spins) {
         #ifdef __CUDA_ARCH__
-            #if MAX_SPINS <= 64
-                Spins result = {curand(reinterpret_cast<curandState_t*>(random_state))};
-            #elif MAX_SPINS <= 128
-                Spins result = {
-                    curand(reinterpret_cast<curandState_t*>(random_state)),
-                    curand(reinterpret_cast<curandState_t*>(random_state))
-                };
-            #endif
+            return Spins(curand(reinterpret_cast<curandState_t*>(random_state)), num_spins);
         #else
             std::uniform_int_distribution<type> random_spin_conf(0, UINT64_MAX);
-            #if MAX_SPINS <= 64
-                Spins result = {random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state))};
-            #elif MAX_SPINS <= 128
-                Spins result = {
-                    random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state)),
-                    random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state))
-                };
-            #endif
+            return Spins(random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state)), num_spins);
         #endif
-
-        return result;
     }
 
     HDINLINE Spins flip(const int position) const {
-        #if MAX_SPINS <= 64
-            return Spins({this->configuration ^ ((type)1 << position)});
-        #elif MAX_SPINS <= 128
-            Spins result = *this;
-            if(position < 64) {
-                result.configuration_first ^= (type)1 << position;
-                return result;
-            }
-            else {
-                result.configuration_second ^= (type)1 << (position - 64);
-                return result;
-            }
-        #endif
+        return Spins(this->configuration ^ ((type)1 << position), 64u);
     }
 
     // todo: fix for N = 64
     HDINLINE Spins rotate_left(const unsigned int shift, const unsigned int N) const {
         return Spins(
-            (
-                (this->configuration << shift) | (this->configuration >> (N - shift))
-            ) & (((type)1 << N) - 1u)
+            (this->configuration << shift) | (this->configuration >> (N - shift)),
+            N
         );
     }
 
     HDINLINE Spins shift_vertical(
         const unsigned int shift, const unsigned int nrows, const unsigned int ncols
     ) const {
-        return (
-            (this->configuration << (shift * ncols)) | (this->configuration >> ((nrows - shift) * ncols))
-        ) & (((type)1 << (nrows * ncols)) - 1u);
+        return Spins(
+            (this->configuration << (shift * ncols)) | (this->configuration >> ((nrows - shift) * ncols)),
+            nrows * ncols
+        );
     }
 
     HDINLINE Spins select_left_columns(const unsigned int select, const unsigned int nrows, const unsigned int ncols) const {
@@ -120,7 +96,7 @@ struct Spins {
         for(auto i = 0u; i < nrows; i++) {
             mask |= row << (i * ncols);
         }
-        return this->configuration & mask;
+        return Spins(this->configuration & mask, nrows * ncols);
     }
 
     HDINLINE Spins select_right_columns(const unsigned int select, const unsigned int nrows, const unsigned int ncols) const {
@@ -129,16 +105,19 @@ struct Spins {
         for(auto i = 0u; i < nrows; i++) {
             mask |= row << (i * ncols);
         }
-        return this->configuration & mask;
+        return Spins(this->configuration & mask, nrows * ncols);
     }
 
     HDINLINE Spins shift_horizontal(
         const unsigned int shift, const unsigned int nrows, const unsigned int ncols
     ) const {
         const auto tmp = this->rotate_left(shift, nrows * ncols);
-        return (
-            tmp.select_left_columns(nrows - shift, nrows, ncols).configuration |
-            tmp.select_right_columns(shift, nrows, ncols).shift_vertical(nrows - 1, nrows, ncols).configuration
+        return Spins(
+            (
+                tmp.select_left_columns(nrows - shift, nrows, ncols).configuration |
+                tmp.select_right_columns(shift, nrows, ncols).shift_vertical(nrows - 1, nrows, ncols).configuration
+            ),
+            nrows * ncols
         );
     }
 

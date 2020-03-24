@@ -28,7 +28,7 @@ void ExactSummation::set_total_z_symmetry(const int sector) {
     const auto hilbert_space_dim = pow(2, this->num_spins);
 
     for(auto spin_index = 0u; spin_index < hilbert_space_dim; spin_index++) {
-        Spins spins = {(Spins::type)spin_index};
+        Spins spins(spin_index, this->num_spins);
 
         if(spins.total_z(this->num_spins) == sector) {
             spins_tmp.push_back(spins);
