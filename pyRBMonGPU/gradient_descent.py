@@ -166,15 +166,18 @@ def padam_generator(params, gradient_function, beta1=0.9, beta2=0.999, eta=1e-1,
     step = 0
 
     while True:
-        gradient = unpack(gradient_function(step, pack(params_re)))
+        gradient, cost = gradient_function(step, pack(params_re))
+        gradient = unpack(gradient)
 
         m = beta1 * m + (1 - beta1) * gradient
         v = beta2 * v + (1 - beta2) * gradient**2
 
         v_hat = np.maximum(v_hat, v)
 
-        params_re -= eta / (v_hat**p + epsilon) * m
-        yield pack(params_re)
+        eta_ = eta(step) if callable(eta) else eta
+
+        params_re -= eta_ / (v_hat**p + epsilon) * m
+        yield cost
         step += 1
 
 
