@@ -22,3 +22,5 @@ from .new_neural_network import (
 
 from .LearningByGradientDescent import LearningByGradientDescent, DidNotConverge
 from .L2Regularization import L2Regularization
+
+from .gradient_descent import *
