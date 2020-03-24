@@ -40,16 +40,22 @@ struct PsiExact : public PsiBase {
 
     HDINLINE
     void log_psi_s(complex_t& result, const Spins& spins, const Angles& angles) const {
+        #include "cuda_kernel_defines.h"
+
         SINGLE {
             result = this->log_psi_s(spins);
         }
+        SYNC;
     }
 
     HDINLINE
     void log_psi_s_real(double& result, const Spins& spins, const Angles& angles) const {
+        #include "cuda_kernel_defines.h"
+
         SINGLE {
             result = this->log_psi_s(spins).real();
         }
+        SYNC;
     }
 
     HDINLINE
