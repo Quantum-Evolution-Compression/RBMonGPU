@@ -15,7 +15,7 @@ namespace rbm_on_gpu {
 template<typename dtype>
 PsiDeepT<dtype>::PsiDeepT(const PsiDeepT<dtype>& other)
     :
-    rbm_on_gpu::PsiBase(other.alpha_array, other.beta_array, bool(other.free_quantum_axis), bool(other.gpu)),
+    rbm_on_gpu::PsiBase(other),
     layers(other.layers),
     final_weights(other.final_weights)
 {

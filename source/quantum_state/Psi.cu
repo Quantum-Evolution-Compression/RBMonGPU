@@ -13,46 +13,13 @@
 
 namespace rbm_on_gpu {
 
-Psi::Psi(const unsigned int N, const unsigned int M, const int seed, const double noise, const bool free_quantum_axis, const bool gpu)
-  : alpha_array(N, false), beta_array(N, false), b_array(M, gpu), W_array(N * M, gpu), free_quantum_axis(free_quantum_axis), gpu(gpu) {
-    this->N = N;
-    this->M = M;
-    this->prefactor = 1.0;
-    this->num_params = N + M + N * M;
-
-    std::mt19937 rng(seed);
-    std::uniform_real_distribution<double> random_real(-1.0, 1.0);
-
-    for(auto j = 0u; j < M; j++) {
-        this->b_array[j] = complex_t(noise * random_real(rng), noise * random_real(rng));
-    }
-    for(auto i = 0u; i < N; i++) {
-        this->alpha_array[i] = 0.0;
-        this->beta_array[i] = 0.0;
-
-        for(auto j = 0u; j < M; j++) {
-            const auto idx = j * N + i;
-            this->W_array[idx] = (
-                (i == j % N ? complex_t(1.0, 3.14 / 4.0) : complex_t(0.0, 0.0)) +
-                complex_t(noise * random_real(rng), noise * random_real(rng))
-            );
-        }
-    }
-
-    this->b_array.update_device();
-    this->W_array.update_device();
-
-    this->update_kernel();
-}
 
 Psi::Psi(const Psi& other)
     :
-    alpha_array(other.alpha_array),
-    beta_array(other.beta_array),
+    rbm_on_gpu::PsiBase(other),
     b_array(other.b_array),
-    W_array(other.W_array),
-    free_quantum_axis(other.free_quantum_axis),
-    gpu(other.gpu) {
+    W_array(other.W_array)
+{
     this->N = other.N;
     this->M = other.M;
     this->prefactor = other.prefactor;

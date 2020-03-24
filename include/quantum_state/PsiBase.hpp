@@ -203,6 +203,13 @@ struct PsiBase {
         gpu(gpu)
     {}
 
+    inline PsiBase(const PsiBase& other) :
+        alpha_array(other.alpha_array),
+        beta_array(other.beta_array),
+        free_quantum_axis(other.free_quantum_axis),
+        gpu(other.gpu)
+    {}
+
 };
 
 } // namespace rbm_on_gpu

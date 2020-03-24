@@ -16,9 +16,9 @@
 #include "quantum_state/PsiPair.hpp"
 #endif // ENABLE_PSI_PAIR
 
-#ifdef PSI_HAMILTONIAN
+#ifdef ENABLE_PSI_HAMILTONIAN
 #include "quantum_state/PsiHamiltonian.hpp"
-#endif // PSI_HAMILTONIAN
+#endif // ENABLE_PSI_HAMILTONIAN
 
 #ifdef ENABLE_PSI_CLASSICAL
 #include "quantum_state/PsiClassical.hpp"

@@ -217,7 +217,7 @@ public:
         #include "cuda_kernel_defines.h"
 
         SHARED dtype deep_angles[max_deep_angles];
-        SHARED complex_t log_psi;
+        SHARED dtype log_psi;
         SINGLE {
             log_psi = dtype(0.0);
         }

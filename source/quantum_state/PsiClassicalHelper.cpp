@@ -76,7 +76,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     getline (filePos, temp);
     if (ReIm.find("Re") != std::string::npos) varW(numberOfVarParameters) +=   atof(temp.c_str()); // "dumb" variational parameter for normalization
     if (ReIm.find("Im") != std::string::npos) varW(numberOfVarParameters) += I*atof(temp.c_str());
-	
+
 	getline (filePos, temp);
 	if (ReIm.find("Re") != std::string::npos) time_current = atof(temp.c_str()); // reading the current time
     if (ReIm.find("Im") != std::string::npos) time_epoch   = atof(temp.c_str()); // reading the duration of the epoch time
@@ -85,7 +85,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     cout << "varW(1)=" << varW(1) << endl;
 	if (ReIm.find("Re") != std::string::npos) cout << "time_current=" <<  time_current << endl;
 	if (ReIm.find("Im") != std::string::npos) cout << "time_epoch="   <<  time_epoch   << endl;
-	
+
     filePos.close();
 	}
 
@@ -121,12 +121,12 @@ cdouble psi_0_local(int i, int j, int fl) // in Heisenber representation
 
     vector<int> spins(L);
 	double Es_total=0;
-    for (int j=0; j<L; j++) 
+    for (int j=0; j<L; j++)
 		{
 		spins[j] =   S[0][j][2]; // This is super inefficient. psi_0_local is called very frequently. [Peter, 20.02.2020]
 		Es_total += -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
 		}
-	
+
 	psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total + psi_neural->log_psi_s(spins));
     return psi_0_local_temp;
     }
@@ -148,7 +148,7 @@ int if_Flippable(int i, int j)
 	}
 
 cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't take into account the factor of 2
-	{																
+	{
 	//for (int x=0; x<L; x++) S[0][x][2] = S_1D[x];
 
 	int CompressionMode=0;
@@ -526,14 +526,14 @@ cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the 
 
     cdouble tempHeff = 0;
 	double Es_total = 0;
-	for (int j=0; j<L; j++)  
+	for (int j=0; j<L; j++)
 		{
 		S[0][j][2] = spins[j];
 		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
 		}
 	tempHeff += psi_neural->log_psi_s(spins);
-	tempHeff += (+I)*Es*time_current;  // "rotation" to obtain the interaction representation
-		
+	tempHeff += (+I)*Es_total*time_current;  // "rotation" to obtain the interaction representation
+
 
     int i,j;
 	for (i=0; i<H; i++)
