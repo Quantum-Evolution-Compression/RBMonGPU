@@ -119,6 +119,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("b", &PsiDeep::get_b)
         .def_property_readonly("connections", &PsiDeep::get_connections)
         .def_property_readonly("W", &PsiDeep::get_W)
+        .def_property_readonly("final_weights", [](const PsiDeep& psi) {return psi.final_weights.to_pytensor_1d();})
     #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("_vector", [](const PsiDeep& psi) {return psi_vector_py(psi);})
         .def("norm", [](const PsiDeep& psi, const ExactSummation& exact_summation) {return psi_norm(psi, exact_summation);})

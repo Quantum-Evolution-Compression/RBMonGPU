@@ -12,6 +12,7 @@ def to_json(self):
         b=self.b,
         connections=self.connections,
         W=self.W,
+        final_weights=self.final_weights,
         prefactor=self.prefactor,
         free_quantum_axis=self.free_quantum_axis
     )
@@ -37,6 +38,7 @@ def from_json(json_obj, gpu):
         obj["b"],
         obj["connections"],
         obj["W"],
+        obj["final_weights"],
         obj["prefactor"],
         obj["free_quantum_axis"],
         gpu

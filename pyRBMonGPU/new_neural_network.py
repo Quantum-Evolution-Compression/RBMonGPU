@@ -63,7 +63,7 @@ def new_deep_neural_network(
     gpu=False,
     pair=False,
     noise_modulation="auto",
-    final_weight=10
+    final_weights=10
 ):
     N_linear = N if dim == 1 else N[0] * N[1]
     M_linear = M if dim == 1 else [m[0] * m[1] for m in M]
@@ -142,7 +142,9 @@ def new_deep_neural_network(
                 for i1, i2 in range2D(c)
             ]))
 
-    final_weights = final_weight * np.ones(M_linear[-1])
+    if isinstance(final_weights, (float, int)):
+        final_weights = final_weights * np.ones(M_linear[-1])
+    assert len(final_weights) == M_linear[-1]
 
     if pair:
         return PsiPair(alpha, beta, b, connections, W, final_weights, 1.0, free_quantum_axis, gpu)
