@@ -532,7 +532,7 @@ cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the 
 		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
 		}
 	tempHeff += psi_neural->log_psi_s(spins);
-	tempHeff += (+I)*Es_total*time_current;  // "rotation" to obtain the interaction representation
+	tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation
 
 
     int i,j;
