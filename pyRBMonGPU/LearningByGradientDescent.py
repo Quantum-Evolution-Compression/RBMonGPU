@@ -122,7 +122,6 @@ class LearningByGradientDescent:
                     self.regularization.gradient(step, self.psi.params[self.psi.first_layer_params_slice])
                 )
 
-            self.distance_history.append(distance)
         elif self.mode == modes.groundstate:
             if self.imaginary_time_evolution:
                 gradient, distance = self.hilbert_space_distance.gradient(
@@ -152,7 +151,7 @@ class LearningByGradientDescent:
             if step < 100:
                 gradient -= self.avoid_correlations * HilbertSpaceCorrelations(self.psi).gradient
 
-        return gradient
+        return gradient, distance
 
     def get_gradient_descent_algorithm(self, name):
         psi_init_params = self.psi_init.params
@@ -238,14 +237,13 @@ class LearningByGradientDescent:
         self.psi = +self.psi_init
 
         algorithm = self.get_gradient_descent_algorithm(algorithm_name)
-        self.distance_history = []
         self.gradient_prefactor = 1
 
         num_steps = 400
-        list(islice(algorithm, num_steps))
+        self.distance_history = list(islice(algorithm, num_steps))
 
         while num_steps <= 1000 and self.is_descending:
-            list(islice(algorithm, 200))
+            self.distance_history += list(islice(algorithm, 200))
             num_steps += 200
 
         print(algorithm_name, num_steps, self.smoothed_distance_history[-1])
