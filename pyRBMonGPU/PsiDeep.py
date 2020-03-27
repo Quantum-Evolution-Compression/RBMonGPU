@@ -2,6 +2,7 @@ from ._pyRBMonGPU import PsiDeep
 from .json_numpy import NumpyEncoder, NumpyDecoder
 from QuantumExpression import sigma_x, sigma_y
 import json
+import numpy as np
 
 
 def to_json(self):
@@ -38,7 +39,7 @@ def from_json(json_obj, gpu):
         obj["b"],
         obj["connections"],
         obj["W"],
-        obj["final_weights"],
+        obj["final_weights"] if "final_weights" in obj else np.ones(np.array(obj["W"][-1]).size),
         obj["prefactor"],
         obj["free_quantum_axis"],
         gpu
