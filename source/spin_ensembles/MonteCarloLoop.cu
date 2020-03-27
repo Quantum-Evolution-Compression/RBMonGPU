@@ -30,6 +30,8 @@ MonteCarloLoop::MonteCarloLoop(
     this->num_markov_chains = num_markov_chains;
     this->has_total_z_symmetry = false;
 
+    this->num_mc_steps_per_chain = this->num_samples / this->num_markov_chains;
+
     this->allocate_memory();
 }
 
@@ -40,6 +42,8 @@ MonteCarloLoop::MonteCarloLoop(const MonteCarloLoop& other) : gpu(other.gpu) {
     this->num_markov_chains = other.num_markov_chains;
     this->has_total_z_symmetry = other.has_total_z_symmetry;
     this->symmetry_sector = other.symmetry_sector;
+
+    this->num_mc_steps_per_chain = this->num_samples / this->num_markov_chains;
 
     this->allocate_memory();
 }

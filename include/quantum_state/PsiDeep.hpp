@@ -101,7 +101,7 @@ public:
         }
         SYNC;
 
-        SHARED_MEM_LOOP_START(layer_idx, this->num_layers) {
+        SHARED_MEM_LOOP_BEGIN(layer_idx, this->num_layers) {
             SYNC;
             const Layer& layer = this->layers[layer_idx];
             dtype REGISTER(activation, max_width);
@@ -144,7 +144,7 @@ public:
 
         SHARED Spins shifted_spins;
 
-        SHARED_MEM_LOOP_START(shift, (this->translational_invariance ? this->N : 1u)) {
+        SHARED_MEM_LOOP_BEGIN(shift, (this->translational_invariance ? this->N : 1u)) {
             SINGLE {
                 shifted_spins = spins.rotate_left(shift, this->N);
             }
