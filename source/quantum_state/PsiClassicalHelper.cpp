@@ -127,7 +127,8 @@ cdouble psi_0_local(int i, int j, int fl) // in Heisenber representation
 		Es_total += -S[0][j][2]*(S[0][(j+1)%L][2]+S[0][(j-1+L)%L][2])/2;
 		}
 
-	psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total + psi_neural->log_psi_s(spins));
+	psi_0_local_temp *= exp(psi_neural->log_psi_s(spins));
+    //psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total);
     return psi_0_local_temp;
     }
 
@@ -532,7 +533,7 @@ cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the 
 		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
 		}
 	tempHeff += psi_neural->log_psi_s(spins);
-	tempHeff += (+I)*Es_total*time_current;  // "rotation" to obtain the interaction representation
+	//tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation
 
 
     int i,j;
