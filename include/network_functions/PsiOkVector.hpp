@@ -19,11 +19,11 @@ template<typename Psi_t>
 void psi_O_k_vector(complex<double>* result, const Psi_t& psi, const Spins& spins);
 
 // template<typename Psi_t, typename SpinEnsemble>
-// void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi_t& psi, const SpinEnsemble& spin_ensemble);
+// void psi_O_k_vector(complex<double>* result, complex<double>* result_std, const Psi_t& psi, SpinEnsemble& spin_ensemble);
 
 
 // template<typename Psi_t, typename SpinEnsemble>
-// pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi_t& psi, const SpinEnsemble& spin_ensemble);
+// pair<Array<complex_t>, Array<double>> psi_O_k_vector(const Psi_t& psi, SpinEnsemble& spin_ensemble);
 
 
 #ifdef __PYTHONCC__

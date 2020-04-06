@@ -82,9 +82,7 @@ struct Spins_t {
         Spins_t result;
 
         #ifdef __CUDA_ARCH__
-            #ifdef __CUDA_ARCH__
             #pragma unroll
-        #endif
             for(auto i = 0; i < num_types; i++) {
                 result.configurations[i] = curand(reinterpret_cast<curandState_t*>(random_state));
             }
@@ -94,6 +92,7 @@ struct Spins_t {
                 result.configurations[i] = random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state));
             }
         #endif
+
         const auto type_idx = num_spins / 64u;
         if(type_idx < num_types) {
             result.configurations[type_idx] &= ((type)1u << (num_spins % 64)) - 1u;
@@ -101,6 +100,25 @@ struct Spins_t {
 
         return result;
     }
+
+    HDINLINE static Spins_t all_up(const unsigned int num_spins) {
+        Spins_t result;
+
+        #ifdef __CUDA_ARCH__
+        #pragma unroll
+        #endif
+        for(auto i = 0; i < num_types; i++) {
+            result.configurations[i] = ~type(0);
+        }
+
+        const auto type_idx = num_spins / 64u;
+        if(type_idx < num_types) {
+            result.configurations[type_idx] &= ((type)1u << (num_spins % 64)) - 1u;
+        }
+
+        return result;
+    }
+
 
     HDINLINE double operator[](const unsigned int position) const {
         return 2.0 * static_cast<double>(
@@ -138,6 +156,40 @@ struct Spins_t {
         }
         return true;
     }
+
+    HDINLINE Spins_t& operator^=(const Spins_t& other) {
+        #ifdef __CUDA_ARCH__
+        #pragma unroll
+        #endif
+        for(auto i = 0; i < num_types; i++) {
+            this->configurations[i] ^= other.configurations[i];
+        }
+
+        return *this;
+    }
+
+    HDINLINE Spins_t& operator&=(const Spins_t& other) {
+        #ifdef __CUDA_ARCH__
+        #pragma unroll
+        #endif
+        for(auto i = 0; i < num_types; i++) {
+            this->configurations[i] &= other.configurations[i];
+        }
+
+        return *this;
+    }
+
+    HDINLINE Spins_t& operator|=(const Spins_t& other) {
+        #ifdef __CUDA_ARCH__
+        #pragma unroll
+        #endif
+        for(auto i = 0; i < num_types; i++) {
+            this->configurations[i] |= other.configurations[i];
+        }
+
+        return *this;
+    }
+
 
     HDINLINE int total_z(const unsigned int num_spins) const {
         auto result = 0;

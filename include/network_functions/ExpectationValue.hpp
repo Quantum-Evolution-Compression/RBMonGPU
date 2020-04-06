@@ -28,35 +28,35 @@ public:
     ~ExpectationValue() noexcept(false);
 
     template<typename Psi_t, typename SpinEnsemble>
-    complex<double> operator()(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+    complex<double> operator()(const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    pair<complex<double>, double> corrected(const Psi_t& psi, const Operator& operator_, const Operator& operator2, const SpinEnsemble& spin_ensemble);
+    pair<complex<double>, double> corrected(const Psi_t& psi, const Operator& operator_, const Operator& operator2, SpinEnsemble& spin_ensemble);
 
     template<typename Psi_t, typename SpinEnsemble>
-    vector<complex<double>> operator()(const Psi_t& psi, const vector<Operator>& operator_list_host, const SpinEnsemble& spin_ensemble) const;
+    vector<complex<double>> operator()(const Psi_t& psi, const vector<Operator>& operator_list_host, SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    pair<double, complex<double>> fluctuation(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+    pair<double, complex<double>> fluctuation(const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    complex<double> gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+    complex<double> gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    void fluctuation_gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const;
+    void fluctuation_gradient(complex<double>* result, const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble) const;
 
     template<typename Psi_t, typename SpinEnsemble>
     vector<complex<double>> difference(
-        const Psi_t& psi, const Psi_t& psi_prime, const vector<Operator>& operator_list_host, const SpinEnsemble& spin_ensemble
+        const Psi_t& psi, const Psi_t& psi_prime, const vector<Operator>& operator_list_host, SpinEnsemble& spin_ensemble
     ) const;
 
     template<typename Psi_t, typename SpinEnsemble>
-    complex<double> __call__(const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble) const {
+    complex<double> __call__(const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble) const {
         return (*this)(psi, operator_, spin_ensemble);
     }
 
     template<typename Psi_t, typename SpinEnsemble>
-    vector<complex<double>> __call__vector(const Psi_t& psi, const vector<Operator>& operator_, const SpinEnsemble& spin_ensemble) const {
+    vector<complex<double>> __call__vector(const Psi_t& psi, const vector<Operator>& operator_, SpinEnsemble& spin_ensemble) const {
         return (*this)(psi, operator_, spin_ensemble);
     }
 
@@ -64,7 +64,7 @@ public:
 
     template<typename Psi_t, typename SpinEnsemble>
     inline pair<xt::pytensor<complex<double>, 1>, complex<double>> gradient_py(
-        const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
+        const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble
     ) const {
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})
@@ -77,7 +77,7 @@ public:
 
     template<typename Psi_t, typename SpinEnsemble>
     inline xt::pytensor<complex<double>, 1> fluctuation_gradient_py(
-        const Psi_t& psi, const Operator& operator_, const SpinEnsemble& spin_ensemble
+        const Psi_t& psi, const Operator& operator_, SpinEnsemble& spin_ensemble
     ) const {
         auto result = xt::pytensor<complex<double>, 1>(
             std::array<long int, 1>({static_cast<long int>(psi.get_num_params())})

@@ -11,7 +11,7 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t>
-double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
+double psi_norm(const Psi_t& psi, ExactSummation& exact_summation) {
     double* result_ptr;
     MALLOC(result_ptr, sizeof(double), psi.gpu);
     MEMSET(result_ptr, 0, sizeof(double), psi.gpu);
@@ -45,19 +45,19 @@ double psi_norm(const Psi_t& psi, const ExactSummation& exact_summation) {
 
 
 #ifdef ENABLE_PSI
-template double psi_norm(const Psi& psi, const ExactSummation&);
+template double psi_norm(const Psi& psi, ExactSummation&);
 #endif // ENABLE_PSI
 
 #ifdef ENABLE_PSI_DEEP
-template double psi_norm(const PsiDeep& psi, const ExactSummation&);
+template double psi_norm(const PsiDeep& psi, ExactSummation&);
 #endif // ENABLE_PSI_DEEP
 
 #ifdef ENABLE_PSI_PAIR
-template double psi_norm(const PsiPair& psi, const ExactSummation&);
+template double psi_norm(const PsiPair& psi, ExactSummation&);
 #endif // ENABLE_PSI_PAIR
 
 #ifdef ENABLE_PSI_EXACT
-template double psi_norm(const PsiExact& psi, const ExactSummation&);
+template double psi_norm(const PsiExact& psi, ExactSummation&);
 #endif // ENABLE_PSI_EXACT
 
 } // namespace rbm_on_gpu

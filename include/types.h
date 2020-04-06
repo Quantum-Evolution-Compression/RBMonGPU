@@ -54,7 +54,7 @@ __global__ void cuda_kernel(Function function) {
 
 template<typename T>
 HDINLINE
-void generic_atomicAdd(T* address, const T& value) {
+void generic_atomicAdd(T* const address, const T& value) {
     #ifdef __CUDA_ARCH__
     atomicAdd(address, value);
     #else

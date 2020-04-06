@@ -8,7 +8,7 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t, typename SpinEnsemble>
-Array<complex_t> get_S_matrix(const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
+Array<complex_t> get_S_matrix(const Psi_t& psi, SpinEnsemble& spin_ensemble) {
     const auto O_k_length = psi.get_num_params();
     const auto psi_kernel = psi.get_kernel();
 
@@ -54,7 +54,7 @@ Array<complex_t> get_S_matrix(const Psi_t& psi, const SpinEnsemble& spin_ensembl
 
 
 #if defined(ENABLE_PSI) && defined(ENABLE_EXACT_SUMMATION)
-template Array<complex_t> get_S_matrix(const Psi&, const ExactSummation&);
+template Array<complex_t> get_S_matrix(const Psi&, ExactSummation&);
 #endif
 
 } // namespace rbm_on_gpu

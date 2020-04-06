@@ -39,18 +39,18 @@ public:
     template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     void compute_averages(
         const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
-        const bool is_unitary, const SpinEnsemble& spin_ensemble
+        const bool is_unitary, SpinEnsemble& spin_ensemble
     ) const;
 
     template<bool compute_gradient, bool real_gradient, typename Psi_t, typename SpinEnsemble>
     void compute_averages2(
         const Psi_t& psi, const PsiPair& psi_prime, const Operator& operator_,
-        const bool is_unitary, const SpinEnsemble& spin_ensemble
+        const bool is_unitary, SpinEnsemble& spin_ensemble
     ) const;
 
     // template<typename Psi_t, typename SpinEnsemble>
     // void overlap(
-    //     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+    //     const Psi_t& psi, const Psi_t& psi_prime, SpinEnsemble& spin_ensemble
     // ) const;
 };
 
@@ -83,24 +83,24 @@ public:
     template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double distance(
         const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble
+        SpinEnsemble& spin_ensemble
     );
 
     // template<typename Psi_t, typename SpinEnsemble>
     // double overlap(
-    //     const Psi_t& psi, const Psi_t& psi_prime, const SpinEnsemble& spin_ensemble
+    //     const Psi_t& psi, const Psi_t& psi_prime, SpinEnsemble& spin_ensemble
     // ) const;
 
     template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double gradient(
         complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, const float nu
+        SpinEnsemble& spin_ensemble, const float nu
     );
 
     template<typename Psi_t, typename SpinEnsemble>
     double gradient(
         complex<double>* result, const Psi_t& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, const float nu
+        SpinEnsemble& spin_ensemble, const float nu
     );
 
 #ifdef __PYTHONCC__
@@ -108,7 +108,7 @@ public:
     template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     pair<xt::pytensor<complex<double>, 1u>, double> gradient_py(
         const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
-        const SpinEnsemble& spin_ensemble, const float nu
+        SpinEnsemble& spin_ensemble, const float nu
     ) {
         xt::pytensor<complex<double>, 1u> grad(std::array<long int, 1u>({(long int)psi_prime.get_num_params()}));
 

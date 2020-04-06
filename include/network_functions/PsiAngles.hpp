@@ -10,6 +10,6 @@ using namespace std;
 
 
 template<typename Psi_t, typename SpinEnsemble>
-pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, const SpinEnsemble& spin_ensemble);
+pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, SpinEnsemble& spin_ensemble);
 
 } // namespace rbm_on_gpu

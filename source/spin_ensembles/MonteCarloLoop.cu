@@ -23,7 +23,7 @@ MonteCarloLoop::MonteCarloLoop(
     const unsigned int num_thermalization_sweeps,
     const unsigned int num_markov_chains,
     const bool         gpu
-) : gpu(gpu) {
+) : acceptances_ar(1, gpu), rejections_ar(1, gpu), gpu(gpu) {
     this->num_samples = num_samples;
     this->num_sweeps = num_sweeps;
     this->num_thermalization_sweeps = num_thermalization_sweeps;
@@ -32,10 +32,21 @@ MonteCarloLoop::MonteCarloLoop(
 
     this->num_mc_steps_per_chain = this->num_samples / this->num_markov_chains;
 
+    this->fast_sweep = false;
+    this->fast_sweep_num_tries = 0u;
+
+    this->acceptances = this->acceptances_ar.data();
+    this->rejections = this->rejections_ar.data();
+
     this->allocate_memory();
 }
 
-MonteCarloLoop::MonteCarloLoop(const MonteCarloLoop& other) : gpu(other.gpu) {
+MonteCarloLoop::MonteCarloLoop(MonteCarloLoop& other)
+    :
+    acceptances_ar(1, other.gpu),
+    rejections_ar(1, other.gpu),
+    gpu(other.gpu)
+{
     this->num_samples = other.num_samples;
     this->num_sweeps = other.num_sweeps;
     this->num_thermalization_sweeps = other.num_thermalization_sweeps;
@@ -44,6 +55,12 @@ MonteCarloLoop::MonteCarloLoop(const MonteCarloLoop& other) : gpu(other.gpu) {
     this->symmetry_sector = other.symmetry_sector;
 
     this->num_mc_steps_per_chain = this->num_samples / this->num_markov_chains;
+
+    this->fast_sweep = other.fast_sweep;
+    this->fast_sweep_num_tries = other.fast_sweep_num_tries;
+
+    this->acceptances = this->acceptances_ar.data();
+    this->rejections = this->rejections_ar.data();
 
     this->allocate_memory();
 }

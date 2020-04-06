@@ -7,7 +7,7 @@ namespace rbm_on_gpu {
 
 
 template<typename Psi_t, typename SpinEnsemble>
-pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, const SpinEnsemble& spin_ensemble) {
+pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, SpinEnsemble& spin_ensemble) {
     Array<complex_t> result(psi.get_num_units(), psi.gpu);
     Array<complex_t> result_std(psi.get_num_units(), psi.gpu);
 
@@ -61,11 +61,11 @@ pair<Array<complex_t>, Array<complex_t>> psi_angles(const Psi_t& psi, const Spin
 #ifdef ENABLE_PSI_DEEP
 
 #ifdef ENABLE_EXACT_SUMMATION
-template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, const ExactSummation& spin_ensemble);
+template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, ExactSummation& spin_ensemble);
 #endif // ENABLE_EXACT_SUMMATION
 
 #ifdef ENABLE_MONTE_CARLO
-template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, const MonteCarloLoop& spin_ensemble);
+template pair<Array<complex_t>, Array<complex_t>> psi_angles(const PsiDeep& psi, MonteCarloLoop& spin_ensemble);
 #endif // ENABLE_MONTE_CARLO
 
 #endif // ENABLE_PSI_DEEP

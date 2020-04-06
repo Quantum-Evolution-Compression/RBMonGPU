@@ -14,7 +14,7 @@ namespace kernel {
 template<bool compute_gradient, bool free_quantum_axis, typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 void kernel::HilbertSpaceDistance::compute_averages(
     const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinEnsemble& spin_ensemble
+    const bool is_unitary, SpinEnsemble& spin_ensemble
 ) const {
     const auto num_params = psi_prime.get_num_params();
 
@@ -193,7 +193,7 @@ void HilbertSpaceDistance::clear() {
 template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 double HilbertSpaceDistance::distance(
     const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
-    const SpinEnsemble& spin_ensemble
+    SpinEnsemble& spin_ensemble
 ) {
     this->clear();
     if(psi.free_quantum_axis) {
@@ -224,7 +224,7 @@ double HilbertSpaceDistance::distance(
 template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
 double HilbertSpaceDistance::gradient(
     complex<double>* result, const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_,
-    const bool is_unitary, const SpinEnsemble& spin_ensemble, const float nu
+    const bool is_unitary, SpinEnsemble& spin_ensemble, const float nu
 ) {
     this->clear();
     if(psi.free_quantum_axis) {
@@ -273,35 +273,35 @@ double HilbertSpaceDistance::gradient(
 
 #ifdef ENABLE_PSI
 
-template double HilbertSpaceDistance::distance(const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble, const float nu);
 
 #endif
 
 #ifdef ENABLE_PSI_DEEP
 
-template double HilbertSpaceDistance::distance(const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble, const float nu);
 
 #endif
 
 #ifdef ENABLE_PSI_PAIR
 
-template double HilbertSpaceDistance::distance(const PsiPair& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
+template double HilbertSpaceDistance::distance(const PsiPair& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble);
 
 #endif
 
 #if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
 
-template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble, const float nu);
 
 #endif
 
 #if defined(ENABLE_PSI_EXACT) && defined(ENABLE_PSI_DEEP)
 
-template double HilbertSpaceDistance::distance(const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const MonteCarloLoop& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, MonteCarloLoop& spin_ensemble, const float nu);
 
 #endif
 
@@ -314,35 +314,35 @@ template double HilbertSpaceDistance::gradient(complex<double>* result, const Ps
 
 #ifdef ENABLE_PSI
 
-template double HilbertSpaceDistance::distance(const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const Psi& psi, const Psi& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble, const float nu);
 
 #endif
 
 #ifdef ENABLE_PSI_DEEP
 
-template double HilbertSpaceDistance::distance(const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiDeep& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble, const float nu);
 
 #endif
 
 #ifdef ENABLE_PSI_PAIR
 
-template double HilbertSpaceDistance::distance(const PsiPair& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble);
+template double HilbertSpaceDistance::distance(const PsiPair& psi, const PsiPair& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble);
 
 #endif
 
 #if defined(ENABLE_PSI_CLASSICAL) && defined(ENABLE_PSI_DEEP)
 
-template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiClassical& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble, const float nu);
 
 #endif
 
 #if defined(ENABLE_PSI_EXACT) && defined(ENABLE_PSI_DEEP)
 
-template double HilbertSpaceDistance::distance(const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble);
-template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, const ExactSummation& spin_ensemble, const float nu);
+template double HilbertSpaceDistance::distance(const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble);
+template double HilbertSpaceDistance::gradient(complex<double>* result, const PsiExact& psi, const PsiDeep& psi_prime, const Operator& operator_, const bool is_unitary, ExactSummation& spin_ensemble, const float nu);
 
 #endif
 
