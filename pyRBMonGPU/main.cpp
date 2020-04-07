@@ -210,6 +210,11 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("vector", [](const PsiDeepMin& psi) {return psi_vector(psi).to_pytensor_1d();})
     #endif
+        .def_property(
+            "prefactor",
+            [](const PsiDeepMin& psi) {return psi.prefactor;},
+            [](PsiDeepMin& psi, const double new_value) {psi.prefactor = new_value; psi.log_prefactor = log(new_value);}
+        )
         .def("log_psi_s", &PsiDeepMin::log_psi_s);
 
 #endif // ENABLE_PSI_DEEP_MIN

@@ -167,7 +167,7 @@ public:
         for(auto i = 0u; i < this->N; i++) {
             spins_vec[i] = spins[i];
         }
-        result = complex_t(this->log_psi_s(spins_vec));
+        result = complex_t(this->log_psi_s(spins_vec)) - this->log_prefactor;
 
         #endif
     }
