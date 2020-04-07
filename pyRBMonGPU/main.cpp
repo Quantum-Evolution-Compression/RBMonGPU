@@ -207,7 +207,9 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const string
         >())
         .def_readonly("N", &PsiDeepMin::N)
-        // .def_property_readonly("vector", [](const PsiClassical& psi) {return psi_vector(psi).to_pytensor_1d();})
+    #ifdef ENABLE_EXACT_SUMMATION
+        .def_property_readonly("vector", [](const PsiDeepMin& psi) {return psi_vector(psi).to_pytensor_1d();})
+    #endif
         .def("log_psi_s", &PsiDeepMin::log_psi_s);
 
 #endif // ENABLE_PSI_DEEP_MIN

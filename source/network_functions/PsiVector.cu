@@ -61,6 +61,11 @@ template void psi_vector(complex<double>* result, const PsiDeep& psi);
 template Array<complex_t> psi_vector(const PsiDeep& psi);
 #endif // ENABLE_PSI_DEEP
 
+#ifdef ENABLE_PSI_DEEP_MIN
+template void psi_vector(complex<double>* result, const PsiDeepMin& psi);
+template Array<complex_t> psi_vector(const PsiDeepMin& psi);
+#endif // ENABLE_PSI_DEEP_MIN
+
 #ifdef ENABLE_PSI_PAIR
 template void psi_vector(complex<double>* result, const PsiPair& psi);
 template Array<complex_t> psi_vector(const PsiPair& psi);

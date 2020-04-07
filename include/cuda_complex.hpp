@@ -306,6 +306,8 @@ public:
     CUDA_CALLABLE_MEMBER
     explicit /*constexpr*/ complex(const complex<double>& __c);
 
+    inline complex(const std::complex<float>& z) : __re_(z.real()), __im_(z.imag()) {}
+
     /*constexpr*/ CUDA_CALLABLE_MEMBER float real() const {return __re_;}
     /*constexpr*/ CUDA_CALLABLE_MEMBER float imag() const {return __im_;}
 
@@ -369,6 +371,8 @@ public:
         : __re_(__re), __im_(__im) {}
     CUDA_CALLABLE_MEMBER complex(double x)
         : __re_(x), __im_(x) {}
+
+    inline complex(const std::complex<double>& z) : __re_(z.real()), __im_(z.imag()) {}
 
     /*constexpr*/ CUDA_CALLABLE_MEMBER double real() const {return __re_;}
     /*constexpr*/ CUDA_CALLABLE_MEMBER double imag() const {return __im_;}

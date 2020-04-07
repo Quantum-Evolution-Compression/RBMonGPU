@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef __CUDACC__
+#include "Spins.h"
+#endif
+
+
 #include <vector>
 #include <list>
 #include <complex>
@@ -46,6 +51,20 @@ public:
     static constexpr unsigned int max_layers = 3u;
     static constexpr unsigned int max_deep_angles = 2u * MAX_SPINS;
     static constexpr unsigned int max_width = 2u * MAX_SPINS;
+
+#ifdef __CUDACC__
+    struct Angles {
+        Angles() = default;
+
+        template<typename Psi_t>
+        HDINLINE void init(const Psi_t& psi, const Angles& other) {
+        }
+
+        template<typename Psi_t>
+        HDINLINE void init(const Psi_t& psi, const Spins& spins) {
+        }
+    };
+#endif
 
     // TODO: Try to use stack-allocated arrays
     struct Layer {
@@ -141,6 +160,33 @@ public:
         return result + this->log_prefactor;
     }
 
+#ifdef __CUDACC__
+    HDINLINE void log_psi_s(complex_t& result, const Spins& spins, const Angles& angles) const {
+        #ifndef __CUDA_ARCH__
+        std::vector<int> spins_vec(this->N);
+        for(auto i = 0u; i < this->N; i++) {
+            spins_vec[i] = spins[i];
+        }
+        result = complex_t(this->log_psi_s(spins_vec));
+
+        #endif
+    }
+
+    HDINLINE double probability_s(const double log_psi_s_real) const {
+        return exp(2.0 * (this->log_prefactor + log_psi_s_real));
+    }
+
+    HDINLINE unsigned int get_num_spins() const {
+        return this->N;
+    }
+
+    HDINLINE unsigned int get_width() const {
+        return this->N;
+    }
+
+
+#endif
+
     PsiDeepMin& get_kernel() {
         return *this;
     }
@@ -148,6 +194,7 @@ public:
     const PsiDeepMin& get_kernel() const {
         return *this;
     }
+
 };
 
 } // namespace kernel
