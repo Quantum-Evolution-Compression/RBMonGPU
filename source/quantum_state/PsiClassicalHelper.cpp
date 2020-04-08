@@ -128,7 +128,7 @@ cdouble psi_0_local(int i, int j, int fl) // in Heisenber representation
 		}
 
 	psi_0_local_temp *= exp(psi_neural->log_psi_s(spins));
-    //psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total);
+    psi_0_local_temp *= exp((-I)*(time_current-time_epoch)*Es_total); // interaction->Schrodinger representation additional rotation
     return psi_0_local_temp;
     }
 
@@ -519,6 +519,7 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
 
         return Heff_plaquetteComplex;
         }
+	return 0; // should never happen
 	}
 
 
@@ -533,7 +534,7 @@ cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the 
 		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
 		}
 	tempHeff += psi_neural->log_psi_s(spins);
-	//tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation
+	tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation from Schroedinger
 
 
     int i,j;
