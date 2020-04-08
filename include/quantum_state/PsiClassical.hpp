@@ -93,10 +93,10 @@ struct PsiClassical : public kernel::PsiClassical, public PsiBase {
      ) : rbm_on_gpu::PsiBase(N, false, gpu) {
          this->N = N;
 
+         Peter::load_neural_network(directory, index);
          Peter::loadVP(directory, index, "Re");
          Peter::loadVP(directory, index, "Im");
          Peter::Compress_Load(directory, index);
-         Peter::load_neural_network(directory, index);
 
          this->prefactor = 1.0;
     }
