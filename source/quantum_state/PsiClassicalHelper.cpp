@@ -115,7 +115,7 @@ void Compress_Load(std::string directory, int index)
     filePos.close();
     }
 
-cdouble psi_0_local(int i, int j, int fl) // in Heisenber representation
+cdouble psi_0_local(int i, int j, int fl) // in interaction representation
     {
     cdouble psi_0_local_temp=1.0;
 
@@ -149,6 +149,7 @@ int if_Flippable(int i, int j)
 	}
 
 cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't take into account the factor of 2
+																	// returns Shroedinger representation
 	{
 	//for (int x=0; x<L; x++) S[0][x][2] = S_1D[x];
 
@@ -533,19 +534,17 @@ cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the 
 		S[0][j][2] = spins[j];
 		Es_total += -spins[j]*(spins[(j+1)%L]+spins[(j-1+L)%L])/2;
 		}
-	tempHeff += psi_neural->log_psi_s(spins);
-	tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation from Schroedinger
-
+	tempHeff += psi_neural->log_psi_s(spins); // already interaction representation
 
     int i,j;
 	for (i=0; i<H; i++)
 		{
         for (j=0; j<L; j++)
 			{
-			tempHeff += Heff_plaquetteComplex(i,j, varW);
+			tempHeff += Heff_plaquetteComplex(i,j, varW); // contrubution of the last epoch in Heisenberg representation
 			}
 		}
-
+	tempHeff += (+I)*Es_total*time_epoch;  // "rotation" to obtain the interaction representation from Schroedinger; cancels extra phase-contribution from the last epoch 
 
 
 	cdouble varW0 = varW(numberOfVarParameters);
