@@ -42,6 +42,11 @@ public:
         const bool is_unitary, SpinEnsemble& spin_ensemble
     ) const;
 
+    template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
+    void compute_averages_2nd_order(
+        const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& op, const Operator& op2, SpinEnsemble& spin_ensemble
+    ) const;
+
     template<bool compute_gradient, bool real_gradient, typename Psi_t, typename SpinEnsemble>
     void compute_averages2(
         const Psi_t& psi, const PsiPair& psi_prime, const Operator& operator_,
@@ -83,6 +88,12 @@ public:
     template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
     double distance(
         const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& operator_, const bool is_unitary,
+        SpinEnsemble& spin_ensemble
+    );
+
+    template<typename Psi_t, typename Psi_t_prime, typename SpinEnsemble>
+    double distance_2nd_order(
+        const Psi_t& psi, const Psi_t_prime& psi_prime, const Operator& op, const Operator& op2,
         SpinEnsemble& spin_ensemble
     );
 

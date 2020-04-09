@@ -333,6 +333,18 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+        .def(
+            "distance_2nd_order",
+            [](HilbertSpaceDistance& hs_distance, const PsiDeep& psi, const PsiDeep& psi_prime, const quantum_expression::PauliExpression& expr, MonteCarloLoop& spin_ensemble) {
+                return hs_distance.distance_2nd_order(
+                    psi,
+                    psi_prime,
+                    Operator(expr, hs_distance.gpu),
+                    Operator(expr * expr, hs_distance.gpu),
+                    spin_ensemble
+                );
+            }
+        )
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
@@ -358,6 +370,18 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+        .def(
+            "distance_2nd_order",
+            [](HilbertSpaceDistance& hs_distance, const PsiDeep& psi, const PsiDeep& psi_prime, const quantum_expression::PauliExpression& expr, ExactSummation& spin_ensemble) {
+                return hs_distance.distance_2nd_order(
+                    psi,
+                    psi_prime,
+                    Operator(expr, hs_distance.gpu),
+                    Operator(expr * expr, hs_distance.gpu),
+                    spin_ensemble
+                );
+            }
+        )
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
