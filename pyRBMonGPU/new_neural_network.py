@@ -54,7 +54,6 @@ def new_deep_neural_network(
     N,
     M,
     C,
-    dim=1,
     initial_value=(0.01 + 1j * math.pi / 4),
     alpha=0,
     beta=0,
@@ -65,6 +64,8 @@ def new_deep_neural_network(
     noise_modulation="auto",
     final_weights=10
 ):
+    dim = len(N) if isinstance(N, (list, tuple)) else 1
+
     N_linear = N if dim == 1 else N[0] * N[1]
     M_linear = M if dim == 1 else [m[0] * m[1] for m in M]
     C_linear = C if dim == 1 else [c[0] * c[1] for c in C]
