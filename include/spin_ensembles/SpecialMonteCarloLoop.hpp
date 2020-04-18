@@ -77,16 +77,16 @@ struct SpecialMonteCarloLoop {
         }
         SYNC;
 
-        SHARED typename Psi_t::Angles angles[2];
-        angles[0].init(psi, spins[0]);
-        angles[1].init(psi, spins[1]);
-        SYNC;
+        SHARED typename Psi_t::Angles angles;
 
         SHARED complex_t log_psi[2];
         SHARED double log_psi_real[2];
 
-        psi.log_psi_s_real(log_psi_real[0], spins[0], angles[0]);
-        psi.log_psi_s_real(log_psi_real[1], spins[1], angles[1]);
+        psi.log_psi_s_real(log_psi_real[0], spins[0], angles);
+        SINGLE {
+            log_psi_real[1] = log_psi_real[0];
+        }
+        SYNC;
 
         this->thermalize(psi, log_psi_real, spins, angles, &local_random_state);
 
@@ -101,8 +101,8 @@ struct SpecialMonteCarloLoop {
                 SHARED_MEM_LOOP_END(i);
             }
 
-            psi.log_psi_s(log_psi[0], spins[0], angles[0]);
-            psi.log_psi_s(log_psi[1], spins[1], angles[1]);
+            psi.log_psi_s(log_psi[0], spins[0], angles);
+            psi.log_psi_s(log_psi[1], spins[1], angles);
 
             function(
                 mc_step_within_chain * this->num_markov_chains + markov_index,
@@ -130,7 +130,7 @@ struct SpecialMonteCarloLoop {
         const Psi_t& psi,
         double* log_psi_real,
         Spins* spins,
-        typename Psi_t::Angles* angles,
+        typename Psi_t::Angles& angles,
         void* local_random_state
     ) const {
         #include "cuda_kernel_defines.h"
@@ -148,7 +148,7 @@ struct SpecialMonteCarloLoop {
         const Psi_t& psi,
         double* log_psi_real,
         Spins* spins,
-        typename Psi_t::Angles* angles,
+        typename Psi_t::Angles& angles,
         void* local_random_state
     ) const {
         #include "cuda_kernel_defines.h"
@@ -171,7 +171,7 @@ struct SpecialMonteCarloLoop {
         SYNC;
 
         SHARED double next_log_psi_real;
-        psi.log_psi_s_real(next_log_psi_real, spins[ab], angles[ab]);
+        psi.log_psi_s_real(next_log_psi_real, spins[ab], angles);
 
         SHARED double ratio;
         SINGLE {

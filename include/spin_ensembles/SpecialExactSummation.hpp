@@ -48,14 +48,10 @@ struct SpecialExactSummation {
             spins[0] = Spins(double_spin_index, N);
             spins[1] = Spins(double_spin_index >> N, N);
 
-            SHARED typename Psi_t::Angles angles[2];
-            angles[0].init(psi, spins[0]);
-            angles[1].init(psi, spins[1]);
+            SHARED typename Psi_t::Angles angles;
 
-            SYNC;
-
-            psi.log_psi_s(log_psi[0], spins[0], angles[0]);
-            psi.log_psi_s(log_psi[1], spins[1], angles[1]);
+            psi.log_psi_s(log_psi[0], spins[0], angles);
+            psi.log_psi_s(log_psi[1], spins[1], angles);
 
             SYNC;
 
