@@ -255,11 +255,11 @@ struct Spins_t<1u> : public generic::Spins_t<1u> {
     }
 
     HDINLINE uint64_t bit_at(const unsigned int i) const {
-        return this.configuration() & ((type)1u << i);
+        return this->configuration() & ((type)1u << i);
     }
 
     HDINLINE Spins_t<1u> extract_first_n(const unsigned int n) const {
-        return Spins_t<1u>(this.configuration(), n);
+        return Spins_t<1u>(this->configuration(), n);
     }
 
     HDINLINE Spins_t<1u>& operator=(const Spins_t<1u>& other) {

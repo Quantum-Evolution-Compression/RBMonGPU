@@ -16,7 +16,7 @@ namespace rbm_on_gpu {
 SpecialExactSummation::SpecialExactSummation(const unsigned int num_spins, const bool gpu)
     :
         gpu(gpu),
-        num_spins(num_spins),
+        num_spins(num_spins)
     {
         this->num_spin_configurations = pow(2, 2 * num_spins);
     }

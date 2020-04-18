@@ -131,7 +131,7 @@ struct SpecialMonteCarloLoop {
         double* log_psi_real,
         Spins* spins,
         typename Psi_t::Angles* angles,
-        void* local_random_state,
+        void* local_random_state
     ) const {
         #include "cuda_kernel_defines.h"
 
@@ -148,8 +148,8 @@ struct SpecialMonteCarloLoop {
         const Psi_t& psi,
         double* log_psi_real,
         Spins* spins,
-        typename Psi_t::Angles&* angles,
-        void* local_random_state,
+        typename Psi_t::Angles* angles,
+        void* local_random_state
     ) const {
         #include "cuda_kernel_defines.h"
 
@@ -159,7 +159,7 @@ struct SpecialMonteCarloLoop {
 
         SINGLE {
             position = random_uint64(local_random_state) % psi.get_num_spins();
-            ab = unsigned int(random_bool(local_random_state));
+            ab = static_cast<unsigned int>(random_bool(local_random_state));
             spins[ab] = spins[ab].flip(position);
             if(position < psi.get_num_spins() / 2) {
                 hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
@@ -219,16 +219,6 @@ struct SpecialMonteCarloLoop : public kernel::SpecialMonteCarloLoop {
     SpecialMonteCarloLoop(SpecialMonteCarloLoop& other);
     ~SpecialMonteCarloLoop() noexcept(false);
 
-    inline void set_total_z_symmetry(const int sector) {
-        this->symmetry_sector = sector;
-        this->has_total_z_symmetry = true;
-    }
-
-    inline void set_fast_sweep(const unsigned int num_tries) {
-        this->fast_sweep = true;
-        this->fast_sweep_num_tries = num_tries;
-    }
-
 #ifdef __CUDACC__
     template<typename Psi_t, typename Function>
     inline void foreach(const Psi_t& psi, const Function& function, const int blockDim=-1) {
@@ -245,24 +235,12 @@ struct SpecialMonteCarloLoop : public kernel::SpecialMonteCarloLoop {
         if(this->gpu) {
             const auto blockDim_ = blockDim == -1 ? psi.get_width() : blockDim;
 
-            if(this->has_total_z_symmetry) {
-                cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
-                    [=] __device__ () {this_kernel.kernel_foreach<true>(psi_kernel, function);}
-                );
-            }
-            else {
-                cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
-                    [=] __device__ () {this_kernel.kernel_foreach<false>(psi_kernel, function);}
-                );
-            }
+            cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
+                [=] __device__ () {this_kernel.kernel_foreach<false>(psi_kernel, function);}
+            );
         }
         else {
-            if(this->has_total_z_symmetry) {
-                this_kernel.kernel_foreach<true>(psi_kernel, function);
-            }
-            else {
-                this_kernel.kernel_foreach<false>(psi_kernel, function);
-            }
+            this_kernel.kernel_foreach<false>(psi_kernel, function);
         }
 
         this->acceptances_ar.update_host();
