@@ -136,6 +136,16 @@ if (ENABLE_PSI_PAIR)
   target_compile_definitions(RBMonGPU PUBLIC ENABLE_PSI_PAIR)
 endif()
 
+option(ENABLE_SPECIAL_MONTE_CARLO "enable special monte-carlo" OFF)
+if (ENABLE_SPECIAL_MONTE_CARLO)
+  target_compile_definitions(RBMonGPU PUBLIC ENABLE_SPECIAL_MONTE_CARLO)
+endif()
+
+option(ENABLE_SPECIAL_EXACT_SUMMATION "enable special exact summation" OFF)
+if (ENABLE_SPECIAL_EXACT_SUMMATION)
+  target_compile_definitions(RBMonGPU PUBLIC ENABLE_SPECIAL_EXACT_SUMMATION)
+endif()
+
 
 # Compile and link RBMonGPU
 # =========================
