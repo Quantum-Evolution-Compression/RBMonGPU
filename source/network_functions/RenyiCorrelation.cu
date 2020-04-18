@@ -14,6 +14,7 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
 
     const auto psi_kernel = psi.get_kernel();
     const auto U_A_kernel = U_A.get_kernel();
+    const auto N_A = psi.get_num_spins() / 2;
 
     spin_ensemble.foreach(
         psi,
@@ -32,7 +33,10 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
             U_A_kernel.local_energy(local_energy[1], psi_kernel, spins[1], log_psi[1], angles);
 
             SINGLE {
-                generic_atomicAdd(result, weight * abs2(local_energy[0]) * abs2(local_energy[1]));
+                const auto hamming_sign = (
+                    spins[0].extract_first_n(N_A).hamming_distance(spins[1].extract_first_n(N_A)) & 1u
+                ) ? -1.0 : 1.0;
+                generic_atomicAdd(result, weight * hamming_sign * abs2(local_energy[0]) * abs2(local_energy[1]));
             }
         }
     );
