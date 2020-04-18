@@ -1,4 +1,6 @@
 #include "network_functions/RenyiCorrelation.hpp"
+#include "spin_ensembles.hpp"
+#include "quantum_states.hpp"
 #include "cuda_complex.hpp"
 #include "types.h"
 
@@ -38,6 +40,27 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
     this->result_ar.update_host();
     return this->result_ar.front() / spin_ensemble.get_num_steps();
 }
+
+
+#ifdef ENABLE_SPECIAL_MONTE_CARLO
+
+#ifdef ENBALE_PSI_DEEP
+
+template double RenyiCorrelation::operator()(const PsiDeep& psi, const SpecialMonteCarloLoop& spin_ensemble);
+
+#endif // ENBALE_PSI_DEEP
+
+#endif // ENABLE_SPECIAL_MONTE_CARLO
+
+#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
+
+#ifdef ENBALE_PSI_DEEP
+
+template double RenyiCorrelation::operator()(const PsiDeep& psi, const SpecialExactSummation& spin_ensemble);
+
+#endif // ENBALE_PSI_DEEP
+
+#endif // ENABLE_SPECIAL_EXACT_SUMMATION
 
 
 }  // namespace rbm_on_gpu
