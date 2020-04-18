@@ -6,12 +6,6 @@
 #include "cuda_complex.hpp"
 #include "types.h"
 
-#ifdef __PYTHONCC__
-    #define FORCE_IMPORT_ARRAY
-    #include "xtensor-python/pytensor.hpp"
-#endif // __CUDACC__
-
-// #include <vector>
 #include <memory>
 #include <cmath>
 

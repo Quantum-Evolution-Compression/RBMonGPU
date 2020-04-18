@@ -13,6 +13,7 @@
     struct curandState_t;
 #endif // __CUDACC__
 
+#include <vector>
 #include <memory>
 #include <random>
 
@@ -21,7 +22,7 @@ namespace rbm_on_gpu {
 
 namespace kernel {
 
-struct MonteCarloLoop {
+struct SpecialMonteCarloLoop {
 
     curandState_t*  random_states;
     std::mt19937*   random_state_host;
@@ -30,13 +31,7 @@ struct MonteCarloLoop {
     unsigned int    num_thermalization_sweeps;
     unsigned int    num_markov_chains;
 
-    bool            has_total_z_symmetry;
-    int             symmetry_sector;
-
     unsigned int    num_mc_steps_per_chain;
-
-    bool            fast_sweep;
-    unsigned int    fast_sweep_num_tries;
 
     unsigned int*   acceptances;
     unsigned int*   rejections;
@@ -52,7 +47,7 @@ struct MonteCarloLoop {
 
 #ifdef __CUDACC__
 
-    template<bool total_z_symmetry, typename Psi_t, typename Function>
+    template<typename Psi_t, typename Function>
     HDINLINE
     void kernel_foreach(const Psi_t psi, Function function) const {
         // ##################################################################################
@@ -74,48 +69,40 @@ struct MonteCarloLoop {
             std::mt19937 local_random_state = this->random_state_host[markov_index];
         #endif
 
-        SHARED Spins spins;
+        SHARED Spins spins[2];
 
         SINGLE {
-            if(total_z_symmetry) {
-                spins = Spins(
-                    random_n_over_k_bitstring(
-                        psi.get_num_spins(),
-                        (this->symmetry_sector + psi.get_num_spins()) / 2,
-                        &local_random_state
-                    ),
-                    psi.get_num_spins()
-                );
-            }
-            else {
-                spins = Spins::random(&local_random_state, psi.get_num_spins());
-            }
+            spins[0] = Spins::random(&local_random_state, psi.get_num_spins());
+            spins[1] = spins[0];
         }
         SYNC;
 
-        SHARED typename Psi_t::Angles angles;
-        angles.init(psi, spins);
+        SHARED typename Psi_t::Angles angles[2];
+        angles[0].init(psi, spins[0]);
+        angles[1].init(psi, spins[1]);
         SYNC;
 
-        SHARED complex_t log_psi;
-        SHARED double log_psi_real;
+        SHARED complex_t log_psi[2];
+        SHARED double log_psi_real[2];
 
-        psi.log_psi_s_real(log_psi_real, spins, angles);
+        psi.log_psi_s_real(log_psi_real[0], spins[0], angles[0]);
+        psi.log_psi_s_real(log_psi_real[1], spins[1], angles[1]);
 
-        this->thermalize<total_z_symmetry>(psi, log_psi_real, spins, &local_random_state, angles);
+        this->thermalize(psi, log_psi_real, spins, angles, &local_random_state);
 
         SHARED_MEM_LOOP_BEGIN(mc_step_within_chain, this->num_mc_steps_per_chain) {
 
             SHARED_MEM_LOOP_BEGIN(
                 i,
-                this->num_sweeps * (this->fast_sweep ? 1u : psi.get_num_spins())
+                this->num_sweeps * psi.get_num_spins()
             ) {
-                this->mc_update<total_z_symmetry>(psi, log_psi_real, spins, &local_random_state, angles);
+                this->mc_update(psi, log_psi_real, spins, angles, &local_random_state);
 
                 SHARED_MEM_LOOP_END(i);
             }
 
-            psi.log_psi_s(log_psi, spins, angles);
+            psi.log_psi_s(log_psi[0], spins[0], angles[0]);
+            psi.log_psi_s(log_psi[1], spins[1], angles[1]);
 
             function(
                 mc_step_within_chain * this->num_markov_chains + markov_index,
@@ -137,122 +124,74 @@ struct MonteCarloLoop {
         #endif
     }
 
-    template<bool total_z_symmetry, typename Psi_t>
+    template<typename Psi_t>
     HDINLINE
-    void thermalize(const Psi_t& psi, double& log_psi_real, Spins& spins, void* local_random_state, typename Psi_t::Angles& angles) const {
+    void thermalize(
+        const Psi_t& psi,
+        double* log_psi_real,
+        Spins* spins,
+        typename Psi_t::Angles* angles,
+        void* local_random_state,
+    ) const {
         #include "cuda_kernel_defines.h"
 
         SHARED_MEM_LOOP_BEGIN(i, this->num_thermalization_sweeps * psi.get_num_spins()) {
-        // for(auto i = 0u; i < this->num_thermalization_sweeps * psi.get_num_spins(); i++) {
-            this->mc_update<total_z_symmetry>(psi, log_psi_real, spins, local_random_state, angles);
+            this->mc_update(psi, log_psi_real, spins, angles, local_random_state);
 
             SHARED_MEM_LOOP_END(i);
         }
     }
 
-    template<bool total_z_symmetry, typename Psi_t>
+    template<typename Psi_t>
     HDINLINE
-    void mc_update(const Psi_t& psi, double& log_psi_real, Spins& spins, void* local_random_state, typename Psi_t::Angles& angles) const {
+    void mc_update(
+        const Psi_t& psi,
+        double* log_psi_real,
+        Spins* spins,
+        typename Psi_t::Angles&* angles,
+        void* local_random_state,
+    ) const {
         #include "cuda_kernel_defines.h"
 
-        SHARED int position;
-        SHARED int second_position;
-        SHARED Spins original_spins;
+        SHARED unsigned int position;
+        SHARED unsigned int ab;
+        SHARED double hamming_factor;
 
-        if(this->fast_sweep) {
-            SINGLE {
-                original_spins = spins;
-                auto flip_mask = Spins::random(local_random_state, psi.get_num_spins());
-                for(auto i = 1u; i < this->fast_sweep_num_tries; i++) {
-                    flip_mask &= Spins::random(local_random_state, psi.get_num_spins());
-                }
-                spins ^= flip_mask;
-            }
-            SYNC;
-        }
-        else {
-            SINGLE {
-                position = random_uint64(local_random_state) % psi.get_num_spins();
-                spins = spins.flip(position);
-            }
-            SYNC;
-
-            MULTI(j, psi.get_num_angles()) {
-                psi.flip_spin_of_jth_angle(j, position, spins, angles);
-            }
-        }
-
-        if(total_z_symmetry) {
-            SYNC;
-
-            SINGLE {
-                while(true) {
-                    second_position = random_uint64(local_random_state) % psi.get_num_spins();
-                    if(spins[second_position] == spins[position]) {
-                        spins = spins.flip(second_position);
-                        break;
-                    }
-                }
-            }
-            SYNC;
-            MULTI(j, psi.get_num_angles()) {
-                psi.flip_spin_of_jth_angle(j, second_position, spins, angles);
-            }
-        }
-
-        SHARED double next_log_psi_real;
-        psi.log_psi_s_real(next_log_psi_real, spins, angles);
-
-        SHARED bool spin_flip;
-        SHARED double ratio;
         SINGLE {
-            ratio = exp(2.0 * (next_log_psi_real - log_psi_real));
-            // printf("%f\n", ratio);
-
-            if(ratio > 1.0 || random_real(local_random_state) <= ratio) {
-                log_psi_real = next_log_psi_real;
-                spin_flip = true;
-                generic_atomicAdd(this->acceptances, 1u);
+            position = random_uint64(local_random_state) % psi.get_num_spins();
+            ab = unsigned int(random_bool(local_random_state));
+            spins[ab] = spins[ab].flip(position);
+            if(position < psi.get_num_spins() / 2) {
+                hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
             }
             else {
-                spin_flip = false;
-                generic_atomicAdd(this->rejections, 1u);
+                hamming_factor = 1.0;
             }
         }
         SYNC;
 
-        if(!spin_flip) {
-            // flip back spin(s)
+        SHARED double next_log_psi_real;
+        psi.log_psi_s_real(next_log_psi_real, spins[ab], angles[ab]);
 
-            if(this->fast_sweep) {
-                SINGLE {
-                    spins = original_spins;
-                }
-                SYNC;
+        SHARED double ratio;
+        SINGLE {
+            ratio = exp(
+                2.0 * (
+                    next_log_psi_real -
+                    log_psi_real[ab]
+                )
+            ) * hamming_factor;
+
+            if(ratio > 1.0 || random_real(local_random_state) <= ratio) {
+                log_psi_real[ab] = next_log_psi_real;
+                generic_atomicAdd(this->acceptances, 1u);
             }
             else {
-                SINGLE {
-                    spins = spins.flip(position);
-                }
-                SYNC;
-                MULTI(j, psi.get_num_angles()) {
-                    psi.flip_spin_of_jth_angle(j, position, spins, angles);
-                }
-            }
-
-            if(total_z_symmetry) {
-                SINGLE {
-                    spins = spins.flip(second_position);
-                }
-                SYNC;
-                MULTI(j, psi.get_num_angles()) {
-                    psi.flip_spin_of_jth_angle(j, second_position, spins, angles);
-                }
+                spins[ab] = spins[ab].flip(position);
+                generic_atomicAdd(this->rejections, 1u);
             }
         }
-        SINGLE {
-            // printf("%lu\n", spins.configuration());
-        }
+        SYNC;
     }
 
 #endif // __CUDACC__
@@ -262,7 +201,7 @@ struct MonteCarloLoop {
 } // namespace kernel
 
 
-struct MonteCarloLoop : public kernel::MonteCarloLoop {
+struct SpecialMonteCarloLoop : public kernel::SpecialMonteCarloLoop {
     bool gpu;
 
     Array<unsigned int> acceptances_ar;
@@ -270,15 +209,15 @@ struct MonteCarloLoop : public kernel::MonteCarloLoop {
 
     void allocate_memory();
 
-    MonteCarloLoop(
+    SpecialMonteCarloLoop(
         const unsigned int num_samples,
         const unsigned int num_sweeps,
         const unsigned int num_thermalization_sweeps,
         const unsigned int num_markov_chains,
         const bool         gpu
     );
-    MonteCarloLoop(MonteCarloLoop& other);
-    ~MonteCarloLoop() noexcept(false);
+    SpecialMonteCarloLoop(SpecialMonteCarloLoop& other);
+    ~SpecialMonteCarloLoop() noexcept(false);
 
     inline void set_total_z_symmetry(const int sector) {
         this->symmetry_sector = sector;
@@ -334,13 +273,13 @@ struct MonteCarloLoop : public kernel::MonteCarloLoop {
                 cudaDeviceSynchronize();
             }
             const auto end = clock::now();
-            log_duration("MonteCarloLoop::foreach", end - begin);
+            log_duration("SpecialMonteCarloLoop::foreach", end - begin);
         #endif
     }
 #endif
 
-    inline kernel::MonteCarloLoop get_kernel() const {
-        return static_cast<kernel::MonteCarloLoop>(*this);
+    inline kernel::SpecialMonteCarloLoop get_kernel() const {
+        return static_cast<kernel::SpecialMonteCarloLoop>(*this);
     }
 };
 
