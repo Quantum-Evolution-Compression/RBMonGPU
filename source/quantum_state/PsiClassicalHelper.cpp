@@ -35,6 +35,7 @@ void load_neural_network(string directory, int index) {
         delete psi_neural;
     }
     psi_neural = new rbm_on_gpu::PsiDeepMin(directory + "/psi_" + to_string(index-1) + "_compressed.txt");
+	psi_neural->enable_full_table();
 }
 
 
