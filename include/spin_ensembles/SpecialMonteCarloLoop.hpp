@@ -73,7 +73,11 @@ struct SpecialMonteCarloLoop {
 
         SINGLE {
             spins[0] = Spins::random(&local_random_state, psi.get_num_spins());
-            spins[1] = spins[0];
+            spins[1] = Spins::random(&local_random_state, psi.get_num_spins());
+            spins[1].configuration() = (
+                spins[0].extract_first_n(psi.get_num_spins() / 2).configuration() |
+                spins[1].configuration() & (((1u << (psi.get_num_spins() / 2u)) - 1u) << (psi.get_num_spins() / 2u))
+            );
         }
         SYNC;
 
@@ -236,11 +240,11 @@ struct SpecialMonteCarloLoop : public kernel::SpecialMonteCarloLoop {
             const auto blockDim_ = blockDim == -1 ? psi.get_width() : blockDim;
 
             cuda_kernel<<<this->num_markov_chains, blockDim_>>>(
-                [=] __device__ () {this_kernel.kernel_foreach<false>(psi_kernel, function);}
+                [=] __device__ () {this_kernel.kernel_foreach(psi_kernel, function);}
             );
         }
         else {
-            this_kernel.kernel_foreach<false>(psi_kernel, function);
+            this_kernel.kernel_foreach(psi_kernel, function);
         }
 
         this->acceptances_ar.update_host();

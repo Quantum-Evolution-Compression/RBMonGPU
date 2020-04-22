@@ -48,21 +48,21 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
 
 #ifdef ENABLE_SPECIAL_MONTE_CARLO
 
-#ifdef ENBALE_PSI_DEEP
+#ifdef ENABLE_PSI_DEEP
 
-template double RenyiCorrelation::operator()(const PsiDeep& psi, const SpecialMonteCarloLoop& spin_ensemble);
+template double RenyiCorrelation::operator()(const PsiDeep& psi, const Operator& U_A, SpecialMonteCarloLoop& spin_ensemble);
 
-#endif // ENBALE_PSI_DEEP
+#endif // ENABLE_PSI_DEEP
 
 #endif // ENABLE_SPECIAL_MONTE_CARLO
 
 #ifdef ENABLE_SPECIAL_EXACT_SUMMATION
 
-#ifdef ENBALE_PSI_DEEP
+#ifdef ENABLE_PSI_DEEP
 
-template double RenyiCorrelation::operator()(const PsiDeep& psi, const SpecialExactSummation& spin_ensemble);
+template double RenyiCorrelation::operator()(const PsiDeep& psi, const Operator& U_A, SpecialExactSummation& spin_ensemble);
 
-#endif // ENBALE_PSI_DEEP
+#endif // ENABLE_PSI_DEEP
 
 #endif // ENABLE_SPECIAL_EXACT_SUMMATION
 

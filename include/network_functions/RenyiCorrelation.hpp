@@ -17,7 +17,7 @@ struct RenyiCorrelation {
     double operator()(const Psi_t& psi, const Operator& U_A, SpinEnsemble& spin_ensemble);
 
     template<typename Psi_t, typename SpinEnsemble>
-    inline complex<double> __call__(const Psi_t& psi, const Operator& U_A, SpinEnsemble& spin_ensemble) {
+    inline double __call__(const Psi_t& psi, const Operator& U_A, SpinEnsemble& spin_ensemble) {
         return (*this)(psi, U_A, spin_ensemble);
     }
 };

@@ -277,6 +277,23 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_EXACT_SUMMATION
 
 
+#ifdef ENABLE_SPECIAL_MONTE_CARLO
+    py::class_<SpecialMonteCarloLoop>(m, "SpecialMonteCarloLoop")
+        .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
+        .def(py::init<SpecialMonteCarloLoop&>())
+        .def_property_readonly("num_steps", &SpecialMonteCarloLoop::get_num_steps)
+        .def_property_readonly("acceptance_rate", [](const SpecialMonteCarloLoop& mc){
+            return float(mc.acceptances_ar.front()) / float(mc.acceptances_ar.front() + mc.rejections_ar.front());
+        });
+#endif // ENABLE_SPECIAL_MONTE_CARLO
+
+#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
+    py::class_<SpecialExactSummation>(m, "SpecialExactSummation")
+        .def(py::init<unsigned int, bool>())
+        .def_property_readonly("num_steps", &SpecialExactSummation::get_num_steps);
+#endif // ENABLE_SPECIAL_EXACT_SUMMATION
+
+
     py::class_<ExpectationValue>(m, "ExpectationValue")
         .def(py::init<bool>())
 #ifdef ENABLE_MONTE_CARLO
