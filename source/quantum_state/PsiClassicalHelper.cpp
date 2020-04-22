@@ -14,8 +14,8 @@ namespace Peter {
 
 int L=10;
 int H=1;
-int const numberOfVarParameters=4;
-int PerturbationTheoryOrder = 1;
+int const numberOfVarParameters=18;
+int PerturbationTheoryOrder = 2;
 double time_current;
 double time_epoch;
 
@@ -35,6 +35,7 @@ void load_neural_network(string directory, int index) {
         delete psi_neural;
     }
     psi_neural = new rbm_on_gpu::PsiDeepMin(directory + "/psi_" + to_string(index-1) + "_compressed.txt");
+	psi_neural->enable_full_table();
 }
 
 
