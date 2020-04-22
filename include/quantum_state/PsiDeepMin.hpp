@@ -119,9 +119,8 @@ public:
     double         prefactor;
     double         log_prefactor;
 
-    vector<complex_std>                     full_table_log_psi;
-    unordered_map<uint64_t, complex_std>    hash_table_log_psi;
-    bool                                    use_hash_table;
+    vector<complex_std>*                    full_table_log_psi_ptr;
+    unordered_map<uint64_t, complex_std>*   hash_table_log_psi_ptr;
     unsigned int                            max_hash_table_size;
 
     // using Angles = rbm_on_gpu::PsiDeepMinAngles;
@@ -184,20 +183,20 @@ public:
 
     inline
     complex_std log_psi_s(const vector<int>& spins_in) {
-        if(!this->full_table_log_psi.empty()) {
-            return this->full_table_log_psi[vector_to_binary(spins_in)];
+        if(this->full_table_log_psi_ptr != nullptr) {
+            return this->full_table_log_psi_ptr->at(vector_to_binary(spins_in));
         }
-        if(this->use_hash_table) {
+        if(this->hash_table_log_psi_ptr != nullptr) {
             const auto spins = vector_to_binary(spins_in);
-            const auto hit = this->hash_table_log_psi.find(spins);
-            if(hit != this->hash_table_log_psi.end()) {
+            const auto hit = this->hash_table_log_psi_ptr->find(spins);
+            if(hit != this->hash_table_log_psi_ptr->end()) {
                 return hit->second;
             }
 
             const auto result = this->log_psi_s_raw(spins_in);
-            this->hash_table_log_psi.emplace(spins, result);
-            if(this->hash_table_log_psi.size() > this->max_hash_table_size) {
-                this->hash_table_log_psi.clear();
+            this->hash_table_log_psi_ptr->emplace(spins, result);
+            if(this->hash_table_log_psi_ptr->size() > this->max_hash_table_size) {
+                this->hash_table_log_psi_ptr->clear();
             }
             return result;
         }
@@ -260,7 +259,8 @@ public:
     list<Layer> layers;
     vector<complex_std> final_weights;
 
-
+    vector<complex_std>                    full_table_log_psi;
+    unordered_map<uint64_t, complex_std>   hash_table_log_psi;
 
     bool gpu;
 
@@ -338,7 +338,8 @@ public:
         infile.close();
 
         this->set_params(dynamical_params);
-        this->use_hash_table = false;
+        this->full_table_log_psi_ptr = nullptr;
+        this->hash_table_log_psi_ptr = nullptr;
     }
 
     inline void set_params(const vector<complex_std>& new_params) {
@@ -416,11 +417,13 @@ public:
         for(auto spins = 0u; spins < (1u << this->N); spins++) {
             this->full_table_log_psi[spins] = this->log_psi_s_raw(binary_to_vector(spins, this->N));
         }
+
+        this->full_table_log_psi_ptr = &(this->full_table_log_psi);
     }
 
     inline void enable_hash_table(const unsigned int max_size) {
-        this->use_hash_table = true;
         this->max_hash_table_size = max_size;
+        this->hash_table_log_psi_ptr = &(this->hash_table_log_psi);
     }
 
 private:
