@@ -16,8 +16,8 @@ rbm_on_gpu::PsiDeepMin* psi_neural = nullptr;
 
 int L;
 int H=1;
-int const numberOfVarParameters=4;
-int PerturbationTheoryOrder = 1;
+int const numberOfVarParameters=18;
+int PerturbationTheoryOrder = 2;
 double time_current;
 double time_epoch;
 
