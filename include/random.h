@@ -28,6 +28,16 @@ HDINLINE uint64_t random_uint64(void* rng_state) {
 }
 
 
+HDINLINE bool random_bool(void* rng_state) {
+    #ifdef __CUDA_ARCH__
+        return curand(reinterpret_cast<curandState_t*>(rng_state)) & 1u;
+    #else
+        std::uniform_int_distribution<uint64_t> random_spin_conf(0, UINT64_MAX);
+        return random_spin_conf(*reinterpret_cast<std::mt19937*>(rng_state)) & 1u;
+    #endif
+}
+
+
 HDINLINE double random_real(void* rng_state) {
     #ifdef __CUDA_ARCH__
         return curand_uniform(reinterpret_cast<curandState_t*>(rng_state));

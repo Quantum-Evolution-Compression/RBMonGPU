@@ -14,14 +14,10 @@ namespace rbm_on_gpu {
 
 namespace kernel {
 
-class ExactSummation {
-protected:
+struct SpecialExactSummation {
 
     unsigned int  num_spin_configurations;
-    bool          has_total_z_symmetry;
-    Spins*        allowed_spin_configurations;
 
-public:
 
     inline unsigned int get_num_steps() const {
         return this->num_spin_configurations;
@@ -38,54 +34,45 @@ public:
     void kernel_foreach(Psi_t psi, Function function) const {
         #include "cuda_kernel_defines.h"
 
-        SHARED Spins        spins;
-        SHARED complex_t    log_psi;
+        SHARED Spins        spins[2];
+        SHARED complex_t    log_psi[2];
         SHARED double       weight;
+        const auto          N = psi.get_num_spins();
 
         #ifdef __CUDA_ARCH__
-        const auto spin_index = blockIdx.x;
+        const auto double_spin_index = blockIdx.x;
         #else
-        for(auto spin_index = 0u; spin_index < this->num_spin_configurations; spin_index++)
+        for(auto double_spin_index = 0u; double_spin_index < this->num_spin_configurations; double_spin_index++)
         #endif
         {
-            if(this->has_total_z_symmetry) {
-                spins = Spins(this->allowed_spin_configurations[spin_index]);
-            }
-            else {
-                spins = Spins(spin_index, psi.get_num_spins());
-            }
+            spins[0] = Spins(double_spin_index, N);
+            spins[1] = Spins(double_spin_index >> N, N);
 
             SHARED typename Psi_t::Angles angles;
-            angles.init(psi, spins);
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
+            psi.log_psi_s(log_psi[0], spins[0], angles);
+            psi.log_psi_s(log_psi[1], spins[1], angles);
 
-            psi.log_psi_s(log_psi, spins, angles);
+            SYNC;
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
-
-            #ifdef __CUDA_ARCH__
-            if(threadIdx.x == 0)
-            #endif
-            {
-                weight = this->num_spin_configurations * psi.probability_s(log_psi.real());
+            SINGLE {
+                weight = this->num_spin_configurations * (
+                    psi.probability_s(log_psi[0].real()) *
+                    psi.probability_s(log_psi[1].real()) / double(
+                        1u << spins[0].extract_first_n(N / 2).hamming_distance(spins[1].extract_first_n(N / 2))
+                    )
+                );
             }
 
-            #ifdef __CUDA_ARCH__
-            __syncthreads();
-            #endif
+            SYNC;
 
-            function(spin_index, spins, log_psi, angles, weight);
+            function(double_spin_index, spins, log_psi, angles, weight);
         }
     }
 
 #endif // __CUDACC__
 
-    ExactSummation get_kernel() const {
+    SpecialExactSummation get_kernel() const {
         return *this;
     }
 
@@ -93,21 +80,12 @@ public:
 
 } // namespace kernel
 
-class ExactSummation : public kernel::ExactSummation {
-protected:
+struct SpecialExactSummation : public kernel::SpecialExactSummation {
 
     bool          gpu;
     unsigned int  num_spins;
-    unique_ptr<Array<Spins>> allowed_spin_configurations_vec;
 
-public:
-    ExactSummation(const unsigned int num_spins, const bool gpu);
-
-    // ExactSummation copy() const {
-    //     return *this;
-    // }
-
-    void set_total_z_symmetry(const int sector);
+    SpecialExactSummation(const unsigned int num_spins, const bool gpu);
 
 #ifdef __CUDACC__
     template<typename Psi_t, typename Function>

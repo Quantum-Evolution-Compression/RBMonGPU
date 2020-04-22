@@ -1,6 +1,7 @@
 #include "network_functions/PsiAngles.hpp"
 #include "quantum_states.hpp"
 #include "spin_ensembles.hpp"
+#include "Spins.h"
 #include "types.h"
 
 namespace rbm_on_gpu {

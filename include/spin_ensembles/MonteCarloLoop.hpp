@@ -13,12 +13,6 @@
     struct curandState_t;
 #endif // __CUDACC__
 
-#ifdef __PYTHONCC__
-    #define FORCE_IMPORT_ARRAY
-    #include "xtensor-python/pytensor.hpp"
-#endif // __PYTHONCC__
-
-#include <vector>
 #include <memory>
 #include <random>
 

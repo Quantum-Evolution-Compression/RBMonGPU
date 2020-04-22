@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <list>
+#include <unordered_map>
 #include <complex>
 #include <memory>
 #include <cassert>
@@ -28,6 +29,22 @@ inline complex_std read_complex(ifstream& infile) {
     double value_re, value_im;
     infile >> value_re >> value_im;
     return complex_std(value_re, value_im);
+}
+
+inline vector<int> binary_to_vector(const uint64_t spins, const unsigned int N) {
+    vector<int> result(N);
+    for(auto i = 0u; i < N; i++) {
+        result[i] = (spins & (1u << i)) ? 1 : -1;
+    }
+    return result;
+}
+
+inline uint64_t vector_to_binary(const vector<int>& spins) {
+    uint64_t result = 0u;
+    for(auto i = 0u; i < spins.size(); i++) {
+        result |= static_cast<uint64_t>(spins[i] == 1) << i;
+    }
+    return result;
 }
 
 
@@ -102,6 +119,11 @@ public:
     double         prefactor;
     double         log_prefactor;
 
+    vector<complex_std>                     full_table_log_psi;
+    unordered_map<uint64_t, complex_std>    hash_table_log_psi;
+    bool                                    use_hash_table;
+    unsigned int                            max_hash_table_size;
+
     // using Angles = rbm_on_gpu::PsiDeepMinAngles;
 
 public:
@@ -144,7 +166,7 @@ public:
     }
 
     inline
-    complex_std log_psi_s(const vector<int>& spins_in) const {
+    complex_std log_psi_s_raw(const vector<int>& spins_in) const {
         complex_std activations[max_width];
 
         complex_std result (0.0, 0.0);
@@ -160,6 +182,29 @@ public:
         return result + this->log_prefactor;
     }
 
+    inline
+    complex_std log_psi_s(const vector<int>& spins_in) {
+        if(!this->full_table_log_psi.empty()) {
+            return this->full_table_log_psi[vector_to_binary(spins_in)];
+        }
+        if(this->use_hash_table) {
+            const auto spins = vector_to_binary(spins_in);
+            const auto hit = this->hash_table_log_psi.find(spins);
+            if(hit != this->hash_table_log_psi.end()) {
+                return hit->second;
+            }
+
+            const auto result = this->log_psi_s_raw(spins_in);
+            this->hash_table_log_psi.emplace(spins, result);
+            if(this->hash_table_log_psi.size() > this->max_hash_table_size) {
+                this->hash_table_log_psi.clear();
+            }
+            return result;
+        }
+
+        return this->log_psi_s_raw(spins_in);
+    }
+
 #ifdef __CUDACC__
     HDINLINE void log_psi_s(complex_t& result, const Spins& spins, const Angles& angles) const {
         #ifndef __CUDA_ARCH__
@@ -167,7 +212,7 @@ public:
         for(auto i = 0u; i < this->N; i++) {
             spins_vec[i] = spins[i];
         }
-        result = complex_t(this->log_psi_s(spins_vec)) - this->log_prefactor;
+        result = complex_t(this->log_psi_s_raw(spins_vec)) - this->log_prefactor;
 
         #endif
     }
@@ -214,6 +259,8 @@ public:
     };
     list<Layer> layers;
     vector<complex_std> final_weights;
+
+
 
     bool gpu;
 
@@ -291,6 +338,7 @@ public:
         infile.close();
 
         this->set_params(dynamical_params);
+        this->use_hash_table = false;
     }
 
     inline void set_params(const vector<complex_std>& new_params) {
@@ -360,6 +408,19 @@ public:
             kernel_layer.biases = layer.biases.data();
         }
         kernel::PsiDeepMin::final_weights = PsiDeepMin::final_weights.data();
+    }
+
+    inline void enable_full_table() {
+        this->full_table_log_psi.resize(1u << this->N);
+
+        for(auto spins = 0u; spins < (1u << this->N); spins++) {
+            this->full_table_log_psi[spins] = this->log_psi_s_raw(binary_to_vector(spins, this->N));
+        }
+    }
+
+    inline void enable_hash_table(const unsigned int max_size) {
+        this->use_hash_table = true;
+        this->max_hash_table_size = max_size;
     }
 
 private:

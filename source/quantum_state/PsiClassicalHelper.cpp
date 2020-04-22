@@ -12,9 +12,7 @@ using namespace std;
 
 namespace Peter {
 
-rbm_on_gpu::PsiDeepMin* psi_neural = nullptr;
-
-int L;
+int L=10;
 int H=1;
 int const numberOfVarParameters=18;
 int PerturbationTheoryOrder = 2;
@@ -23,29 +21,21 @@ double time_epoch;
 
 #define cdouble std::complex<double>
 cdouble I(0.0,1.0);
-vector<vector<vector<int>>> S;      // i,j -- coordinates of the plaquette, only k=2 is used
+vector<vector<vector<int>>> S(H, vector<vector<int>>(L, vector<int>(5)));     // i,j -- coordinates of the plaquette, only k=2 is used
 int const numberOfVarParametrsMax=300000; // before compression Stripe3Order (12321), Square 3Order (12160) // debug:
 int indexVP[numberOfVarParametrsMax][2] = {0}; // initialize with zeros
 
 
 Eigen::VectorXcd varW = Eigen::VectorXcd::Zero(numberOfVarParameters+1); // variational parameters; last one is the "dumb" VP for normalization and the global phase
 
-
+rbm_on_gpu::PsiDeepMin* psi_neural = nullptr;
 
 void load_neural_network(string directory, int index) {
     if(psi_neural) {
         delete psi_neural;
     }
     psi_neural = new rbm_on_gpu::PsiDeepMin(directory + "/psi_" + to_string(index-1) + "_compressed.txt");
-	L=psi_neural->N;
-	
-	S.resize(H);
-	for(int i = 0 ; i < H ; i++)
-		{
-    	S[i].resize(L);
-		for(int j = 0 ; j < L ; j++)
-			S[i][j].resize(5);
-		}
+	psi_neural->enable_full_table();
 }
 
 

@@ -20,6 +20,14 @@
 
 namespace rbm_on_gpu {
 
+HDINLINE unsigned int bit_count(const uint64_t& x) {
+    #ifdef __CUDA_ARCH__
+        return __popcll(x);
+    #else
+        return __builtin_popcountll(x);
+    #endif
+}
+
 namespace generic {
 
 template<unsigned int num_types>
@@ -196,17 +204,17 @@ struct Spins_t {
 
         for(auto i = 0; i < num_types - 1u; i++) {
             #ifdef __CUDA_ARCH__
-                result += 2 * __popcll(this->configurations[i]) - 64;
+                result += 2 * bit_count(this->configurations[i]) - 64;
             #else
-                result += 2 * __builtin_popcountll(this->configurations[i]) - 64;
+                result += 2 * bit_count(this->configurations[i]) - 64;
             #endif
         }
         const auto type_idx = num_spins / 64u;
         if(type_idx < num_types) {
             #ifdef __CUDA_ARCH__
-                result += 2 * __popcll(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
+                result += 2 * bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
             #else
-                result += 2 * __builtin_popcountll(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
+                result += 2 * bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
             #endif
         }
 
@@ -240,6 +248,18 @@ struct Spins_t<1u> : public generic::Spins_t<1u> {
 
     HDINLINE const type& configuration() const {
         return this->configurations[0];
+    }
+
+    HDINLINE unsigned int hamming_distance(const Spins_t<1u>& other) const {
+        return bit_count(this->configuration() ^ other.configuration());
+    }
+
+    HDINLINE uint64_t bit_at(const unsigned int i) const {
+        return this->configuration() & ((type)1u << i);
+    }
+
+    HDINLINE Spins_t<1u> extract_first_n(const unsigned int n) const {
+        return Spins_t<1u>(this->configuration(), n);
     }
 
     HDINLINE Spins_t<1u>& operator=(const Spins_t<1u>& other) {

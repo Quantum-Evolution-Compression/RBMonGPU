@@ -10,6 +10,7 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
+#include "network_functions/RenyiCorrelation.hpp"
 #include "types.h"
 
 #include <pybind11/pybind11.h>
@@ -207,6 +208,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const string
         >())
         .def_readonly("N", &PsiDeepMin::N)
+        .def("enable_full_table", &PsiDeepMin::enable_full_table)
     #ifdef ENABLE_EXACT_SUMMATION
         .def_property_readonly("vector", [](const PsiDeepMin& psi) {return psi_vector(psi).to_pytensor_1d();})
     #endif
@@ -276,6 +278,23 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_EXACT_SUMMATION
 
 
+#ifdef ENABLE_SPECIAL_MONTE_CARLO
+    py::class_<SpecialMonteCarloLoop>(m, "SpecialMonteCarloLoop")
+        .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
+        .def(py::init<SpecialMonteCarloLoop&>())
+        .def_property_readonly("num_steps", &SpecialMonteCarloLoop::get_num_steps)
+        .def_property_readonly("acceptance_rate", [](const SpecialMonteCarloLoop& mc){
+            return float(mc.acceptances_ar.front()) / float(mc.acceptances_ar.front() + mc.rejections_ar.front());
+        });
+#endif // ENABLE_SPECIAL_MONTE_CARLO
+
+#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
+    py::class_<SpecialExactSummation>(m, "SpecialExactSummation")
+        .def(py::init<unsigned int, bool>())
+        .def_property_readonly("num_steps", &SpecialExactSummation::get_num_steps);
+#endif // ENABLE_SPECIAL_EXACT_SUMMATION
+
+
     py::class_<ExpectationValue>(m, "ExpectationValue")
         .def(py::init<bool>())
 #ifdef ENABLE_MONTE_CARLO
@@ -333,6 +352,18 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+        .def(
+            "distance_2nd_order",
+            [](HilbertSpaceDistance& hs_distance, const PsiDeep& psi, const PsiDeep& psi_prime, const quantum_expression::PauliExpression& expr, MonteCarloLoop& spin_ensemble) {
+                return hs_distance.distance_2nd_order(
+                    psi,
+                    psi_prime,
+                    Operator(expr, hs_distance.gpu),
+                    Operator(expr * expr, hs_distance.gpu),
+                    spin_ensemble
+                );
+            }
+        )
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, MonteCarloLoop>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
@@ -358,6 +389,18 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &HilbertSpaceDistance::distance<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiDeep, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
+        .def(
+            "distance_2nd_order",
+            [](HilbertSpaceDistance& hs_distance, const PsiDeep& psi, const PsiDeep& psi_prime, const quantum_expression::PauliExpression& expr, ExactSummation& spin_ensemble) {
+                return hs_distance.distance_2nd_order(
+                    psi,
+                    psi_prime,
+                    Operator(expr, hs_distance.gpu),
+                    Operator(expr * expr, hs_distance.gpu),
+                    spin_ensemble
+                );
+            }
+        )
 #ifdef ENABLE_PSI_CLASSICAL
         .def("__call__", &HilbertSpaceDistance::distance<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a)
         .def("gradient", &HilbertSpaceDistance::gradient_py<PsiClassical, PsiDeep, ExactSummation>, "psi"_a, "psi_prime"_a, "operator_"_a, "is_unitary"_a, "spin_ensemble"_a, "nu"_a)
@@ -432,6 +475,20 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_PAIR
 #endif // ENABLE_EXACT_SUMMATION
+    ;
+
+    py::class_<RenyiCorrelation>(m, "RenyiCorrelation")
+        .def(py::init<bool>())
+#ifdef ENABLE_SPECIAL_MONTE_CARLO
+#ifdef ENABLE_PSI_DEEP
+        .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialMonteCarloLoop>)
+#endif // ENABLE_PSI_DEEP
+#endif // ENABLE_SPECIAL_MONTE_CARLO
+#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
+#ifdef ENABLE_PSI_DEEP
+        .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialExactSummation>)
+#endif // ENABLE_PSI_DEEP
+#endif // ENABLE_SPECIAL_EXACT_SUMMATION
     ;
 
 
