@@ -33,10 +33,10 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
             U_A_kernel.local_energy(local_energy[1], psi_kernel, spins[1], log_psi[1], angles);
 
             SINGLE {
-                const auto hamming_sign = (
-                    spins[0].extract_first_n(N_A).hamming_distance(spins[1].extract_first_n(N_A)) & 1u
-                ) ? -1.0 : 1.0;
-                generic_atomicAdd(result, weight * hamming_sign * abs2(local_energy[0]) * abs2(local_energy[1]));
+                const auto hamming_distance = spins[0].extract_first_n(N_A).hamming_distance(spins[1].extract_first_n(N_A));
+                const auto hamming_sign = (hamming_distance & 1u) ? -1.0 : 1.0;
+                const auto hamming_weight = 1.0 / double(1u << hamming_distance);
+                generic_atomicAdd(result, weight * hamming_weight * hamming_sign * abs2(local_energy[0]) * abs2(local_energy[1]));
             }
         }
     );
@@ -53,6 +53,12 @@ double RenyiCorrelation::operator()(const Psi_t& psi, const Operator& U_A, SpinE
 template double RenyiCorrelation::operator()(const PsiDeep& psi, const Operator& U_A, SpecialMonteCarloLoop& spin_ensemble);
 
 #endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+
+template double RenyiCorrelation::operator()(const PsiExact& psi, const Operator& U_A, SpecialMonteCarloLoop& spin_ensemble);
+
+#endif // ENABLE_PSI_EXACT
+
 
 #endif // ENABLE_SPECIAL_MONTE_CARLO
 
@@ -63,6 +69,11 @@ template double RenyiCorrelation::operator()(const PsiDeep& psi, const Operator&
 template double RenyiCorrelation::operator()(const PsiDeep& psi, const Operator& U_A, SpecialExactSummation& spin_ensemble);
 
 #endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+
+template double RenyiCorrelation::operator()(const PsiExact& psi, const Operator& U_A, SpecialExactSummation& spin_ensemble);
+
+#endif // ENABLE_PSI_EXACT
 
 #endif // ENABLE_SPECIAL_EXACT_SUMMATION
 

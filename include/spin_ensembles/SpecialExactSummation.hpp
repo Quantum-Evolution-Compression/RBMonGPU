@@ -38,6 +38,7 @@ struct SpecialExactSummation {
         SHARED complex_t    log_psi[2];
         SHARED double       weight;
         const auto          N = psi.get_num_spins();
+        // const auto          hamming_prefactor = pow(3, N / 2);
 
         #ifdef __CUDA_ARCH__
         const auto double_spin_index = blockIdx.x;
@@ -58,9 +59,9 @@ struct SpecialExactSummation {
             SINGLE {
                 weight = this->num_spin_configurations * (
                     psi.probability_s(log_psi[0].real()) *
-                    psi.probability_s(log_psi[1].real()) / double(
+                    psi.probability_s(log_psi[1].real()) /*/ double(
                         1u << spins[0].extract_first_n(N / 2).hamming_distance(spins[1].extract_first_n(N / 2))
-                    )
+                    )*/
                 );
             }
 

@@ -256,7 +256,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("array", &rbm_on_gpu::Spins::array)
         .def("flip", &rbm_on_gpu::Spins::flip)
         .def("rotate_left", &rbm_on_gpu::Spins::rotate_left)
-        .def("shift_2d", &rbm_on_gpu::Spins::shift_2d);
+        .def("shift_2d", &rbm_on_gpu::Spins::shift_2d)
+        .def("hamming_distance", &rbm_on_gpu::Spins::hamming_distance);
 
 #ifdef ENABLE_MONTE_CARLO
     py::class_<MonteCarloLoop>(m, "MonteCarloLoop")
@@ -483,11 +484,17 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialMonteCarloLoop>)
 #endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &RenyiCorrelation::__call__<PsiExact, SpecialMonteCarloLoop>)
+#endif // ENABLE_PSI_EXACT
 #endif // ENABLE_SPECIAL_MONTE_CARLO
 #ifdef ENABLE_SPECIAL_EXACT_SUMMATION
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialExactSummation>)
 #endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &RenyiCorrelation::__call__<PsiExact, SpecialExactSummation>)
+#endif // ENABLE_PSI_EXACT
 #endif // ENABLE_SPECIAL_EXACT_SUMMATION
     ;
 

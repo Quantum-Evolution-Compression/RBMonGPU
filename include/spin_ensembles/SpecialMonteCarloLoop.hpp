@@ -74,10 +74,6 @@ struct SpecialMonteCarloLoop {
         SINGLE {
             spins[0] = Spins::random(&local_random_state, psi.get_num_spins());
             spins[1] = Spins::random(&local_random_state, psi.get_num_spins());
-            spins[1].configuration() = (
-                spins[0].extract_first_n(psi.get_num_spins() / 2).configuration() |
-                spins[1].configuration() & (((1u << (psi.get_num_spins() / 2u)) - 1u) << (psi.get_num_spins() / 2u))
-            );
         }
         SYNC;
 
@@ -87,10 +83,7 @@ struct SpecialMonteCarloLoop {
         SHARED double log_psi_real[2];
 
         psi.log_psi_s_real(log_psi_real[0], spins[0], angles);
-        SINGLE {
-            log_psi_real[1] = log_psi_real[0];
-        }
-        SYNC;
+        psi.log_psi_s_real(log_psi_real[1], spins[1], angles);
 
         this->thermalize(psi, log_psi_real, spins, angles, &local_random_state);
 
@@ -159,18 +152,21 @@ struct SpecialMonteCarloLoop {
 
         SHARED unsigned int position;
         SHARED unsigned int ab;
-        SHARED double hamming_factor;
+        // SHARED double hamming_factor;
 
         SINGLE {
-            position = random_uint64(local_random_state) % psi.get_num_spins();
-            ab = static_cast<unsigned int>(random_bool(local_random_state));
+            const auto global_position = random_uint64(local_random_state) % (2u * psi.get_num_spins());
+            position = global_position % psi.get_num_spins();
+            ab = global_position / psi.get_num_spins();
+
             spins[ab] = spins[ab].flip(position);
-            if(position < psi.get_num_spins() / 2) {
-                hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
-            }
-            else {
-                hamming_factor = 1.0;
-            }
+            // if(position < psi.get_num_spins() / 2) {
+            //     // hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
+            //     hamming_factor = 1.0;
+            // }
+            // else {
+            //     hamming_factor = 1.0;
+            // }
         }
         SYNC;
 
@@ -184,7 +180,8 @@ struct SpecialMonteCarloLoop {
                     next_log_psi_real -
                     log_psi_real[ab]
                 )
-            ) * hamming_factor;
+            );// * hamming_factor;
+            // ratio = 2.0;
 
             if(ratio > 1.0 || random_real(local_random_state) <= ratio) {
                 log_psi_real[ab] = next_log_psi_real;
