@@ -152,7 +152,7 @@ struct SpecialMonteCarloLoop {
 
         SHARED unsigned int position;
         SHARED unsigned int ab;
-        // SHARED double hamming_factor;
+        SHARED double hamming_factor;
 
         SINGLE {
             const auto global_position = random_uint64(local_random_state) % (2u * psi.get_num_spins());
@@ -160,13 +160,12 @@ struct SpecialMonteCarloLoop {
             ab = global_position / psi.get_num_spins();
 
             spins[ab] = spins[ab].flip(position);
-            // if(position < psi.get_num_spins() / 2) {
-            //     // hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
-            //     hamming_factor = 1.0;
-            // }
-            // else {
-            //     hamming_factor = 1.0;
-            // }
+            if(position < psi.get_num_spins() / 2) {
+                hamming_factor = spins[0].bit_at(position) == spins[1].bit_at(position) ? 2.0 : 0.5;
+            }
+            else {
+                hamming_factor = 1.0;
+            }
         }
         SYNC;
 
@@ -180,7 +179,7 @@ struct SpecialMonteCarloLoop {
                     next_log_psi_real -
                     log_psi_real[ab]
                 )
-            );// * hamming_factor;
+            ); * hamming_factor;
             // ratio = 2.0;
 
             if(ratio > 1.0 || random_real(local_random_state) <= ratio) {
