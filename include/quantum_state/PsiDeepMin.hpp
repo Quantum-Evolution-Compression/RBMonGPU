@@ -30,6 +30,22 @@ inline complex_std read_complex(ifstream& infile) {
     return complex_std(value_re, value_im);
 }
 
+inline vector<int> binary_to_vector(const unsigned int spins, const unsigned int N) {
+    vector<int> result(N);
+    for(auto i = 0u; i < N; i++) {
+        result[i] = (spins & (1u << i)) ? 1 : -1;
+    }
+    return result;
+}
+
+inline unsigned int vector_to_binary(const vector<int>& spins) {
+    auto result = 0u;
+    for(auto i = 0u; i < spins.size(); i++) {
+        result |= static_cast<unsigned int>(spins[i] == 1) << i;
+    }
+    return result;
+}
+
 
 namespace rbm_on_gpu {
 
@@ -102,6 +118,8 @@ public:
     double         prefactor;
     double         log_prefactor;
 
+    vector<complex_std> full_log_psi_table;
+
     // using Angles = rbm_on_gpu::PsiDeepMinAngles;
 
 public:
@@ -144,7 +162,7 @@ public:
     }
 
     inline
-    complex_std log_psi_s(const vector<int>& spins_in) const {
+    complex_std log_psi_s_raw(const vector<int>& spins_in) const {
         complex_std activations[max_width];
 
         complex_std result (0.0, 0.0);
@@ -158,6 +176,15 @@ public:
         result /= this->N;
 
         return result + this->log_prefactor;
+    }
+
+    inline
+    complex_std log_psi_s(const vector<int>& spins_in) const {
+        if(!this->full_log_psi_table.empty()) {
+            return this->full_log_psi_table[vector_to_binary(spins_in)];
+        }
+
+        return this->log_psi_s_raw(spins_in);
     }
 
 #ifdef __CUDACC__
@@ -214,6 +241,8 @@ public:
     };
     list<Layer> layers;
     vector<complex_std> final_weights;
+
+
 
     bool gpu;
 
@@ -360,6 +389,14 @@ public:
             kernel_layer.biases = layer.biases.data();
         }
         kernel::PsiDeepMin::final_weights = PsiDeepMin::final_weights.data();
+    }
+
+    inline void enable_full_table() {
+        this->full_log_psi_table.resize(1u << this->N);
+
+        for(auto spins = 0u; spins < (1u << this->N); spins++) {
+            this->full_log_psi_table[spins] = this->log_psi_s_raw(binary_to_vector(spins, this->N));
+        }
     }
 
 private:
