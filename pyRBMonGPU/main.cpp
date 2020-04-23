@@ -11,6 +11,7 @@
 #include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
 #include "network_functions/RenyiCorrelation.hpp"
+#include "network_functions/DiagDensityOp.hpp"
 #include "types.h"
 
 #include <pybind11/pybind11.h>
@@ -496,6 +497,27 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def("__call__", &RenyiCorrelation::__call__<PsiExact, SpecialExactSummation>)
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_SPECIAL_EXACT_SUMMATION
+    ;
+
+
+py::class_<DiagDensityOp>(m, "DiagDensityOp")
+        .def(py::init<unsigned int, bool>())
+#ifdef ENABLE_MONTE_CARLO
+#ifdef ENABLE_PSI_DEEP
+        .def("__call__", &DiagDensityOp::__call__<PsiDeep, MonteCarloLoop>)
+#endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &DiagDensityOp::__call__<PsiExact, MonteCarloLoop>)
+#endif // ENABLE_PSI_EXACT
+#endif // ENABLE_MONTE_CARLO
+#ifdef ENABLE_EXACT_SUMMATION
+#ifdef ENABLE_PSI_DEEP
+        .def("__call__", &DiagDensityOp::__call__<PsiDeep, ExactSummation>)
+#endif // ENABLE_PSI_DEEP
+#ifdef ENABLE_PSI_EXACT
+        .def("__call__", &DiagDensityOp::__call__<PsiExact, ExactSummation>)
+#endif // ENABLE_PSI_EXACT
+#endif // ENABLE_EXACT_SUMMATION
     ;
 
 

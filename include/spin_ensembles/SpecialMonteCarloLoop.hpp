@@ -179,7 +179,7 @@ struct SpecialMonteCarloLoop {
                     next_log_psi_real -
                     log_psi_real[ab]
                 )
-            ); * hamming_factor;
+            ) * hamming_factor;
             // ratio = 2.0;
 
             if(ratio > 1.0 || random_real(local_random_state) <= ratio) {
