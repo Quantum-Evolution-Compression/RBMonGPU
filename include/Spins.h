@@ -20,6 +20,8 @@
 
 namespace rbm_on_gpu {
 
+namespace kernel {
+
 HDINLINE unsigned int bit_count(const uint64_t& x) {
     #ifdef __CUDA_ARCH__
         return __popcll(x);
@@ -27,6 +29,8 @@ HDINLINE unsigned int bit_count(const uint64_t& x) {
         return __builtin_popcountll(x);
     #endif
 }
+
+}  // namespace kernel
 
 namespace generic {
 
@@ -204,17 +208,17 @@ struct Spins_t {
 
         for(auto i = 0; i < num_types - 1u; i++) {
             #ifdef __CUDA_ARCH__
-                result += 2 * bit_count(this->configurations[i]) - 64;
+                result += 2 * kernel::bit_count(this->configurations[i]) - 64;
             #else
-                result += 2 * bit_count(this->configurations[i]) - 64;
+                result += 2 * kernel::bit_count(this->configurations[i]) - 64;
             #endif
         }
         const auto type_idx = num_spins / 64u;
         if(type_idx < num_types) {
             #ifdef __CUDA_ARCH__
-                result += 2 * bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
+                result += 2 * kernel::bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
             #else
-                result += 2 * bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
+                result += 2 * kernel::bit_count(this->configurations[num_types - 1u] & ((1u << (num_spins % 64u)) - 1)) - (num_spins % 64u);
             #endif
         }
 
@@ -251,7 +255,7 @@ struct Spins_t<1u> : public generic::Spins_t<1u> {
     }
 
     HDINLINE unsigned int hamming_distance(const Spins_t<1u>& other) const {
-        return bit_count(this->configuration() ^ other.configuration());
+        return kernel::bit_count(this->configuration() ^ other.configuration());
     }
 
     HDINLINE uint64_t bit_at(const unsigned int i) const {

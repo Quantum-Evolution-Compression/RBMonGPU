@@ -12,6 +12,7 @@
 #include "network_functions/S_matrix.hpp"
 #include "network_functions/RenyiCorrelation.hpp"
 #include "network_functions/DiagDensityOp.hpp"
+#include "extra/RenyiDoubleSum.hpp"
 #include "types.h"
 
 #include <pybind11/pybind11.h>
@@ -519,6 +520,10 @@ py::class_<DiagDensityOp>(m, "DiagDensityOp")
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_EXACT_SUMMATION
     ;
+
+m.def("renyi_double_sum", [](const real_tensor<1u>& rho_diag, bool gpu) {
+    return renyi_double_sum(Array<double>(rho_diag, gpu));
+});
 
 
 #ifdef ENABLE_PSI
