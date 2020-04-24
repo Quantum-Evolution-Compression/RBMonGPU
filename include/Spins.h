@@ -278,6 +278,14 @@ struct Spins_t<1u> : public generic::Spins_t<1u> {
         return *this;
     }
 
+    HDINLINE bool operator==(const Spins_t<1u>& other) const {
+        return this->configuration() == other.configuration();
+    }
+
+    HDINLINE bool operator!=(const Spins_t<1u>& other) const {
+        return this->configuration() != other.configuration();
+    }
+
     // todo: fix for N = 64
     HDINLINE Spins_t<1u> rotate_left(const unsigned int shift, const unsigned int N) const {
         return Spins_t<1u>(

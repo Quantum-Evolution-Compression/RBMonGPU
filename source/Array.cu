@@ -8,6 +8,11 @@ using namespace std;
 namespace rbm_on_gpu {
 
 template<typename T>
+Array<T>::Array(const bool gpu) : gpu(gpu) {
+    this->device = nullptr;
+}
+
+template<typename T>
 Array<T>::Array(const size_t& size, const bool gpu) : vector<T>(size), gpu(gpu) {
     if(gpu) {
         MALLOC(this->device, sizeof(T) * size, true);
@@ -36,6 +41,15 @@ template<typename T>
 Array<T>::~Array() noexcept(false) {
     if(this->gpu) {
         FREE(this->device, true);
+    }
+}
+
+template<typename T>
+void Array<T>::resize(const size_t& new_size) {
+    vector<T>::resize(new_size);
+    if(this->gpu) {
+        FREE(this->device, true);
+        MALLOC(this->device, sizeof(T) * new_size, true);
     }
 }
 
@@ -93,6 +107,7 @@ void Array<T>::update_device() {
 }
 
 
+template class Array<int>;
 template class Array<unsigned int>;
 template class Array<double>;
 template class Array<complex_t>;

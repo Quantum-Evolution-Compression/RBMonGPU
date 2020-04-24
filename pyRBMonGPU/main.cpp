@@ -2,6 +2,7 @@
 #include "quantum_states.hpp"
 #include "spin_ensembles.hpp"
 #include "operator/Operator.hpp"
+#include "operator/UnitaryChain.hpp"
 #include "network_functions/ExpectationValue.hpp"
 #include "network_functions/HilbertSpaceDistance.hpp"
 #include "network_functions/KullbackLeibler.hpp"
@@ -13,6 +14,7 @@
 #include "network_functions/RenyiCorrelation.hpp"
 #include "network_functions/DiagDensityOp.hpp"
 #include "extra/RenyiDoubleSum.hpp"
+#include "RNGStates.hpp"
 #include "types.h"
 
 #include <pybind11/pybind11.h>
@@ -505,21 +507,44 @@ py::class_<DiagDensityOp>(m, "DiagDensityOp")
         .def(py::init<unsigned int, bool>())
 #ifdef ENABLE_MONTE_CARLO
 #ifdef ENABLE_PSI_DEEP
-        .def("__call__", &DiagDensityOp::__call__<PsiDeep, MonteCarloLoop>)
+        .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const Operator& op, MonteCarloLoop& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
+        .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
-        .def("__call__", &DiagDensityOp::__call__<PsiExact, MonteCarloLoop>)
+        .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const Operator& op, MonteCarloLoop& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
+        .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_MONTE_CARLO
 #ifdef ENABLE_EXACT_SUMMATION
 #ifdef ENABLE_PSI_DEEP
-        .def("__call__", &DiagDensityOp::__call__<PsiDeep, ExactSummation>)
+        .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const Operator& op, ExactSummation& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
+        .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const UnitaryChain& op, ExactSummation& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
-        .def("__call__", &DiagDensityOp::__call__<PsiExact, ExactSummation>)
+        .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const Operator& op, ExactSummation& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
+        .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const UnitaryChain& op, ExactSummation& spin_ensemble){
+            return obj(psi, op, spin_ensemble);
+        })
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_EXACT_SUMMATION
     ;
+
+py::class_<RNGStates>(m, "RNGStates")
+    .def(py::init<unsigned int, bool>());
 
 m.def("renyi_double_sum", [](const real_tensor<1u>& rho_diag, bool gpu) {
     return renyi_double_sum(Array<double>(rho_diag, gpu));

@@ -1,14 +1,16 @@
 #include "network_functions/DiagDensityOp.hpp"
 #include "spin_ensembles.hpp"
 #include "quantum_states.hpp"
+#include "operator/Operator.hpp"
+#include "operator/UnitaryChain.hpp"
 #include "cuda_complex.hpp"
 #include "types.h"
 
 namespace rbm_on_gpu {
 
 
-template<typename Psi_t, typename SpinEnsemble>
-void DiagDensityOp::operator()(const Psi_t& psi, const Operator& op, SpinEnsemble& spin_ensemble) {
+template<typename Psi_t, typename Operator_t, typename SpinEnsemble>
+void DiagDensityOp::operator()(const Psi_t& psi, const Operator_t& op, SpinEnsemble& spin_ensemble) {
     this->diag_densities_ar.clear();
     auto diag_densities = this->diag_densities_ar.data();
 
@@ -22,7 +24,7 @@ void DiagDensityOp::operator()(const Psi_t& psi, const Operator& op, SpinEnsembl
             const unsigned int spin_index,
             const Spins& spins,
             const complex_t& log_psi,
-            const typename Psi_t::Angles& angles,
+            typename Psi_t::Angles& angles,
             const double weight
         ) {
             #include "cuda_kernel_defines.h"
@@ -52,11 +54,13 @@ void DiagDensityOp::operator()(const Psi_t& psi, const Operator& op, SpinEnsembl
 #ifdef ENABLE_PSI_DEEP
 
 template void DiagDensityOp::operator()(const PsiDeep& psi, const Operator& op, MonteCarloLoop& spin_ensemble);
+template void DiagDensityOp::operator()(const PsiDeep& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble);
 
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
 
 template void DiagDensityOp::operator()(const PsiExact& psi, const Operator& op, MonteCarloLoop& spin_ensemble);
+template void DiagDensityOp::operator()(const PsiExact& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble);
 
 #endif // ENABLE_PSI_EXACT
 
@@ -68,11 +72,13 @@ template void DiagDensityOp::operator()(const PsiExact& psi, const Operator& op,
 #ifdef ENABLE_PSI_DEEP
 
 template void DiagDensityOp::operator()(const PsiDeep& psi, const Operator& op, ExactSummation& spin_ensemble);
+template void DiagDensityOp::operator()(const PsiDeep& psi, const UnitaryChain& op, ExactSummation& spin_ensemble);
 
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
 
 template void DiagDensityOp::operator()(const PsiExact& psi, const Operator& op, ExactSummation& spin_ensemble);
+template void DiagDensityOp::operator()(const PsiExact& psi, const UnitaryChain& op, ExactSummation& spin_ensemble);
 
 #endif // ENABLE_PSI_EXACT
 

@@ -36,10 +36,13 @@ template<typename T>
 struct Array : public vector<T>, public kernel::Array<T> {
     bool gpu;
 
+    Array(const bool gpu);
     Array(const size_t& size, const bool gpu);
     Array(const Array<T>& other);
     Array(Array<T>&& other);
     ~Array() noexcept(false);
+
+    void resize(const size_t& new_size);
 
     inline T* data() {
         if(this->gpu) {
