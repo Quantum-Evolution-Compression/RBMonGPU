@@ -26,7 +26,9 @@ struct UnitaryChain {
     // table's width
     unsigned int    max_string_length;
 
-    void*           rng_states;
+    curandState_t* rng_states_device;
+    mt19937*       rng_states_host;
+
     unsigned int*   no_spin_flips;
     unsigned int    num_samples;
 
@@ -39,7 +41,7 @@ struct UnitaryChain {
         result = {complex_t(1.0, 0.0), spins};
 
         SHARED uint64_t random_bits;
-        random_bits = random_uint64(&rng_state);
+        random_bits = random_uint64(rng_state);
 
         SHARED unsigned int n;
         for(n = 0u; n < this->num_unitaries; n++) {
@@ -87,9 +89,12 @@ struct UnitaryChain {
 
         #ifdef __CUDA_ARCH__
         __shared__ curandState_t rng_state;
-        rng_state = reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x];
+        SINGLE {
+            rng_state = this->rng_states_device[blockIdx.x];
+
+        }
         #else
-        mt19937 rng_state = reinterpret_cast<mt19937*>(this->rng_states)[0];
+        mt19937 rng_state = this->rng_states_host[0];
         #endif
 
         SINGLE {
@@ -124,9 +129,11 @@ struct UnitaryChain {
         }
 
         #ifdef __CUDA_ARCH__
-        reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x] = rng_state;
+        SINGLE {
+            this->rng_states_device[blockIdx.x] = rng_state;
+        }
         #else
-        reinterpret_cast<mt19937*>(this->rng_states)[0] = rng_state;
+        this->rng_states_host[0] = rng_state;
         #endif
     }
 

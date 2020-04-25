@@ -84,7 +84,8 @@ UnitaryChain::UnitaryChain(
     this->no_spin_flips = this->no_spin_flips_ar.data();
 
     this->num_samples = num_samples;
-    this->rng_states = rng_states.rng_states;
+    this->rng_states_device = rng_states.rng_states_device;
+    this->rng_states_host = rng_states.rng_states_host;
 }
 
 

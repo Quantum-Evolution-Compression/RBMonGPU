@@ -1,11 +1,6 @@
 #include "RNGStates.hpp"
-#ifdef __CUDACC__
-    #include "curand_kernel.h"
-#else
-    struct curandState_t;
-#endif // __CUDACC__
-#include <random>
 #include "types.h"
+#include <iostream>
 
 
 using namespace std;
@@ -26,30 +21,36 @@ __global__ void initialize_random_states(curandState_t* random_states, const uns
 }
 
 
-RNGStates::RNGStates(const unsigned int num_states, const bool gpu) : num_states(num_states), gpu(gpu) {
+RNGStates::RNGStates(const unsigned int num_states, const bool gpu)
+:
+    num_states(num_states),
+    rng_states_device(nullptr),
+    rng_states_host(nullptr),
+    gpu(gpu) {
+
     if(this->gpu) {
-        CUDA_CHECK(cudaMalloc(&this->rng_states, sizeof(curandState_t) * this->num_states));
+        CUDA_CHECK(cudaMalloc(&this->rng_states_device, sizeof(curandState_t) * this->num_states));
 
         const auto blockDim = 256u;
         kernel::initialize_random_states<<<this->num_states / blockDim + 1u, blockDim>>>(
-            reinterpret_cast<curandState_t*>(this->rng_states),
+            this->rng_states_device,
             this->num_states
         );
     }
     else {
-        this->rng_states = new mt19937[num_states];
+        this->rng_states_host = new mt19937[num_states];
         for(auto i = 0u; i < this->num_states; i++) {
-            reinterpret_cast<mt19937*>(this->rng_states)[i] = mt19937(i);
+            this->rng_states_host[i] = mt19937(i);
         }
     }
 }
 
 RNGStates::~RNGStates() noexcept(false) {
     if(this->gpu) {
-        CUDA_FREE(this->rng_states);
+        CUDA_FREE(this->rng_states_device);
     }
     else {
-        delete[] reinterpret_cast<mt19937*>(this->rng_states);
+        delete[] this->rng_states_host;
     }
 }
 

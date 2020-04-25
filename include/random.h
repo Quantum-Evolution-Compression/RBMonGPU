@@ -18,13 +18,19 @@ namespace rbm_on_gpu {
 using namespace std;
 
 
-HDINLINE uint64_t random_uint64(void* rng_state) {
+HDINLINE uint32_t random_uint32(void* rng_state) {
     #ifdef __CUDA_ARCH__
         return curand(reinterpret_cast<curandState_t*>(rng_state));
     #else
-        std::uniform_int_distribution<uint64_t> random_spin_conf(0, UINT64_MAX);
+        std::uniform_int_distribution<uint64_t> random_spin_conf(0, UINT32_MAX);
         return random_spin_conf(*reinterpret_cast<std::mt19937*>(rng_state));
     #endif
+}
+
+HDINLINE uint64_t random_uint64(void* rng_state) {
+    uint64_t result = random_uint32(rng_state);
+    result |= static_cast<uint64_t>(random_uint32(rng_state)) << 32u;
+    return result;
 }
 
 

@@ -172,7 +172,7 @@ struct MonteCarloLoop {
         }
         else {
             SINGLE {
-                position = random_uint64(local_random_state) % psi.get_num_spins();
+                position = random_uint32(local_random_state) % psi.get_num_spins();
                 spins = spins.flip(position);
             }
             SYNC;
@@ -187,7 +187,7 @@ struct MonteCarloLoop {
 
             SINGLE {
                 while(true) {
-                    second_position = random_uint64(local_random_state) % psi.get_num_spins();
+                    second_position = random_uint32(local_random_state) % psi.get_num_spins();
                     if(spins[second_position] == spins[position]) {
                         spins = spins.flip(second_position);
                         break;
