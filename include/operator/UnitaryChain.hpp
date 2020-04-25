@@ -26,8 +26,9 @@ struct UnitaryChain {
     // table's width
     unsigned int    max_string_length;
 
-    void* rng_states;
-    unsigned int* no_spin_flips;
+    void*           rng_states;
+    unsigned int*   no_spin_flips;
+    unsigned int    num_samples;
 
     HDINLINE
     MatrixElement process_chain(const Spins& spins, void* rng_state) const {
@@ -91,19 +92,35 @@ struct UnitaryChain {
         mt19937 rng_state = reinterpret_cast<mt19937*>(this->rng_states)[0];
         #endif
 
-        SHARED MatrixElement matrix_element;
-
         SINGLE {
-            matrix_element = this->process_chain(spins, &rng_state);
-            result = matrix_element.coefficient;
+            result = complex_t(0.0, 0.0);
         }
-        SYNC;
-        if(spins != matrix_element.spins) {
-            SHARED complex_t log_psi_prime;
-            psi.log_psi_s(log_psi_prime, matrix_element.spins, angles);
+
+        SHARED_MEM_LOOP_BEGIN(i, this->num_samples) {
+
+            SHARED complex_t sample;
+            SHARED MatrixElement matrix_element;
+
             SINGLE {
-                result *= exp(log_psi_prime - log_psi);
+                matrix_element = this->process_chain(spins, &rng_state);
+                sample = matrix_element.coefficient;
             }
+            SYNC;
+            if(spins != matrix_element.spins) {
+                SHARED complex_t log_psi_prime;
+                psi.log_psi_s(log_psi_prime, matrix_element.spins, angles);
+                SINGLE {
+                    sample *= exp(log_psi_prime - log_psi);
+                }
+            }
+            SINGLE {
+                result += sample;
+            }
+
+            SHARED_MEM_LOOP_END(i);
+        }
+        SINGLE {
+            result *= 1.0 / this->num_samples;
         }
 
         #ifdef __CUDA_ARCH__
@@ -132,6 +149,7 @@ struct UnitaryChain : public kernel::UnitaryChain {
 #ifndef __CUDACC__
     UnitaryChain(
         const vector<::quantum_expression::PauliExpression>& expr,
+        const unsigned int num_samples,
         const RNGStates& rng_states,
         const bool gpu
     );

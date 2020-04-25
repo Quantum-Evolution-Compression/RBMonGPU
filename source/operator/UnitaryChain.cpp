@@ -14,6 +14,7 @@ using namespace std;
 
 UnitaryChain::UnitaryChain(
     const vector<::quantum_expression::PauliExpression>& expr_chain,
+    const unsigned int num_samples,
     const RNGStates& rng_states,
     const bool gpu
 ) : coefficients_ar(gpu),
@@ -82,6 +83,7 @@ UnitaryChain::UnitaryChain(
     this->pauli_indices = this->pauli_indices_ar.data();
     this->no_spin_flips = this->no_spin_flips_ar.data();
 
+    this->num_samples = num_samples;
     this->rng_states = rng_states.rng_states;
 }
 

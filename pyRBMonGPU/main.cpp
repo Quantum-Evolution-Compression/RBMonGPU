@@ -258,6 +258,7 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
     py::class_<UnitaryChain>(m, "UnitaryChain")
         .def(py::init<
             const vector<::quantum_expression::PauliExpression>&,
+            const unsigned int,
             const RNGStates&,
             const bool
         >());
