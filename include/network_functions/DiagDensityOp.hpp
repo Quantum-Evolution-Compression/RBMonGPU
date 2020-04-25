@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Array.hpp"
-
+#include "types.h"
 
 namespace rbm_on_gpu {
 

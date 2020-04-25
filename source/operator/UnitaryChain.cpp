@@ -3,12 +3,13 @@
 #include "operator/UnitaryChain.hpp"
 #include <algorithm>
 #include <math.h>
+#include <iostream>
 
 
 namespace rbm_on_gpu {
 
 using namespace quantum_expression;
-
+using namespace std;
 
 
 UnitaryChain::UnitaryChain(
@@ -61,7 +62,7 @@ UnitaryChain::UnitaryChain(
             sin(expr.begin()->second.imag())
         );
 
-        // this contributes to the stochastic chance of 1/2 to choose either the Pauli-string or the scalar value.
+        // this compensates for the stochastic chance of 1/2 to choose either the Pauli-string or the scalar value.
         if(!no_spin_flip_here) {
             this->coefficients_ar[i] *= 2.0;
         }
@@ -69,7 +70,7 @@ UnitaryChain::UnitaryChain(
         i++;
     }
 
-    this->num_strings = this->coefficients_ar.size();
+    this->num_unitaries = this->coefficients_ar.size();
 
     this->coefficients_ar.update_device();
     this->pauli_types_ar.update_device();

@@ -22,7 +22,7 @@ struct UnitaryChain {
     int*            pauli_indices;
 
     // table's height
-    unsigned int    num_strings;
+    unsigned int    num_unitaries;
     // table's width
     unsigned int    max_string_length;
 
@@ -30,25 +30,18 @@ struct UnitaryChain {
     unsigned int* no_spin_flips;
 
     HDINLINE
-    MatrixElement process_chain(const Spins& spins) const {
+    MatrixElement process_chain(const Spins& spins, void* rng_state) const {
         // Important: this is a single-threaded function.
 
         #include "cuda_kernel_defines.h"
         SHARED MatrixElement result;
         result = {complex_t(1.0, 0.0), spins};
 
-        #ifdef __CUDA_ARCH__
-        __shared__ curandState_t rng_state;
-        rng_state = reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x];
-        #else
-        mt19937 rng_state = reinterpret_cast<mt19937*>(this->rng_states)[0];
-        #endif
-
         SHARED uint64_t random_bits;
         random_bits = random_uint64(&rng_state);
 
         SHARED unsigned int n;
-        for(n = 0u; n < this->num_strings; n++) {
+        for(n = 0u; n < this->num_unitaries; n++) {
             SHARED complex_t coefficient;
             coefficient = this->coefficients[n];
             const bool no_spin_flip = this->no_spin_flips[n];
@@ -65,27 +58,22 @@ struct UnitaryChain {
                     if(pauli_index == -1) {
                         break;
                     }
+                    const auto pauli_type = this->pauli_types[table_index];
 
-                    if(pauli_index == 1) {
+                    if(pauli_type == 1) {
                         result.spins = result.spins.flip(pauli_index);
                     }
-                    else if(pauli_index == 2) {
+                    else if(pauli_type == 2) {
                         coefficient *= complex_t(0.0, -1.0) * result.spins[pauli_index];
                         result.spins = result.spins.flip(pauli_index);
                     }
-                    else if(pauli_index == 3) {
-                        coefficient *= result.spins[pauli_index];
+                    else if(pauli_type == 3) {
+                        coefficient.__im_ *= result.spins[pauli_index];
                     }
                 }
             }
             result.coefficient *= coefficient;
         }
-
-        #ifdef __CUDA_ARCH__
-        reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x] = rng_state;
-        #else
-        reinterpret_cast<mt19937*>(this->rng_states)[0] = rng_state;
-        #endif
 
         return result;
     }
@@ -96,10 +84,17 @@ struct UnitaryChain {
         #include "cuda_kernel_defines.h"
         // CAUTION: 'result' is only updated by the first thread.
 
+        #ifdef __CUDA_ARCH__
+        __shared__ curandState_t rng_state;
+        rng_state = reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x];
+        #else
+        mt19937 rng_state = reinterpret_cast<mt19937*>(this->rng_states)[0];
+        #endif
+
         SHARED MatrixElement matrix_element;
 
         SINGLE {
-            matrix_element = this->process_chain(spins);
+            matrix_element = this->process_chain(spins, &rng_state);
             result = matrix_element.coefficient;
         }
         SYNC;
@@ -110,6 +105,12 @@ struct UnitaryChain {
                 result *= exp(log_psi_prime - log_psi);
             }
         }
+
+        #ifdef __CUDA_ARCH__
+        reinterpret_cast<curandState_t*>(this->rng_states)[blockIdx.x] = rng_state;
+        #else
+        reinterpret_cast<mt19937*>(this->rng_states)[0] = rng_state;
+        #endif
     }
 
     inline UnitaryChain get_kernel() const {

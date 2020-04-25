@@ -29,13 +29,15 @@ void DiagDensityOp::operator()(const Psi_t& psi, const Operator_t& op, SpinEnsem
         ) {
             #include "cuda_kernel_defines.h"
 
-            SHARED complex_t local_energy;
+            SHARED complex_t local_energy1;
+            SHARED complex_t local_energy2;
 
-            op_kernel.local_energy(local_energy, psi_kernel, spins, log_psi, angles);
+            op_kernel.local_energy(local_energy1, psi_kernel, spins, log_psi, angles);
+            op_kernel.local_energy(local_energy2, psi_kernel, spins, log_psi, angles);
 
             SINGLE {
                 const auto spins_A = spins.extract_first_n(N_A);
-                generic_atomicAdd(&diag_densities[spins_A.configuration()], weight * abs2(local_energy));
+                generic_atomicAdd(&diag_densities[spins_A.configuration()], weight * (local_energy1 * conj(local_energy2)).real());
             }
         }
     );

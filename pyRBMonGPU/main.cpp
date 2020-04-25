@@ -255,6 +255,13 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
         .def_property_readonly("pauli_types", &Operator::get_pauli_types_py)
         .def_property_readonly("pauli_indices", &Operator::get_pauli_indices_py);
 
+    py::class_<UnitaryChain>(m, "UnitaryChain")
+        .def(py::init<
+            const vector<::quantum_expression::PauliExpression>&,
+            const RNGStates&,
+            const bool
+        >());
+
     py::class_<rbm_on_gpu::Spins>(m, "Spins")
         .def(py::init<rbm_on_gpu::Spins::type, const unsigned int>())
         .def("array", &rbm_on_gpu::Spins::array)
@@ -508,36 +515,36 @@ py::class_<DiagDensityOp>(m, "DiagDensityOp")
 #ifdef ENABLE_MONTE_CARLO
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const Operator& op, MonteCarloLoop& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
         .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
         .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const Operator& op, MonteCarloLoop& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
         .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const UnitaryChain& op, MonteCarloLoop& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_MONTE_CARLO
 #ifdef ENABLE_EXACT_SUMMATION
 #ifdef ENABLE_PSI_DEEP
         .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const Operator& op, ExactSummation& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
         .def("__call__", [](DiagDensityOp& obj, const PsiDeep& psi, const UnitaryChain& op, ExactSummation& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
 #endif // ENABLE_PSI_DEEP
 #ifdef ENABLE_PSI_EXACT
         .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const Operator& op, ExactSummation& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
         .def("__call__", [](DiagDensityOp& obj, const PsiExact& psi, const UnitaryChain& op, ExactSummation& spin_ensemble){
-            return obj(psi, op, spin_ensemble);
+            obj(psi, op, spin_ensemble); return obj.diag_densities_ar.to_pytensor_1d();
         })
 #endif // ENABLE_PSI_EXACT
 #endif // ENABLE_EXACT_SUMMATION
