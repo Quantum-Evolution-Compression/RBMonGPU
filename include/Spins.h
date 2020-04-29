@@ -1,16 +1,11 @@
 #pragma once
 
 #include "types.h"
+#include "random.h"
 #include <builtin_types.h>
 #include <cstdint>
 #include <random>
 #include <array>
-
-#ifdef __CUDACC__
-    #include "curand_kernel.h"
-#else
-    struct curandState_t;
-#endif
 
 #ifdef __PYTHONCC__
     #define FORCE_IMPORT_ARRAY
@@ -95,15 +90,10 @@ struct Spins_t {
 
         #ifdef __CUDA_ARCH__
             #pragma unroll
-            for(auto i = 0; i < num_types; i++) {
-                result.configurations[i] = curand(reinterpret_cast<curandState_t*>(random_state));
-            }
-        #else
-            for(auto i = 0; i < num_types; i++) {
-                std::uniform_int_distribution<type> random_spin_conf(0, UINT64_MAX);
-                result.configurations[i] = random_spin_conf(*reinterpret_cast<std::mt19937*>(random_state));
-            }
         #endif
+        for(auto i = 0; i < num_types; i++) {
+            result.configurations[i] = random_uint64(random_state);
+        }
 
         const auto type_idx = num_spins / 64u;
         if(type_idx < num_types) {
