@@ -261,7 +261,8 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
             const unsigned int,
             const RNGStates&,
             const bool
-        >());
+        >())
+        .def_readwrite("fine_sampling", &UnitaryChain::fine_sampling);
 
     py::class_<rbm_on_gpu::Spins>(m, "Spins")
         .def(py::init<rbm_on_gpu::Spins::type, const unsigned int>())

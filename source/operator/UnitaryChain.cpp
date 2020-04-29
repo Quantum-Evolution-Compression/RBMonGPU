@@ -64,9 +64,9 @@ UnitaryChain::UnitaryChain(
         );
 
         // this compensates for the stochastic chance of 1/2 to choose either the Pauli-string or the scalar value.
-        if(!no_spin_flip_here) {
-            this->coefficients_ar[i] *= 2.0;
-        }
+        // if(!no_spin_flip_here) {
+        //     this->coefficients_ar[i] *= 2.0;
+        // }
 
         i++;
     }
@@ -86,6 +86,8 @@ UnitaryChain::UnitaryChain(
     this->num_samples = num_samples;
     this->rng_states_device = rng_states.rng_states_device;
     this->rng_states_host = rng_states.rng_states_host;
+
+    this->fine_sampling = false;
 }
 
 

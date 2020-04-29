@@ -26,11 +26,12 @@ struct UnitaryChain {
     // table's width
     unsigned int    max_string_length;
 
-    curandState_t* rng_states_device;
-    mt19937*       rng_states_host;
+    curandState_t*  rng_states_device;
+    mt19937*        rng_states_host;
 
     unsigned int*   no_spin_flips;
     unsigned int    num_samples;
+    bool            fine_sampling;
 
     HDINLINE
     MatrixElement process_chain(const Spins& spins, void* rng_state) const {
@@ -40,21 +41,38 @@ struct UnitaryChain {
         SHARED MatrixElement result;
         result = {complex_t(1.0, 0.0), spins};
 
-        SHARED uint64_t random_bits;
-        random_bits = random_uint64(rng_state);
-
         SHARED unsigned int n;
         for(n = 0u; n < this->num_unitaries; n++) {
+            SHARED uint32_t random_bits;
+            if(!this->fine_sampling && n % 32u == 0u) {
+                random_bits = random_uint32(rng_state);
+            }
+
             SHARED complex_t coefficient;
             coefficient = this->coefficients[n];
             const bool no_spin_flip = this->no_spin_flips[n];
-            const bool pq = random_bits & (1u << (n % 64u));
+            const bool pq = (
+                this->fine_sampling ?
+                // random_real(rng_state) < (coefficient.imag() * coefficient.imag()) :
+                random_real(rng_state) < (abs(coefficient.imag()) / (abs(coefficient.real()) + abs(coefficient.imag()))) :
+                random_bits & (1u << (n % 32u))
+            );
 
             if(!no_spin_flip) {
-                coefficient = pq ? complex_t(0.0, coefficient.imag()) : complex_t(coefficient.real(), 0.0);
+                if(this->fine_sampling) {
+                    // coefficient = pq ? complex_t(0.0, 1.0 / coefficient.imag()) : complex_t(1.0 / coefficient.real(), 0.0);
+                    coefficient = (
+                        pq ?
+                        complex_t(0.0, coefficient.imag() + sgn(coefficient.imag()) * abs(coefficient.real())) :
+                        complex_t(coefficient.real() + sgn(coefficient.real()) * abs(coefficient.imag()), 0.0)
+                    );
+                }
+                else {
+                    coefficient = pq ? complex_t(0.0, 2.0 * coefficient.imag()) : complex_t(2.0 * coefficient.real(), 0.0);
+                }
             }
 
-            if(pq || no_spin_flip) {
+            if(no_spin_flip || pq) {
                 SHARED unsigned int table_index;
                 for(table_index = n * this->max_string_length; true; table_index++) {
                     const auto pauli_index = this->pauli_indices[table_index];
@@ -91,7 +109,6 @@ struct UnitaryChain {
         __shared__ curandState_t rng_state;
         SINGLE {
             rng_state = this->rng_states_device[blockIdx.x];
-
         }
         #else
         mt19937 rng_state = this->rng_states_host[0];
@@ -126,6 +143,7 @@ struct UnitaryChain {
         }
         SINGLE {
             result *= 1.0 / this->num_samples;
+            // printf("%f\n", abs2(result));
         }
 
         #ifdef __CUDA_ARCH__

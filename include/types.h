@@ -166,6 +166,14 @@ constexpr auto MAX_HIDDEN_SPINS = 2 * MAX_SPINS;
 #define CUDA_ALIGN(var,...) __optimal_align__(sizeof(__VA_ARGS__)) __VA_ARGS__ var
 #define CUDA_ALIGN8( var, ... ) alignas( 8 ) __VA_ARGS__ var
 
+HDINLINE double sgn(const double& x) {
+    #ifdef __CUDA_ARCH__
+    return copysign(1.0, x);
+    #else
+    return x > 0 ? 1 : (x < 0 ? -1 : 0);
+    #endif
+}
+
 #ifdef TIMING
 
 using namespace std::chrono;
