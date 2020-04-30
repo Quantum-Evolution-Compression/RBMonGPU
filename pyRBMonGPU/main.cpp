@@ -11,7 +11,6 @@
 #include "network_functions/PsiOkVector.hpp"
 #include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
-#include "network_functions/RenyiCorrelation.hpp"
 #include "network_functions/DiagDensityOp.hpp"
 #include "extra/RenyiDoubleSum.hpp"
 #include "RNGStates.hpp"
@@ -292,23 +291,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_EXACT_SUMMATION
 
 
-#ifdef ENABLE_SPECIAL_MONTE_CARLO
-    py::class_<SpecialMonteCarloLoop>(m, "SpecialMonteCarloLoop")
-        .def(py::init<unsigned int, unsigned int, unsigned int, unsigned int, bool>())
-        .def(py::init<SpecialMonteCarloLoop&>())
-        .def_property_readonly("num_steps", &SpecialMonteCarloLoop::get_num_steps)
-        .def_property_readonly("acceptance_rate", [](const SpecialMonteCarloLoop& mc){
-            return float(mc.acceptances_ar.front()) / float(mc.acceptances_ar.front() + mc.rejections_ar.front());
-        });
-#endif // ENABLE_SPECIAL_MONTE_CARLO
-
-#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
-    py::class_<SpecialExactSummation>(m, "SpecialExactSummation")
-        .def(py::init<unsigned int, bool>())
-        .def_property_readonly("num_steps", &SpecialExactSummation::get_num_steps);
-#endif // ENABLE_SPECIAL_EXACT_SUMMATION
-
-
     py::class_<ExpectationValue>(m, "ExpectationValue")
         .def(py::init<bool>())
 #ifdef ENABLE_MONTE_CARLO
@@ -489,26 +471,6 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_PSI_CLASSICAL
 #endif // ENABLE_PSI_PAIR
 #endif // ENABLE_EXACT_SUMMATION
-    ;
-
-    py::class_<RenyiCorrelation>(m, "RenyiCorrelation")
-        .def(py::init<bool>())
-#ifdef ENABLE_SPECIAL_MONTE_CARLO
-#ifdef ENABLE_PSI_DEEP
-        .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialMonteCarloLoop>)
-#endif // ENABLE_PSI_DEEP
-#ifdef ENABLE_PSI_EXACT
-        .def("__call__", &RenyiCorrelation::__call__<PsiExact, SpecialMonteCarloLoop>)
-#endif // ENABLE_PSI_EXACT
-#endif // ENABLE_SPECIAL_MONTE_CARLO
-#ifdef ENABLE_SPECIAL_EXACT_SUMMATION
-#ifdef ENABLE_PSI_DEEP
-        .def("__call__", &RenyiCorrelation::__call__<PsiDeep, SpecialExactSummation>)
-#endif // ENABLE_PSI_DEEP
-#ifdef ENABLE_PSI_EXACT
-        .def("__call__", &RenyiCorrelation::__call__<PsiExact, SpecialExactSummation>)
-#endif // ENABLE_PSI_EXACT
-#endif // ENABLE_SPECIAL_EXACT_SUMMATION
     ;
 
 
