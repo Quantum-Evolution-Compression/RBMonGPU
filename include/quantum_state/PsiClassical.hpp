@@ -94,6 +94,7 @@ struct PsiClassical : public kernel::PsiClassical, public PsiBase {
          this->N = N;
 
          Peter::load_neural_network(directory, index);
+		 Peter::LoadParameters(directory);
          Peter::loadVP(directory, index, "Re");
          Peter::loadVP(directory, index, "Im");
          Peter::Compress_Load(directory, index);

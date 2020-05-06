@@ -9,53 +9,120 @@
 #include <iostream>
 
 using namespace std;
-
 namespace Peter {
+#define cdouble std::complex<double>
+cdouble I(0.0,1.0);
 
-int L=10;
-int H=1;
-int const numberOfVarParameters=18;
-int PerturbationTheoryOrder = 2;
+// _______________________________________________________________
+// parameters read from file
+
+int L;
+int H;
+int enable_full_table;
+int PerturbationTheoryOrder;
+// _______________________________________________________________
+
+int numberOfVarParameters;
+
 double time_current;
 double time_epoch;
 
-#define cdouble std::complex<double>
-cdouble I(0.0,1.0);
-vector<vector<vector<int>>> S(H, vector<vector<int>>(L, vector<int>(5)));     // i,j -- coordinates of the plaquette, only k=2 is used
+
+// _______________________________________________________________
+// vectors
+
+vector<vector<vector<int>>> S;     // i,j -- coordinates of the plaquette, only k=2 is used
 int const numberOfVarParametrsMax=300000; // before compression Stripe3Order (12321), Square 3Order (12160) // debug:
 int indexVP[numberOfVarParametrsMax][2] = {0}; // initialize with zeros
 
+Eigen::VectorXcd varW; // (numberOfVarParameters+1); // variational parameters; last one is the "dumb" VP for normalization and the global phase
 
-Eigen::VectorXcd varW = Eigen::VectorXcd::Zero(numberOfVarParameters+1); // variational parameters; last one is the "dumb" VP for normalization and the global phase
+//_______________________________________________________________
+// neural network
 
 rbm_on_gpu::PsiDeepMin* psi_neural = nullptr;
 
-void load_neural_network(string directory, int index) {
-    if(psi_neural) {
+//_______________________________________________________________
+
+void LoadParameters(string directory)
+	{
+	std::string filenameParam = directory + "/a_parameters.csv";
+	std::ifstream fileParam;
+	fileParam.open (filenameParam.c_str());
+
+	if (fileParam.is_open()==true)  cout << filenameParam << " was successfully loaded by loadVP()" << endl;
+    if (fileParam.is_open()==false) cout << filenameParam << " was NOT loaded by loadVP()" << endl;
+	
+	int Nparams = 16;
+	vector<string> dataVector(Nparams);
+
+	int i = 0;
+	string temp;
+	
+	while (i < Nparams)
+		{
+		getline (fileParam, temp, ',');
+		getline (fileParam, dataVector[i]);
+    	//cout << dataVector[i] << endl;
+	 	i++;
+		}
+    
+    cout << "Trying to read " << Nparams << " parameters from a_parameters.csv" << endl;
+    
+	L       = atoi(dataVector[0].c_str()); 
+	H       = atoi(dataVector[1].c_str());
+	enable_full_table= atoi(dataVector[2].c_str());
+	//extra1= atoi(dataVector[3].c_str());
+	//extra2= atoi(dataVector[4].c_str());
+	//t_start = atof(dataVector[5].c_str());
+	//t_stop  = atof(dataVector[6].c_str());
+	//dt      = atof(dataVector[7].c_str());
+	//Nsteps  = atoi(dataVector[8].c_str());
+	//Ntherm  = atoi(dataVector[9].c_str());
+    //Nmeasurements    = atoi(dataVector[10].c_str());
+	//J       = atof(dataVector[11].c_str());
+	//DirectEnumerationMode  = atoi(dataVector[12].c_str());
+	string VariationalModeString  = dataVector[13].c_str();
+	PerturbationTheoryOrder= atoi(dataVector[14].c_str());
+
+	if (enable_full_table) psi_neural->enable_full_table();
+	
+    if (VariationalModeString.size()!=0)
+		{
+		int stringLength = VariationalModeString.size();
+		if (VariationalModeString[stringLength-1]=='\r') VariationalModeString.erase(stringLength-1);
+		}
+		
+	if (VariationalModeString=="Ising")
+		{
+		cout << "VariationalModeString=Ising" << endl;
+		if (PerturbationTheoryOrder==1) numberOfVarParameters=4;
+		if (PerturbationTheoryOrder==2) numberOfVarParameters=18;
+		}     
+	else
+		{
+		cout << "Unknown VariationalModeString:" << VariationalModeString << endl;
+		return;
+		}
+		
+
+	S = vector<vector<vector<int>>> (H, vector<vector<int>>(L, vector<int>(5)));  
+    
+	varW = Eigen::VectorXcd::Zero(numberOfVarParameters+1);
+	}
+	
+//_______________________________________________________________
+
+void load_neural_network(string directory, int index) 
+	{
+    if(psi_neural) 
         delete psi_neural;
-    }
+    
     psi_neural = new rbm_on_gpu::PsiDeepMin(directory + "/psi_" + to_string(index-1) + "_compressed.txt");
-	psi_neural->enable_full_table();
-}
+	//psi_neural->enable_full_table();
+	}
 
-
-/*
-std::complex<double> Classical_wavefunction(std::vector<int> &S, std::vector<std::complex<double> > &varW, int numberOfVarParameters)
-    {
-    std::complex<double> varW0 = varW[numberOfVarParameters];
-    std::complex<double> Heff_plaquetteComplex = 0;
-
-    int omega;
-    for (int j=0; j<L; j++)
-        {
-        omega =   1*(S[j]*S[(j+1)%L]+1)/2 +        2*(S[(j+1)%L]*S[(j+2)%L]+1)/2 +  4*(S[(j+2)%L]*S[(j+3)%L]+1)/2 +   8*(S[(j+3)%L]*S[(j+4)%L]+1)/2
-			   + 16*(S[(j+4)%L]*S[(j+5)%L]+1)/2 + 32*(S[(j+5)%L]*S[(j+6)%L]+1)/2 + 64*(S[(j+6)%L]*S[(j+7)%L]+1)/2 ;
-		Heff_plaquetteComplex += (-I)*varW[omega];
-        }
-
-    return exp(varW0+Heff_plaquetteComplex);
-    }
-*/
+//_______________________________________________________________
 
 void loadVP(std::string directory, int index, std::string ReIm) // two calls are necessary: LoadVP("Re",..,..); LoadVP("Im",..,..);
     {
@@ -90,7 +157,7 @@ void loadVP(std::string directory, int index, std::string ReIm) // two calls are
     filePos.close();
 	}
 
-
+//_______________________________________________________________
 
 void Compress_Load(std::string directory, int index)
     {
@@ -116,6 +183,8 @@ void Compress_Load(std::string directory, int index)
     filePos.close();
     }
 
+//_______________________________________________________________
+
 cdouble psi_0_local(int i, int j, int fl) // in interaction representation
     {
     cdouble psi_0_local_temp=1.0;
@@ -133,21 +202,29 @@ cdouble psi_0_local(int i, int j, int fl) // in interaction representation
     return psi_0_local_temp;
     }
 
+//_______________________________________________________________
+
 int FindOmega(int i, int j) //
 	{
     int Omega = (S[i][(j+1)%L][2]+S[i][(j-1+L)%L][2])/2;  // = -1,0,1
     return Omega;
     }
 
+//_______________________________________________________________
+
 void FlipPlaquette(int i, int j)
 	{
     S[i][j][2] *= -1;
     }
 
+//_______________________________________________________________
+
 int if_Flippable(int i, int j)
 	{
     return S[i][j][2];
 	}
+
+//_______________________________________________________________
 
 cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't take into account the factor of 2
 																	// returns Shroedinger representation
@@ -524,6 +601,7 @@ cdouble Heff_plaquetteComplex(int i, int j, Eigen::VectorXcd& varW) // doesn't t
 	return 0; // should never happen
 	}
 
+//_______________________________________________________________
 
 cdouble findHeffComplex(vector<int> &spins) // returns log(wavefunction) in the interaction representation
 	{
