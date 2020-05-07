@@ -8,9 +8,8 @@ namespace rbm_on_gpu {
 
 namespace kernel {
 
-#define TILE_SIZE 256
 
-
+template<int TILE_SIZE>
 HDINLINE void renyi_double_sum(double* result, const double* rho_diag, unsigned int N) {
     #include "cuda_kernel_defines.h"
 
@@ -81,14 +80,38 @@ double renyi_double_sum(const Array<double>& rho_diag) {
     auto rho_diag_ptr = rho_diag.data();
 
     if(gpu) {
-        cuda_kernel<<<N / TILE_SIZE, TILE_SIZE>>>(
-            [=] __device__ () {
-                kernel::renyi_double_sum(result_ptr, rho_diag_ptr, N);
-            }
-        );
+        if(N >= 256) {
+            constexpr auto TILE_SIZE = 256u;
+            cuda_kernel<<<N / TILE_SIZE, TILE_SIZE>>>(
+                [=] __device__ () {
+                    kernel::renyi_double_sum<TILE_SIZE>(result_ptr, rho_diag_ptr, N);
+                }
+            );
+        }
+        else if(N >= 32) {
+            constexpr auto TILE_SIZE = 32u;
+            cuda_kernel<<<N / TILE_SIZE, TILE_SIZE>>>(
+                [=] __device__ () {
+                    kernel::renyi_double_sum<TILE_SIZE>(result_ptr, rho_diag_ptr, N);
+                }
+            );
+        }
+        else {
+            constexpr auto TILE_SIZE = 4u;
+            cuda_kernel<<<N / TILE_SIZE, TILE_SIZE>>>(
+                [=] __device__ () {
+                    kernel::renyi_double_sum<TILE_SIZE>(result_ptr, rho_diag_ptr, N);
+                }
+            );
+        }
     }
     else {
-        kernel::renyi_double_sum(result.data(), rho_diag.data(), N);
+        if(N >= 32u) {
+            kernel::renyi_double_sum<32u>(result.data(), rho_diag.data(), N);
+        }
+        else {
+            kernel::renyi_double_sum<4u>(result.data(), rho_diag.data(), N);
+        }
     }
 
     result.update_host();
