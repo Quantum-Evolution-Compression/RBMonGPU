@@ -120,7 +120,8 @@ double KullbackLeibler::gradient(
     this->log_ratio_ar.front() /= spin_ensemble.get_num_steps();
     this->log_ratio_abs2_ar.front() /= spin_ensemble.get_num_steps();
 
-    const auto value = sqrt(this->log_ratio_abs2_ar.front() - abs2(this->log_ratio_ar.front()));
+    auto value = sqrt(this->log_ratio_abs2_ar.front() - abs2(this->log_ratio_ar.front()));
+    value = max(value, 1e-6);
     const auto factor = pow(value, nu);
 
     for(auto k = 0u; k < this->num_params; k++) {
