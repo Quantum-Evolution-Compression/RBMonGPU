@@ -12,6 +12,7 @@
 #include "network_functions/PsiAngles.hpp"
 #include "network_functions/S_matrix.hpp"
 #include "network_functions/DiagDensityOp.hpp"
+#include "network_functions/Subspace.hpp"
 #include "extra/RenyiDoubleSum.hpp"
 #include "RNGStates.hpp"
 #include "types.h"
@@ -473,6 +474,25 @@ PYBIND11_MODULE(_pyRBMonGPU, m)
 #endif // ENABLE_EXACT_SUMMATION
     ;
 
+
+py::class_<Subspace>(m, "Subspace")
+    .def(py::init())
+#ifdef ENABLE_EXACT_SUMMATION
+#ifdef ENABLE_PSI_EXACT
+#ifdef ENABLE_PSI_DEEP
+    .def("__call__", [](Subspace& obj, complex_tensor<1u>& a_vec, const PsiExact& psi, const PsiDeep& psi_prime, ExactSummation& spin_ensemble){
+        Array<complex_t> a_vec_ar(a_vec, psi.gpu);
+        return obj(a_vec_ar, psi, psi_prime, spin_ensemble).to_std();
+    })
+    .def("gradient", [](Subspace& obj, complex_tensor<1u>& a_vec, const PsiExact& psi, const PsiDeep& psi_prime, ExactSummation& spin_ensemble){
+        Array<complex_t> a_vec_ar(a_vec, psi.gpu);
+        const auto result = obj.gradient(a_vec_ar, psi, psi_prime, spin_ensemble);
+        return std::make_pair(result.first.to_pytensor_1d(), result.second.to_std());
+    })
+#endif
+#endif
+#endif
+    ;
 
 py::class_<DiagDensityOp>(m, "DiagDensityOp")
         .def(py::init<unsigned int, bool>())
